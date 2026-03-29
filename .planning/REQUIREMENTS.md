@@ -108,32 +108,32 @@ Which phases cover which requirements. To be populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INIT-01 | — | Pending |
-| INIT-02 | — | Pending |
-| CHAP-01 | — | Pending |
-| CHAP-02 | — | Pending |
-| CHAP-03 | — | Pending |
-| CHAP-04 | — | Pending |
-| KNOW-01 | — | Pending |
-| KNOW-02 | — | Pending |
-| KNOW-03 | — | Pending |
-| PLAN-01 | — | Pending |
-| PLAN-02 | — | Pending |
-| PLAN-03 | — | Pending |
-| ISSUE-01 | — | Pending |
-| ISSUE-02 | — | Pending |
-| ISSUE-03 | — | Pending |
-| ISSUE-04 | — | Pending |
-| ISSUE-05 | — | Pending |
-| AIR-01 | — | Pending |
-| AIR-02 | — | Pending |
-| AIR-03 | — | Pending |
-| PER-01 | — | Pending |
+| INIT-01 | 1 | Pending |
+| INIT-02 | 1 | Pending |
+| CHAP-01 | 2 | Pending |
+| CHAP-02 | 2 | Pending |
+| CHAP-03 | 2 | Pending |
+| CHAP-04 | 2 | Pending |
+| KNOW-01 | 4 | Pending |
+| KNOW-02 | 4 | Pending |
+| KNOW-03 | 4 | Pending |
+| PLAN-01 | 3 | Pending |
+| PLAN-02 | 3 | Pending |
+| PLAN-03 | 5 | Pending |
+| ISSUE-01 | 5 | Pending |
+| ISSUE-02 | 5 | Pending |
+| ISSUE-03 | 5 | Pending |
+| ISSUE-04 | 5 | Pending |
+| ISSUE-05 | 7 | Pending |
+| AIR-01 | 7 | Pending |
+| AIR-02 | 7 | Pending |
+| AIR-03 | 7 | Pending |
+| PER-01 | 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 21 total
-- Mapped to phases: 0 (pending roadmap creation)
-- Unmapped: 21 ⚠️
+- Mapped to phases: 21
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-29*
