@@ -26,7 +26,6 @@ function renderProjectYaml(input: InitInput): string {
     `working_title: ${quote(input.workingTitle)}`,
     "genre:",
     genres || "  - \"fiction\"",
-    `target_audience: ${quote(input.targetAudience)}`,
     "folders:",
     "  manuscript: manuscript/",
     "  characters: notes/characters/",
@@ -63,18 +62,6 @@ async function gatherInitInput(log: vscode.LogOutputChannel): Promise<InitInput 
     return undefined;
   }
 
-  const defaultProjectId = toKebabCase(workingTitle);
-  const projectId = await vscode.window.showInputBox({
-    title: "LeanQuill Initialize",
-    prompt: "Project ID (kebab-case)",
-    value: defaultProjectId,
-    ignoreFocusOut: true,
-    validateInput: (value) => (toKebabCase(value) ? null : "Project ID is required."),
-  });
-  if (!projectId) {
-    return undefined;
-  }
-
   const genreInput = await vscode.window.showInputBox({
     title: "LeanQuill Initialize",
     prompt: "Genres (comma separated)",
@@ -86,26 +73,15 @@ async function gatherInitInput(log: vscode.LogOutputChannel): Promise<InitInput 
     return undefined;
   }
 
-  const targetAudience = await vscode.window.showInputBox({
-    title: "LeanQuill Initialize",
-    prompt: "Target audience",
-    ignoreFocusOut: true,
-    validateInput: (value) => (value.trim() ? null : "Target audience is required."),
-  });
-  if (!targetAudience) {
-    return undefined;
-  }
-
   return {
-    projectId: toKebabCase(projectId),
+    projectId: toKebabCase(workingTitle),
     workingTitle: workingTitle.trim(),
     genre: genreInput.split(",").map((value) => value.trim()).filter(Boolean),
-    targetAudience: targetAudience.trim(),
   };
 }
 
 async function ensureOverwriteIfNeeded(rootPath: string): Promise<boolean> {
-  const projectYamlPath = path.join(rootPath, "project.yaml");
+  const projectYamlPath = path.join(rootPath, ".leanquill", "project.yaml");
   const leanquillPath = path.join(rootPath, ".leanquill");
 
   const hasProjectYaml = await fs.stat(projectYamlPath).then(() => true).catch(() => false);
@@ -125,7 +101,7 @@ async function ensureOverwriteIfNeeded(rootPath: string): Promise<boolean> {
   return choice === "Overwrite";
 }
 
-async function initializeProject(rootPath: string, input: InitInput): Promise<{ warnings: string[] }> {
+async function initializeProject(rootPath: string, input: InitInput): Promise<{ warnings: string[]; projectYamlPath: string }> {
   const safeFs = new SafeFileSystem(rootPath);
 
   await fs.mkdir(path.join(rootPath, "manuscript"), { recursive: true });
@@ -134,7 +110,8 @@ async function initializeProject(rootPath: string, input: InitInput): Promise<{ 
   await safeFs.mkdir(path.join(rootPath, ".leanquill", "personas"));
 
   const projectYaml = renderProjectYaml(input);
-  await safeFs.writeFile(path.join(rootPath, "project.yaml"), projectYaml);
+  const projectYamlPath = path.join(rootPath, ".leanquill", "project.yaml");
+  await safeFs.writeFile(projectYamlPath, projectYaml);
 
   const chapterOrder = await resolveChapterOrder(rootPath);
   await safeFs.writeFile(
@@ -142,7 +119,7 @@ async function initializeProject(rootPath: string, input: InitInput): Promise<{ 
     JSON.stringify(chapterOrder, null, 2),
   );
 
-  return { warnings: chapterOrder.warnings };
+  return { warnings: chapterOrder.warnings, projectYamlPath };
 }
 
 export async function runInitializeFlow(context: vscode.ExtensionContext, log?: vscode.LogOutputChannel): Promise<void> {
@@ -184,6 +161,9 @@ export async function runInitializeFlow(context: vscode.ExtensionContext, log?: 
     } else {
       await vscode.window.showInformationMessage("LeanQuill initialized successfully.");
     }
+
+    const doc = await vscode.workspace.openTextDocument(result.projectYamlPath);
+    await vscode.window.showTextDocument(doc);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await vscode.window.showErrorMessage(`LeanQuill initialization failed: ${message}`);

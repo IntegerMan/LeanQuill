@@ -11,10 +11,6 @@ export class SafeFileSystem {
       return false;
     }
 
-    if (rel === "project.yaml") {
-      return true;
-    }
-
     return rel === ".leanquill" || rel.startsWith(`.leanquill${path.sep}`);
   }
 

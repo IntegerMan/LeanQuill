@@ -2,7 +2,6 @@ export interface InitInput {
   projectId: string;
   workingTitle: string;
   genre: string[];
-  targetAudience: string;
 }
 
 export interface ChapterOrderResult {

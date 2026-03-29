@@ -19,10 +19,10 @@ test("allows writes in .leanquill and project.yaml", async () => {
     const safeFs = new SafeFileSystem(dir);
 
     await safeFs.writeFile(path.join(dir, ".leanquill", "state.json"), "{}");
-    await safeFs.writeFile(path.join(dir, "project.yaml"), "schema_version: \"1\"\n");
+    await safeFs.writeFile(path.join(dir, ".leanquill", "project.yaml"), "schema_version: \"1\"\n");
 
     const state = await fs.readFile(path.join(dir, ".leanquill", "state.json"), "utf8");
-    const project = await fs.readFile(path.join(dir, "project.yaml"), "utf8");
+    const project = await fs.readFile(path.join(dir, ".leanquill", "project.yaml"), "utf8");
 
     assert.equal(state, "{}");
     assert.match(project, /schema_version/);
@@ -35,6 +35,11 @@ test("blocks writes to manuscript paths", async () => {
 
     await assert.rejects(
       () => safeFs.writeFile(path.join(dir, "manuscript", "ch1.md"), "draft"),
+      /Blocked write outside LeanQuill boundary/,
+    );
+
+    await assert.rejects(
+      () => safeFs.writeFile(path.join(dir, "project.yaml"), "data"),
       /Blocked write outside LeanQuill boundary/,
     );
   });
