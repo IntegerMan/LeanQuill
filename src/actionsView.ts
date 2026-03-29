@@ -1,26 +1,15 @@
 import * as vscode from "vscode";
 
-class ActionItem extends vscode.TreeItem {
-  constructor(label: string, command?: vscode.Command) {
-    super(label, vscode.TreeItemCollapsibleState.None);
-    this.command = command;
-  }
-}
-
-export class LeanQuillActionsProvider implements vscode.TreeDataProvider<ActionItem> {
-  private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<ActionItem | undefined>();
+export class LeanQuillActionsProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+  private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<vscode.TreeItem | undefined>();
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
-  getTreeItem(element: ActionItem): vscode.TreeItem {
+  getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
     return element;
   }
 
-  getChildren(): ActionItem[] {
-    return [
-      new ActionItem("Initialize Repository", {
-        command: "leanquill.initialize",
-        title: "LeanQuill: Initialize",
-      }),
-    ];
+  getChildren(): vscode.TreeItem[] {
+    // Return empty so the viewsWelcome content renders
+    return [];
   }
 }

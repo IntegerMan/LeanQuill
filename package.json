@@ -36,10 +36,27 @@
       "leanquill": [
         {
           "id": "leanquill.actions",
-          "name": "Actions"
+          "name": "LeanQuill"
         }
       ]
-    }
+    },
+    "viewsWelcome": [
+      {
+        "view": "leanquill.actions",
+        "contents": "Welcome to LeanQuill — your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\n[Initialize Repository](command:leanquill.initialize)\n\nOpen a workspace containing your manuscript folder or Book.txt to get started.",
+        "when": "!leanquill.hasManuscriptMarkers && !leanquill.isInitialized"
+      },
+      {
+        "view": "leanquill.actions",
+        "contents": "Welcome to LeanQuill — your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\n[Initialize Repository](command:leanquill.initialize)\n\nManuscript markers detected — initialize to start managing your project with LeanQuill.",
+        "when": "leanquill.hasManuscriptMarkers && !leanquill.isInitialized"
+      },
+      {
+        "view": "leanquill.actions",
+        "contents": "Welcome to LeanQuill — your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\nThis project is initialized and ready to use.\n\n[Re-initialize](command:leanquill.initialize)",
+        "when": "leanquill.isInitialized"
+      }
+    ]
   },
   "scripts": {
     "build": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js",

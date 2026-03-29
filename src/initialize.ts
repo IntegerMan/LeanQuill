@@ -51,7 +51,8 @@ function renderProjectYaml(input: InitInput): string {
   ].join("\n");
 }
 
-async function gatherInitInput(): Promise<InitInput | undefined> {
+async function gatherInitInput(log: vscode.LogOutputChannel): Promise<InitInput | undefined> {
+  log.info("Showing working title input box...");
   const workingTitle = await vscode.window.showInputBox({
     title: "LeanQuill Initialize",
     prompt: "Working title",
@@ -144,7 +145,7 @@ async function initializeProject(rootPath: string, input: InitInput): Promise<{ 
   return { warnings: chapterOrder.warnings };
 }
 
-export async function runInitializeFlow(context: vscode.ExtensionContext): Promise<void> {
+export async function runInitializeFlow(context: vscode.ExtensionContext, log?: vscode.LogOutputChannel): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
     await vscode.window.showErrorMessage("Open a workspace folder before running LeanQuill initialize.");
@@ -152,14 +153,18 @@ export async function runInitializeFlow(context: vscode.ExtensionContext): Promi
   }
 
   const rootPath = folder.uri.fsPath;
+  log?.info(`Root path: ${rootPath}`);
 
   const shouldContinue = await ensureOverwriteIfNeeded(rootPath);
   if (!shouldContinue) {
+    log?.info("User cancelled overwrite prompt");
     return;
   }
+  log?.info("Overwrite check passed, gathering input...");
 
-  const input = await gatherInitInput();
+  const input = await gatherInitInput(log ?? vscode.window.createOutputChannel("LeanQuill", { log: true }));
   if (!input) {
+    log?.info("User cancelled input gathering");
     return;
   }
 
