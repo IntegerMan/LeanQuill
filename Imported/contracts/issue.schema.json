@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/contracts/issue.schema.json",
+  "title": "Issue",
+  "type": "object",
+  "required": [
+    "issueId",
+    "type",
+    "status",
+    "title",
+    "description",
+    "source",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "issueId": {
+      "type": "string",
+      "pattern": "^iss-[0-9]{6}$"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "continuity",
+        "factual-risk",
+        "copyedit",
+        "beta-reader",
+        "planning"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "deferred",
+        "resolved",
+        "non-issue"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "info"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "chapterId",
+        "filePath"
+      ],
+      "properties": {
+        "chapterId": {
+          "type": "string"
+        },
+        "filePath": {
+          "type": "string"
+        },
+        "startLine": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "endLine": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "excerpt": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agentProfile": {
+      "type": "object",
+      "properties": {
+        "profileId": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "planning",
+            "beta-reader",
+            "expert-review",
+            "copyedit"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "recommendation": {
+      "type": "string"
+    },
+    "evidenceLinks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "url",
+          "title"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "verifyManually": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "authorDecision": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": [
+            "keep-open",
+            "defer",
+            "resolve",
+            "mark-non-issue"
+          ]
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "decidedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

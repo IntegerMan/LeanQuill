@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/contracts/chapter-status.schema.json",
+  "title": "ChapterStatus",
+  "type": "object",
+  "required": [
+    "chapterId",
+    "title",
+    "status",
+    "updatedAt"
+  ],
+  "properties": {
+    "chapterId": {
+      "type": "string",
+      "pattern": "^ch-[0-9]{3}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "drafting",
+        "self-edit",
+        "ai-review",
+        "ready",
+        "published"
+      ]
+    },
+    "wordCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "focusSummary": {
+      "type": "string"
+    },
+    "nextSessionNote": {
+      "type": "string"
+    },
+    "linkedIssueIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "lastReviewedByProfiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}
