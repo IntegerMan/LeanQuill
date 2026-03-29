@@ -1,0 +1,8 @@
+.vscode/**
+.github/**
+.planning/**
+Imported/**
+test/**
+dist-test/**
+*.ts
+*.map

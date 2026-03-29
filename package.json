@@ -1,0 +1,56 @@
+{
+  "name": "leanquill",
+  "displayName": "LeanQuill",
+  "description": "LeanPub-style authoring assistant for VS Code with strict manuscript safety boundaries.",
+  "version": "0.0.1",
+  "publisher": "leanquill",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:leanquill.initialize",
+    "workspaceContains:Book.txt",
+    "workspaceContains:manuscript"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "leanquill.initialize",
+        "title": "LeanQuill: Initialize"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "leanquill",
+          "title": "LeanQuill",
+          "icon": "media/leanquill.svg"
+        }
+      ]
+    },
+    "views": {
+      "leanquill": [
+        {
+          "id": "leanquill.actions",
+          "name": "Actions"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js",
+    "watch": "npm run build -- --watch",
+    "test": "node --test dist-test/**/*.test.js",
+    "build:test": "esbuild test/*.test.ts --bundle --platform=node --outdir=dist-test --format=cjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.25.3",
+    "typescript": "^5.8.3"
+  }
+}
