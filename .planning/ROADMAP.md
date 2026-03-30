@@ -53,10 +53,10 @@
 **Plans:** 4 plans
 
 Plans:
-- [ ] 02-01-PLAN.md - Define chapter status contracts and persistence foundation.
-- [ ] 02-02-PLAN.md - Build chapter tree provider with ordering, grouping, and open behavior.
-- [ ] 02-03-PLAN.md - Build Chapter Context webview provider aligned to approved UI contract.
-- [ ] 02-04-PLAN.md - Wire manifest and extension integration for end-to-end chapter workflow.
+- [x] 02-01-PLAN.md - Define chapter status contracts and persistence foundation.
+- [x] 02-02-PLAN.md - Build chapter tree provider with ordering, grouping, and open behavior.
+- [x] 02-03-PLAN.md - Build Chapter Context webview provider aligned to approved UI contract.
+- [x] 02-04-PLAN.md - Wire manifest and extension integration for end-to-end chapter workflow.
 
 **Success criteria:**
 1. Sidebar shows all chapters in project order with current status and open issue count per chapter.
@@ -154,8 +154,8 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation and Safe Init | 0/0 | Not started | - |
-| 2. Core Chapter Workflow | 0/4 | Not started | - |
+| 1. Foundation and Safe Init | 0/0 | Completed | 2026-03-29 |
+| 2. Core Chapter Workflow | 4/4 | Completed | 2026-03-30 |
 | 3. Outline and Beat Planning | 0/0 | Not started | - |
 | 4. Global Knowledge Reference | 0/0 | Not started | - |
 | 5. Issue Capture, Triage, and Editor Signals | 0/0 | Not started | - |
