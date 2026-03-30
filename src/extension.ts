@@ -11,9 +11,9 @@ import { SafeFileSystem } from "./safeFileSystem";
 import { ChapterOrderResult, ChapterStatus } from "./types";
 
 async function setWorkspaceContext(rootPath: string): Promise<void> {
-  const hasBookTxt = await vscode.workspace.findFiles("Book.txt", null, 1).then((f) => f.length > 0);
-  const hasManuscript = await vscode.workspace.findFiles("manuscript/**", null, 1).then((f) => f.length > 0);
-  const hasLeanquill = await vscode.workspace.findFiles(".leanquill/**", null, 1).then((f) => f.length > 0);
+  const hasBookTxt = await fs.stat(path.join(rootPath, "Book.txt")).then(() => true).catch(() => false);
+  const hasManuscript = await fs.stat(path.join(rootPath, "manuscript")).then(() => true).catch(() => false);
+  const hasLeanquill = await fs.stat(path.join(rootPath, ".leanquill", "project.yaml")).then(() => true).catch(() => false);
 
   await vscode.commands.executeCommand("setContext", "leanquill.hasManuscriptMarkers", hasBookTxt || hasManuscript);
   await vscode.commands.executeCommand("setContext", "leanquill.isInitialized", hasLeanquill);
