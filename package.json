@@ -27,7 +27,8 @@
       },
       {
         "command": "leanquill.updateChapterStatus",
-        "title": "LeanQuill: Update Chapter Status"
+        "title": "Update Chapter Status",
+        "category": "LeanQuill"
       }
     ],
     "viewsContainers": {

@@ -31,6 +31,8 @@ const STATUS_CHOICES: Array<{ status: ChapterStatus; icon: string }> = [
   { status: "final", icon: "verified" },
 ];
 
+const DOUBLE_CLICK_WINDOW_MS = 450;
+
 function normalizePath(value: string): string {
   return value.split("\\").join("/");
 }
@@ -172,6 +174,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     await updateChapterStatus(chapterPath);
   });
 
+  let lastOpened: { chapterPath: string; openedAt: number } | undefined;
+  const openChapterCommand = vscode.commands.registerCommand("leanquill.openChapter", async (chapterPath: string) => {
+    const absolutePath = path.join(rootPath, ...chapterPath.split("/"));
+    const now = Date.now();
+    const isDoubleClick = Boolean(
+      lastOpened
+      && lastOpened.chapterPath === chapterPath
+      && now - lastOpened.openedAt <= DOUBLE_CLICK_WINDOW_MS,
+    );
+
+    lastOpened = { chapterPath, openedAt: now };
+    await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), {
+      preview: !isDoubleClick,
+      preserveFocus: false,
+    });
+  });
+
   const activeEditorSubscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (!editor) {
       return;
@@ -204,6 +223,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   manuscriptWatcher.onDidDelete(triggerRefresh);
 
   context.subscriptions.push(
+    openChapterCommand,
     updateChapterStatusCommand,
     activeEditorSubscription,
     chapterOrderWatcher,

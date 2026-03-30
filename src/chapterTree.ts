@@ -171,9 +171,9 @@ export class ChapterTreeProvider implements VSCode.TreeDataProvider<ChapterTreeN
 
     if (!element.missing) {
       item.command = {
-        command: "vscode.open",
+        command: "leanquill.openChapter",
         title: "Open Chapter",
-        arguments: [vscode.Uri.file(path.join(this.rootPath, ...element.chapterPath.split("/"))), { preview: true }],
+        arguments: [element.chapterPath],
       };
     }
 
