@@ -80,6 +80,13 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 2
 **Requirements:** PLAN-01, PLAN-02
+**Plans:** 4 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Types, data store, and Book.txt sync foundation.
+- [ ] 03-02-PLAN.md — Sidebar outline tree with drag-and-drop reordering.
+- [ ] 03-03-PLAN.md — Planning webview panel with tabs and beat card grid.
+- [ ] 03-04-PLAN.md — Beat editor, extension wiring, and end-to-end integration.
 
 **Success criteria:**
 1. Author can open a Scrivener-style outline webview with hierarchical Parts -> Chapters -> Beats.
