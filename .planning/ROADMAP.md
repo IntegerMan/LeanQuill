@@ -11,20 +11,26 @@
 | 1 | Foundation and Safe Init | Author can bootstrap a LeanQuill project on a reliable local-first foundation with enforced file safety boundaries | INIT-01, INIT-02 | 3 criteria |
 | 2 | Core Chapter Workflow | Author can navigate chapters, open files, and manage chapter state from VS Code sidebars | CHAP-01, CHAP-02, CHAP-03, CHAP-04 | 4 criteria |
 | 3 | Outline and Beat Planning | Author can plan long-form structure in a dedicated Scrivener-style planning workspace | PLAN-01, PLAN-02 | 3 criteria |
-| 4 | Global Knowledge Reference | Author can continuously consult and edit project knowledge notes during planning and drafting | KNOW-01, KNOW-02, KNOW-03 | 3 criteria |
-| 5 | Issue Capture, Triage, and Editor Signals | Author can capture, triage, and spatially resolve editorial/research issues from one workflow | ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03 | 5 criteria |
-| 6 | AI Safety Rails and Persona Baseline | Project is AI-ready with explicit persona configuration and manuscript write-block protections established | PER-01 | 3 criteria |
-| 7 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
+| 4 | Character Reference | Author can manage character profiles in the planning workspace Characters tab | CHAR-01 | 2 criteria |
+| 5 | Place and Setting Reference | Author can manage place and setting profiles in the planning workspace Places tab | PLACE-01 | 2 criteria |
+| 6 | Threads and Themes | Author can manage narrative threads and thematic arcs in the planning workspace Threads tab | THREAD-01 | 2 criteria |
+| 7 | Global Knowledge Reference | Author can continuously consult and edit project knowledge notes during planning and drafting | KNOW-01, KNOW-02, KNOW-03 | 3 criteria |
+| 8 | Issue Capture, Triage, and Editor Signals | Author can capture, triage, and spatially resolve editorial/research issues from one workflow | ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03 | 5 criteria |
+| 9 | AI Safety Rails and Persona Baseline | Project is AI-ready with explicit persona configuration and manuscript write-block protections established | PER-01 | 3 criteria |
+| 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
 
 ## Phases
 
 - [x] **Phase 1: Foundation and Safe Init** - Scaffold LeanQuill files, chapter ordering detection, and safe IO boundaries.
 - [x] **Phase 2: Core Chapter Workflow** - Deliver chapter tree navigation and chapter context basics.
 - [ ] **Phase 3: Outline and Beat Planning** - Deliver standalone Scrivener-style planning webview.
-- [ ] **Phase 4: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
-- [ ] **Phase 5: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators.
-- [ ] **Phase 6: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
-- [ ] **Phase 7: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
+- [ ] **Phase 4: Character Reference** - Populate Characters tab with character profile management.
+- [ ] **Phase 5: Place and Setting Reference** - Populate Places tab with location/setting management.
+- [ ] **Phase 6: Threads and Themes** - Populate Threads tab with narrative thread and thematic arc tracking.
+- [ ] **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
+- [ ] **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators.
+- [ ] **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
+- [ ] **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
 
 ## Phase Details
 
@@ -84,7 +90,52 @@ Plans:
 
 ---
 
-### Phase 4: Global Knowledge Reference
+### Phase 4: Character Reference
+
+**Goal:** Author can manage character profiles within the planning workspace, tracking who appears in which parts of the story.
+**UI hint:** yes
+**Depends on:** Phase 3
+**Requirements:** CHAR-01
+
+**Success criteria:**
+1. Author can open the Characters tab in the planning webview and create, edit, and organize character entries with author-defined fields.
+2. Character entries show which chapters and beats reference each character, giving the author visibility into character presence across the story.
+
+**Notes:** Populates the Characters stub tab created in Phase 3. Part synopsis/notes fields may also be added in this phase per Phase 3 deferred items.
+
+---
+
+### Phase 5: Place and Setting Reference
+
+**Goal:** Author can manage place and setting profiles within the planning workspace, linking locations to the scenes where they appear.
+**UI hint:** yes
+**Depends on:** Phase 3
+**Requirements:** PLACE-01
+
+**Success criteria:**
+1. Author can open the Places tab in the planning webview and create, edit, and organize location/setting entries with author-defined fields.
+2. Place entries show which chapters and beats reference each location, giving the author visibility into setting usage across the story.
+
+**Notes:** Populates the Places stub tab created in Phase 3. Follows the same data model and UI patterns established by Phase 4 (Character Reference).
+
+---
+
+### Phase 6: Threads and Themes
+
+**Goal:** Author can track narrative threads, subplots, and thematic arcs that weave through the story structure.
+**UI hint:** yes
+**Depends on:** Phase 3
+**Requirements:** THREAD-01
+
+**Success criteria:**
+1. Author can open the Threads tab in the planning webview and create, edit, and organize thread/theme entries with author-defined fields.
+2. Thread entries show which chapters and beats each thread touches, giving the author visibility into how concepts and subplots weave through the narrative.
+
+**Notes:** Populates the Threads/Themes stub tab created in Phase 3. Threads differ from characters/places in that they represent abstract narrative concepts rather than concrete entities.
+
+---
+
+### Phase 7: Global Knowledge Reference
 
 **Goal:** Author can use project notes as a living reference system while writing and planning.
 **UI hint:** yes
@@ -96,15 +147,15 @@ Plans:
 2. Known entities (characters/locations) are clickable and navigate quickly to their source notes.
 3. Notes remain editable through the normal editing flow; planning-stage chapters do not force notes into read-only mode.
 
-**Notes:** Intentionally scheduled after chapter workflow to reduce early dependency complexity.
+**Notes:** Intentionally scheduled after chapter workflow to reduce early dependency complexity. Now also scheduled after character/place/thread phases so the knowledge pane can cross-reference structured planning data.
 
 ---
 
-### Phase 5: Issue Capture, Triage, and Editor Signals
+### Phase 8: Issue Capture, Triage, and Editor Signals
 
 **Goal:** Author can capture editorial and research concerns, triage them over time, and resolve them in-context inside the editor.
 **UI hint:** yes
-**Depends on:** Phase 2, Phase 4
+**Depends on:** Phase 2, Phase 7
 **Requirements:** ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03
 
 **Success criteria:**
@@ -118,11 +169,11 @@ Plans:
 
 ---
 
-### Phase 6: AI Safety Rails and Persona Baseline
+### Phase 9: AI Safety Rails and Persona Baseline
 
 **Goal:** LeanQuill is prepared for AI workflows with explicit per-project persona management and hard manuscript immutability guarantees.
 **UI hint:** no
-**Depends on:** Phase 1, Phase 5
+**Depends on:** Phase 1, Phase 8
 **Requirements:** PER-01
 
 **Success criteria:**
@@ -134,11 +185,11 @@ Plans:
 
 ---
 
-### Phase 7: AI Review and Advisory Workflows
+### Phase 10: AI Review and Advisory Workflows
 
 **Goal:** Author can invoke AI as an auditable advisory layer for review, issue discussion, and story intelligence without any manuscript-authoring behavior.
 **UI hint:** yes
-**Depends on:** Phase 6
+**Depends on:** Phase 9
 **Requirements:** AIR-01, AIR-02, AIR-03, ISSUE-05
 
 **Success criteria:**
@@ -157,7 +208,10 @@ Plans:
 | 1. Foundation and Safe Init | 0/0 | Completed | 2026-03-29 |
 | 2. Core Chapter Workflow | 4/4 | Completed | 2026-03-30 |
 | 3. Outline and Beat Planning | 0/0 | Not started | - |
-| 4. Global Knowledge Reference | 0/0 | Not started | - |
-| 5. Issue Capture, Triage, and Editor Signals | 0/0 | Not started | - |
-| 6. AI Safety Rails and Persona Baseline | 0/0 | Not started | - |
-| 7. AI Review and Advisory Workflows | 0/0 | Not started | - |
+| 4. Character Reference | 0/0 | Not started | - |
+| 5. Place and Setting Reference | 0/0 | Not started | - |
+| 6. Threads and Themes | 0/0 | Not started | - |
+| 7. Global Knowledge Reference | 0/0 | Not started | - |
+| 8. Issue Capture, Triage, and Editor Signals | 0/0 | Not started | - |
+| 9. AI Safety Rails and Persona Baseline | 0/0 | Not started | - |
+| 10. AI Review and Advisory Workflows | 0/0 | Not started | - |

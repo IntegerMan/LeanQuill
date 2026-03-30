@@ -31,6 +31,18 @@
 - [ ] **PLAN-02**: Each story beat supports per-beat fields: description of what occurs, who is present, where it takes place, why it happens — plus a candidate/committed status to track options the author hasn't yet decided on
 - [ ] **PLAN-03**: Author can log open questions and research discoveries as issue records using a "research-question" issue type, surfaced in triage alongside other issue types
 
+### Character Reference
+
+- [ ] **CHAR-01**: Author can manage character profiles within the planning workspace Characters tab — creating, editing, and organizing character entries with author-defined fields, with visibility into which chapters and beats reference each character
+
+### Place and Setting Reference
+
+- [ ] **PLACE-01**: Author can manage place and setting profiles within the planning workspace Places tab — creating, editing, and organizing location entries with author-defined fields, linking places to the beats and chapters where scenes occur
+
+### Threads and Themes
+
+- [ ] **THREAD-01**: Author can manage narrative threads and themes within the planning workspace Threads tab — tracking subplots, thematic arcs, and recurring concepts across the story structure, with visibility into which beats and chapters each thread touches
+
 ### Issue Tracking
 
 - [ ] **ISSUE-01**: Author can manually create an issue attached to a specific chapter or project-wide, using the full issue schema (type, title, description, optional span_hint)
@@ -114,25 +126,28 @@ Which phases cover which requirements. To be populated during roadmap creation.
 | CHAP-02 | 2 | Pending |
 | CHAP-03 | 2 | Pending |
 | CHAP-04 | 2 | Pending |
-| KNOW-01 | 4 | Pending |
-| KNOW-02 | 4 | Pending |
-| KNOW-03 | 4 | Pending |
 | PLAN-01 | 3 | Pending |
 | PLAN-02 | 3 | Pending |
-| PLAN-03 | 5 | Pending |
-| ISSUE-01 | 5 | Pending |
-| ISSUE-02 | 5 | Pending |
-| ISSUE-03 | 5 | Pending |
-| ISSUE-04 | 5 | Pending |
-| ISSUE-05 | 7 | Pending |
-| AIR-01 | 7 | Pending |
-| AIR-02 | 7 | Pending |
-| AIR-03 | 7 | Pending |
-| PER-01 | 6 | Pending |
+| PLAN-03 | 8 | Pending |
+| CHAR-01 | 4 | Pending |
+| PLACE-01 | 5 | Pending |
+| THREAD-01 | 6 | Pending |
+| KNOW-01 | 7 | Pending |
+| KNOW-02 | 7 | Pending |
+| KNOW-03 | 7 | Pending |
+| ISSUE-01 | 8 | Pending |
+| ISSUE-02 | 8 | Pending |
+| ISSUE-03 | 8 | Pending |
+| ISSUE-04 | 8 | Pending |
+| ISSUE-05 | 10 | Pending |
+| AIR-01 | 10 | Pending |
+| AIR-02 | 10 | Pending |
+| AIR-03 | 10 | Pending |
+| PER-01 | 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 21 total
-- Mapped to phases: 21
+- v1 requirements: 24 total
+- Mapped to phases: 24
 - Unmapped: 0 ✓
 
 ---
