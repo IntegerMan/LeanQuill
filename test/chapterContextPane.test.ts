@@ -20,7 +20,7 @@ test("renders active chapter status and action link", () => {
 
   assert.match(html, /Chapter One/);
   assert.match(html, /drafting/);
-  assert.match(html, /Update Chapter Status/);
+  assert.match(html, /Update Status/);
   assert.match(html, /command:leanquill.updateChapterStatus/);
 });
 

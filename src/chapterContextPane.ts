@@ -68,7 +68,7 @@ export function renderChapterContextHtml(model?: ChapterContextModel, showRetain
     <section class="card">
       <h1 class="title">${escapeHtml(model.title)}</h1>
       <div class="meta"><span class="label">Status</span><span>${escapeHtml(model.status)}</span></div>
-      <a class="action" href="command:leanquill.updateChapterStatus">Update Chapter Status</a>
+      <a class="action" href="command:leanquill.updateChapterStatus">Update Status</a>
       ${retainedHint}
     </section>
     <section class="card">
