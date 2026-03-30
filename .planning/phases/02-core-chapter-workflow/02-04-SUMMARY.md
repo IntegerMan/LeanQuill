@@ -78,7 +78,7 @@ completed: 2026-03-29
 **2. Chapter open interaction and context menu copy mismatched user expectation**
 - **Found during:** Task 3 (manual extension host checkpoint retest)
 - **Issue:** Double-clicking chapters did not pin reliably, and the context menu label redundantly included the LeanQuill prefix.
-- **Fix:** Added an internal `leanquill.openChapter` command with double-click timing logic (`preview: true` on first click, `preview: false` on second click in window) and changed context command title to `Update Chapter Status` with `category: LeanQuill`.
+- **Fix:** Added an internal `leanquill.openChapter` command with double-click timing logic (`preview: true` on first click, `preview: false` on second click in window) and changed context command title to `Update Status` with `category: LeanQuill`.
 - **Files modified:** `src/chapterTree.ts`, `src/extension.ts`, `package.json`
 - **Verification:** `npm run build && npm run build:test && npm test`
 - **Committed in:** `274cb36`

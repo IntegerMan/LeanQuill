@@ -64,7 +64,7 @@ created: 2026-03-29
 |----------|-------------|------------|-------------------|
 | Single-click opens chapter in preview tab | CHAP-02 | VS Code tab behavior requires live extension host | Open extension in debugger (`F5`), click chapter in tree — verify preview tab opens |
 | Double-click pins the preview tab | CHAP-02 / D-06 | VS Code tab pinning is UI-only | Click same chapter twice — verify tab title loses italics |
-| Context menu → status quick pick appears | CHAP-03 | Requires running extension host | Right-click chapter row, confirm "LeanQuill: Update Chapter Status" option appears, all 7 statuses listed |
+| Context menu → status quick pick appears | CHAP-03 | Requires running extension host | Right-click chapter row, confirm "Update Status" option appears, all 7 statuses listed |
 | Status update immediately reflects in tree | CHAP-03 | Requires live file system + tree refresh | Change status → confirm tree badge/description updates without reload |
 | Switching to chapter file refreshes context pane | CHAP-04 | Requires `onDidChangeActiveTextEditor` in live host | Open editor with two chapters → switch between files → verify context pane updates |
 | "Not Included" group appears for orphan files | D-16 | Requires real workspace folder | Copy an extra `.md` to `manuscript/` that is not in `Book.txt` → verify it appears under "Not Included" |

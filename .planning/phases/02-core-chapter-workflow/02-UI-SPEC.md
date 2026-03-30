@@ -68,7 +68,7 @@ reviewed_at: 2026-03-29
 | Interaction | Contract |
 | ----------- | -------- |
 | Open chapter | Single click previews the manuscript in the editor. Double click pins the tab. |
-| Update status from tree | Right-click chapter row, choose `Update Chapter Status`, then select from a quick pick showing all 7 statuses in canonical order. |
+| Update status from tree | Right-click chapter row, choose `Update Status`, then select from a quick pick showing all 7 statuses in canonical order. |
 | Update status from context pane | Primary action uses the same quick-pick flow as the tree so there is one status-edit path. |
 | Auto-refresh | Refresh the context pane when the active editor changes to a known chapter and after a successful status update. |
 | Unknown active file | Keep the last known chapter in the context pane instead of clearing to empty. |
@@ -131,10 +131,10 @@ Rules:
 | ---- | ----- | ----- |
 | Dominant (60%) | `var(--vscode-sideBar-background)` | View background, webview root, inactive surface fill |
 | Secondary (30%) | `var(--vscode-editorWidget-background)` | Summary cards, grouped metadata blocks, empty/error panels |
-| Accent (10%) | `var(--vscode-button-background)` | `Update Chapter Status` action and any single primary action affordance in the pane |
+| Accent (10%) | `var(--vscode-button-background)` | `Update Status` action and any single primary action affordance in the pane |
 | Destructive | `var(--vscode-errorForeground)` | Destructive actions only |
 
-Accent reserved for: the `Update Chapter Status` action in the context pane, inline retry/open-state links inside empty or error panels, and no other elements.
+Accent reserved for: the `Update Status` action in the context pane, inline retry/open-state links inside empty or error panels, and no other elements.
 
 Additional rules:
 
@@ -148,7 +148,7 @@ Additional rules:
 
 | Element | Copy |
 | ------- | ---- |
-| Primary CTA | Update Chapter Status |
+| Primary CTA | Update Status |
 | Empty state heading | No chapter selected |
 | Empty state body | Open a chapter from the Chapters view to inspect its status and issue context. LeanQuill keeps the last known chapter visible when you switch to non-chapter files. |
 | Error state | LeanQuill could not load chapter context. Reopen the chapter, then retry the status action. If project state is missing, run LeanQuill: Initialize. |

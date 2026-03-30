@@ -248,7 +248,7 @@ async function writeChapterStatus(
 ```json
 "commands": [
   { "command": "leanquill.initialize", "title": "LeanQuill: Initialize" },
-  { "command": "leanquill.updateChapterStatus", "title": "LeanQuill: Update Chapter Status" }
+  { "command": "leanquill.updateChapterStatus", "title": "Update Status" }
 ]
 ```
 
