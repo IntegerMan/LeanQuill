@@ -5,7 +5,7 @@ import { LeanQuillActionsProvider } from "./actionsView";
 import { getChapterStatusEntry, readChapterStatusIndex, writeChapterStatusEntry } from "./chapterStatus";
 import { ChapterContextPaneProvider } from "./chapterContextPane";
 import { resolveChapterOrder } from "./chapterOrder";
-import { ChapterTreeProvider, isStatusTrackableTreeNode } from "./chapterTree";
+import { ChapterTreeProvider, resolveStatusTarget } from "./chapterTree";
 import { runInitializeFlow, shouldPromptInitialize } from "./initialize";
 import { SafeFileSystem } from "./safeFileSystem";
 import { ChapterOrderResult, ChapterStatus } from "./types";
@@ -127,9 +127,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const chapterOrder = await readChapterOrderState(rootPath);
     statusIndex = await readChapterStatusIndex(rootPath, (warning) => log.warn(warning));
     const manuscriptPaths = await listManuscriptPaths(rootPath);
-    const hasBookTxt = await fs.stat(path.join(rootPath, "Book.txt")).then(() => true).catch(() => false);
 
-    chapterTreeProvider.setData(chapterOrder.chapterPaths, manuscriptPaths, statusIndex, hasBookTxt);
+    chapterTreeProvider.setData(chapterOrder.chapterPaths, manuscriptPaths, statusIndex);
     knownChapterPaths = chapterTreeProvider.getKnownChapterPaths();
 
     const activeEditor = vscode.window.activeTextEditor;
@@ -168,6 +167,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   let lastOpened: { chapterPath: string; openedAt: number } | undefined;
   const openChapter = async (chapterPath: string): Promise<void> => {
+    if (chapterPath === "Book.txt") {
+      const bookPath = path.join(rootPath, "Book.txt");
+      const exists = await fs.stat(bookPath).then(() => true).catch(() => false);
+      if (!exists) {
+        const chapterOrder = await readChapterOrderState(rootPath);
+        const content = chapterOrder.chapterPaths.join("\n");
+        await fs.writeFile(bookPath, content.length > 0 ? `${content}\n` : "", "utf8");
+      }
+    }
+
     const absolutePath = path.join(rootPath, ...chapterPath.split("/"));
     const now = Date.now();
     const isDoubleClick = Boolean(
@@ -184,12 +193,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   };
 
   const updateChapterStatusCommand = vscode.commands.registerCommand("leanquill.updateChapterStatus", async (item?: unknown) => {
-    const chapterPath = isStatusTrackableTreeNode(item) && !item.missing
-      ? item.chapterPath
+    const target = resolveStatusTarget(item);
+    const chapterPath = target && !target.missing
+      ? target.chapterPath
       : chapterContextProvider.getCurrentChapterPath();
 
     if (!chapterPath) {
-      await vscode.window.showInformationMessage("Open a chapter first, then run Update Chapter Status.");
+      await vscode.window.showInformationMessage("Open an item first, then run Update Status.");
       return;
     }
 
@@ -201,8 +211,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
 
   const chapterSelectionSubscription = chaptersView.onDidChangeSelection(async (event) => {
-    const selected = event.selection[0];
-    if (!isStatusTrackableTreeNode(selected) || selected.missing) {
+    const selected = resolveStatusTarget(event.selection[0]);
+    if (!selected || selected.missing) {
       return;
     }
 
@@ -213,12 +223,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
 
   const bookElementInteraction = async (element: unknown): Promise<void> => {
-    if (!isStatusTrackableTreeNode(element) || element.kind !== "book" || element.missing) {
+    const target = resolveStatusTarget(element);
+    if (!target || target.kind !== "book" || target.missing) {
       return;
     }
 
-    chapterContextProvider.setActiveChapter(element.chapterPath, getChapterStatusEntry(statusIndex, element.chapterPath));
-    await openChapter(element.chapterPath);
+    chapterContextProvider.setActiveChapter(target.chapterPath, getChapterStatusEntry(statusIndex, target.chapterPath));
+    await openChapter(target.chapterPath);
   };
 
   const chapterExpandSubscription = chaptersView.onDidExpandElement(async (event) => {

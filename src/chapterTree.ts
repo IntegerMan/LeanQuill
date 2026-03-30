@@ -47,12 +47,17 @@ export interface BookTreeNode {
   title: string;
   status: ChapterStatus;
   openIssueCount: number;
-  missing: boolean;
   children: ChapterTreeRow[];
 }
 
 export type ChapterTreeNode = ChapterTreeRow | ChapterTreeGroup | BookTreeNode;
 export type StatusTrackableTreeNode = ChapterTreeRow | BookTreeNode;
+
+export interface ResolvedStatusTarget {
+  chapterPath: string;
+  kind: "chapter" | "book";
+  missing: boolean;
+}
 
 export function isChapterTreeRow(value: unknown): value is ChapterTreeRow {
   return Boolean(value) && typeof value === "object" && (value as { kind?: string }).kind === "chapter";
@@ -67,11 +72,41 @@ export function isStatusTrackableTreeNode(value: unknown): value is StatusTracka
   return kind === "chapter" || kind === "book";
 }
 
+function hasRecordShape(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+export function resolveStatusTarget(value: unknown): ResolvedStatusTarget | undefined {
+  if (isStatusTrackableTreeNode(value)) {
+    return {
+      chapterPath: value.chapterPath,
+      kind: value.kind,
+      missing: value.kind === "chapter" ? value.missing : false,
+    };
+  }
+
+  if (!hasRecordShape(value)) {
+    return undefined;
+  }
+
+  const chapterPath = value.leanquillChapterPath;
+  const kind = value.leanquillKind;
+  const missing = value.leanquillMissing;
+  if (typeof chapterPath !== "string" || (kind !== "chapter" && kind !== "book")) {
+    return undefined;
+  }
+
+  return {
+    chapterPath,
+    kind,
+    missing: kind === "chapter" ? Boolean(missing) : false,
+  };
+}
+
 export function buildChapterRows(
   orderedChapterPaths: string[],
   discoveredManuscriptPaths: string[],
   statusIndex: ChapterStatusIndex,
-  hasBookTxt = true,
 ): ChapterTreeNode[] {
   const normalizedOrdered = orderedChapterPaths.map(normalizeChapterPath);
   const discoveredSet = new Set(discoveredManuscriptPaths.map(normalizeChapterPath));
@@ -113,7 +148,6 @@ export function buildChapterRows(
       title: bookStatus.title || "Book",
       status: bookStatus.status,
       openIssueCount: bookStatus.openIssueCount,
-      missing: !hasBookTxt,
       children: orderedRows,
     },
   ];
@@ -158,9 +192,8 @@ export class ChapterTreeProvider implements VSCode.TreeDataProvider<ChapterTreeN
     orderedChapterPaths: string[],
     discoveredManuscriptPaths: string[],
     statusIndex: ChapterStatusIndex,
-    hasBookTxt: boolean,
   ): void {
-    this.rows = buildChapterRows(orderedChapterPaths, discoveredManuscriptPaths, statusIndex, hasBookTxt);
+    this.rows = buildChapterRows(orderedChapterPaths, discoveredManuscriptPaths, statusIndex);
     this.refresh();
   }
 
@@ -200,18 +233,16 @@ export class ChapterTreeProvider implements VSCode.TreeDataProvider<ChapterTreeN
       const item = new vscode.TreeItem(element.title, vscode.TreeItemCollapsibleState.Expanded);
       item.description = `${element.status} | ${issueCountText(element.openIssueCount)}`;
       item.tooltip = `${element.title}\n${element.chapterPath}\nStatus: ${element.status}`;
-      item.contextValue = element.missing ? "book-missing" : "book";
-      item.iconPath = element.missing
-        ? new vscode.ThemeIcon("warning")
-        : new vscode.ThemeIcon("book");
-
-      if (!element.missing) {
-        item.command = {
-          command: "leanquill.openChapter",
-          title: "Open Book",
-          arguments: [element.chapterPath],
-        };
-      }
+      item.contextValue = "book";
+      item.iconPath = new vscode.ThemeIcon("book");
+      item.command = {
+        command: "leanquill.openChapter",
+        title: "Open Book",
+        arguments: [element.chapterPath],
+      };
+      (item as unknown as Record<string, unknown>).leanquillChapterPath = element.chapterPath;
+      (item as unknown as Record<string, unknown>).leanquillKind = "book";
+      (item as unknown as Record<string, unknown>).leanquillMissing = false;
 
       return item;
     }
@@ -232,6 +263,9 @@ export class ChapterTreeProvider implements VSCode.TreeDataProvider<ChapterTreeN
         arguments: [element.chapterPath],
       };
     }
+    (item as unknown as Record<string, unknown>).leanquillChapterPath = element.chapterPath;
+    (item as unknown as Record<string, unknown>).leanquillKind = "chapter";
+    (item as unknown as Record<string, unknown>).leanquillMissing = element.missing;
 
     return item;
   }
