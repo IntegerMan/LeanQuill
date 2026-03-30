@@ -18,7 +18,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Foundation and Safe Init** - Scaffold LeanQuill files, chapter ordering detection, and safe IO boundaries.
+- [x] **Phase 1: Foundation and Safe Init** - Scaffold LeanQuill files, chapter ordering detection, and safe IO boundaries.
 - [ ] **Phase 2: Core Chapter Workflow** - Deliver chapter tree navigation and chapter context basics.
 - [ ] **Phase 3: Outline and Beat Planning** - Deliver standalone Scrivener-style planning webview.
 - [ ] **Phase 4: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
@@ -50,6 +50,13 @@
 **UI hint:** yes
 **Depends on:** Phase 1
 **Requirements:** CHAP-01, CHAP-02, CHAP-03, CHAP-04
+**Plans:** 4 plans
+
+Plans:
+- [ ] 02-01-PLAN.md - Define chapter status contracts and persistence foundation.
+- [ ] 02-02-PLAN.md - Build chapter tree provider with ordering, grouping, and open behavior.
+- [ ] 02-03-PLAN.md - Build Chapter Context webview provider aligned to approved UI contract.
+- [ ] 02-04-PLAN.md - Wire manifest and extension integration for end-to-end chapter workflow.
 
 **Success criteria:**
 1. Sidebar shows all chapters in project order with current status and open issue count per chapter.
@@ -148,7 +155,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation and Safe Init | 0/0 | Not started | - |
-| 2. Core Chapter Workflow | 0/0 | Not started | - |
+| 2. Core Chapter Workflow | 0/4 | Not started | - |
 | 3. Outline and Beat Planning | 0/0 | Not started | - |
 | 4. Global Knowledge Reference | 0/0 | Not started | - |
 | 5. Issue Capture, Triage, and Editor Signals | 0/0 | Not started | - |
