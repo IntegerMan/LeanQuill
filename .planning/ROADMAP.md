@@ -19,7 +19,7 @@
 ## Phases
 
 - [x] **Phase 1: Foundation and Safe Init** - Scaffold LeanQuill files, chapter ordering detection, and safe IO boundaries.
-- [ ] **Phase 2: Core Chapter Workflow** - Deliver chapter tree navigation and chapter context basics.
+- [x] **Phase 2: Core Chapter Workflow** - Deliver chapter tree navigation and chapter context basics.
 - [ ] **Phase 3: Outline and Beat Planning** - Deliver standalone Scrivener-style planning webview.
 - [ ] **Phase 4: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
 - [ ] **Phase 5: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators.
