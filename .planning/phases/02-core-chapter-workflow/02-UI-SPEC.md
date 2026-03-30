@@ -1,10 +1,11 @@
 ---
 phase: 02
 slug: core-chapter-workflow
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-03-29
+reviewed_at: 2026-03-29
 ---
 
 # Phase 02 — UI Design Contract
@@ -80,6 +81,7 @@ created: 2026-03-29
 
 - Chapters tree uses the native VS Code compact density. Do not simulate custom cards or badge pills inside the tree.
 - Chapter Context Pane uses one primary summary card and one secondary metadata card stacked vertically.
+- The chapter title plus current status in the primary summary card is the first visual anchor; issue count and helper metadata are intentionally secondary.
 - Each context card uses 16px internal padding, 8px internal row gaps, and 24px separation between cards.
 - Chapter title stays on one line when possible and truncates with ellipsis before wrapping into a multi-line block.
 - Metadata rows use label-left/value-right alignment for fast scanning.
@@ -202,11 +204,11 @@ Microcopy rules:
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-03-29
