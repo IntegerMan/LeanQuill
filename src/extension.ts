@@ -111,9 +111,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   let knownChapterPaths = new Set<string>();
   let statusIndex = await readChapterStatusIndex(rootPath, (warning) => log.warn(warning));
 
+  const chaptersView = vscode.window.createTreeView("leanquill.chapters", {
+    treeDataProvider: chapterTreeProvider,
+  });
+
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("leanquill.actions", setupViewProvider),
-    vscode.window.registerTreeDataProvider("leanquill.chapters", chapterTreeProvider),
+    chaptersView,
     vscode.window.registerWebviewViewProvider("leanquill.chapterContext", chapterContextProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
@@ -162,21 +166,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     chapterContextProvider.refreshAfterStatusUpdate(getChapterStatusEntry(statusIndex, chapterPath));
   };
 
-  const updateChapterStatusCommand = vscode.commands.registerCommand("leanquill.updateChapterStatus", async (item?: unknown) => {
-    const chapterPath = isStatusTrackableTreeNode(item) && !item.missing
-      ? item.chapterPath
-      : chapterContextProvider.getCurrentChapterPath();
-
-    if (!chapterPath) {
-      await vscode.window.showInformationMessage("Open a chapter first, then run Update Chapter Status.");
-      return;
-    }
-
-    await updateChapterStatus(chapterPath);
-  });
-
   let lastOpened: { chapterPath: string; openedAt: number } | undefined;
-  const openChapterCommand = vscode.commands.registerCommand("leanquill.openChapter", async (chapterPath: string) => {
+  const openChapter = async (chapterPath: string): Promise<void> => {
     const absolutePath = path.join(rootPath, ...chapterPath.split("/"));
     const now = Date.now();
     const isDoubleClick = Boolean(
@@ -190,6 +181,35 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       preview: !isDoubleClick,
       preserveFocus: false,
     });
+  };
+
+  const updateChapterStatusCommand = vscode.commands.registerCommand("leanquill.updateChapterStatus", async (item?: unknown) => {
+    const chapterPath = isStatusTrackableTreeNode(item) && !item.missing
+      ? item.chapterPath
+      : chapterContextProvider.getCurrentChapterPath();
+
+    if (!chapterPath) {
+      await vscode.window.showInformationMessage("Open a chapter first, then run Update Chapter Status.");
+      return;
+    }
+
+    await updateChapterStatus(chapterPath);
+  });
+
+  const openChapterCommand = vscode.commands.registerCommand("leanquill.openChapter", async (chapterPath: string) => {
+    await openChapter(chapterPath);
+  });
+
+  const chapterSelectionSubscription = chaptersView.onDidChangeSelection(async (event) => {
+    const selected = event.selection[0];
+    if (!isStatusTrackableTreeNode(selected) || selected.missing) {
+      return;
+    }
+
+    chapterContextProvider.setActiveChapter(selected.chapterPath, getChapterStatusEntry(statusIndex, selected.chapterPath));
+    if (selected.kind === "book") {
+      await openChapter(selected.chapterPath);
+    }
   });
 
   const activeEditorSubscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
@@ -226,6 +246,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     openChapterCommand,
     updateChapterStatusCommand,
+    chapterSelectionSubscription,
     activeEditorSubscription,
     chapterOrderWatcher,
     chapterStatusWatcher,
