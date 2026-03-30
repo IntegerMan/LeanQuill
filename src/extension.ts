@@ -212,6 +212,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const bookElementInteraction = async (element: unknown): Promise<void> => {
+    if (!isStatusTrackableTreeNode(element) || element.kind !== "book" || element.missing) {
+      return;
+    }
+
+    chapterContextProvider.setActiveChapter(element.chapterPath, getChapterStatusEntry(statusIndex, element.chapterPath));
+    await openChapter(element.chapterPath);
+  };
+
+  const chapterExpandSubscription = chaptersView.onDidExpandElement(async (event) => {
+    await bookElementInteraction(event.element);
+  });
+
+  const chapterCollapseSubscription = chaptersView.onDidCollapseElement(async (event) => {
+    await bookElementInteraction(event.element);
+  });
+
   const activeEditorSubscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (!editor) {
       return;
@@ -247,6 +264,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     openChapterCommand,
     updateChapterStatusCommand,
     chapterSelectionSubscription,
+    chapterExpandSubscription,
+    chapterCollapseSubscription,
     activeEditorSubscription,
     chapterOrderWatcher,
     chapterStatusWatcher,
