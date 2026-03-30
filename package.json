@@ -12,6 +12,9 @@
   ],
   "activationEvents": [
     "onCommand:leanquill.initialize",
+    "onCommand:leanquill.updateChapterStatus",
+    "onView:leanquill.chapters",
+    "onView:leanquill.chapterContext",
     "workspaceContains:Book.txt",
     "workspaceContains:manuscript"
   ],
@@ -21,6 +24,10 @@
       {
         "command": "leanquill.initialize",
         "title": "LeanQuill: Initialize"
+      },
+      {
+        "command": "leanquill.updateChapterStatus",
+        "title": "LeanQuill: Update Chapter Status"
       }
     ],
     "viewsContainers": {
@@ -36,7 +43,28 @@
       "leanquill": [
         {
           "id": "leanquill.actions",
-          "name": "LeanQuill"
+          "name": "Setup"
+        },
+        {
+          "id": "leanquill.chapters",
+          "name": "Chapters",
+          "type": "tree",
+          "when": "leanquill.isInitialized"
+        },
+        {
+          "id": "leanquill.chapterContext",
+          "name": "Chapter Context",
+          "type": "webview",
+          "when": "leanquill.isInitialized"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "leanquill.updateChapterStatus",
+          "when": "view == leanquill.chapters && viewItem == chapter",
+          "group": "leanquill@1"
         }
       ]
     },
