@@ -16,7 +16,7 @@ created: 2026-03-29
 ## Design System
 
 | Property | Value |
-|----------|-------|
+| -------- | ----- |
 | Tool | none |
 | Preset | not applicable |
 | Component library | none — use native VS Code `TreeView` plus `WebviewView` only |
@@ -51,7 +51,7 @@ created: 2026-03-29
 - Use this icon mapping consistently across tree rows, quick pick entries, and the context pane:
 
 | Status | Icon |
-|--------|------|
+| ------ | ---- |
 | planning | `circle-outline` |
 | not-started | `dash` |
 | drafting | `edit` |
@@ -65,7 +65,7 @@ created: 2026-03-29
 ## Interaction Contract
 
 | Interaction | Contract |
-|-------------|----------|
+| ----------- | -------- |
 | Open chapter | Single click previews the manuscript in the editor. Double click pins the tab. |
 | Update status from tree | Right-click chapter row, choose `Update Chapter Status`, then select from a quick pick showing all 7 statuses in canonical order. |
 | Update status from context pane | Primary action uses the same quick-pick flow as the tree so there is one status-edit path. |
@@ -92,7 +92,7 @@ created: 2026-03-29
 Declared values (must be multiples of 4):
 
 | Token | Value | Usage |
-|-------|-------|-------|
+| ----- | ----- | ----- |
 | xs | 4px | Icon gaps, inline separators |
 | sm | 8px | Compact row spacing, small status/meta gaps |
 | md | 16px | Default card padding, default webview spacing |
@@ -108,7 +108,7 @@ Exceptions: native tree row height, indentation, disclosure spacing, and selecti
 ## Typography
 
 | Role | Size | Weight | Line Height |
-|------|------|--------|-------------|
+| ---- | ---- | ------ | ----------- |
 | Body | 13px | 400 | 1.5 |
 | Label | 12px | 600 | 1.3 |
 | Heading | 16px | 600 | 1.25 |
@@ -126,7 +126,7 @@ Rules:
 ## Color
 
 | Role | Value | Usage |
-|------|-------|-------|
+| ---- | ----- | ----- |
 | Dominant (60%) | `var(--vscode-sideBar-background)` | View background, webview root, inactive surface fill |
 | Secondary (30%) | `var(--vscode-editorWidget-background)` | Summary cards, grouped metadata blocks, empty/error panels |
 | Accent (10%) | `var(--vscode-button-background)` | `Update Chapter Status` action and any single primary action affordance in the pane |
@@ -145,7 +145,7 @@ Additional rules:
 ## Copywriting Contract
 
 | Element | Copy |
-|---------|------|
+| ------- | ---- |
 | Primary CTA | Update Chapter Status |
 | Empty state heading | No chapter selected |
 | Empty state body | Open a chapter from the Chapters view to inspect its status and issue context. LeanQuill keeps the last known chapter visible when you switch to non-chapter files. |
@@ -164,7 +164,7 @@ Microcopy rules:
 ## Empty, Warning, and Error States
 
 | State | Contract |
-|-------|----------|
+| ----- | -------- |
 | Initial pane empty state | Show the empty-state heading/body above with no placeholder illustration. |
 | Non-chapter editor active | Keep previous chapter context visible and add a subdued helper line: `Showing last active chapter context.` |
 | Missing manuscript target | Show warning icon + missing label in tree and a warning panel in the context pane if that chapter becomes active through stored state. |
@@ -186,7 +186,7 @@ Microcopy rules:
 ## Registry Safety
 
 | Registry | Blocks Used | Safety Gate |
-|----------|-------------|-------------|
+| -------- | ----------- | ----------- |
 | none — native VS Code APIs only | none | not applicable — no shadcn or third-party registry usage — 2026-03-29 |
 
 ---
