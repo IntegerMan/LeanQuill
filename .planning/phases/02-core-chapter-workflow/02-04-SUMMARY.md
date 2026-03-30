@@ -50,7 +50,7 @@ completed: 2026-03-29
 ## Task Commits
 
 1. **Task 1-2: manifest + activation integration** - `176ad65` (feat)
-2. **Task 3: manual extension host checkpoint** - `pending-user-checkpoint` (manual)
+2. **Task 3: manual extension host checkpoint fix** - `2ea5182` (fix)
 
 **Plan metadata:** `176ad65` (feat)
 
@@ -64,11 +64,19 @@ completed: 2026-03-29
 
 ## Deviations from Plan
 
-None for automated work. Human verification is pending.
+### Auto-fixed Issues
+
+**1. Sidebar did not exit initialize state after successful init**
+- **Found during:** Task 3 (manual extension host checkpoint)
+- **Issue:** `leanquill.isInitialized` relied on a hidden-folder glob and remained false even after `.leanquill/project.yaml` was created.
+- **Fix:** Switched context detection to explicit filesystem stat checks (`Book.txt`, `manuscript/`, `.leanquill/project.yaml`) in activation refresh logic.
+- **Files modified:** `src/extension.ts`
+- **Verification:** `npm run build && npm run build:test && npm test`
+- **Committed in:** `2ea5182`
 
 ## Issues Encountered
 
-None.
+- Manual UX check exposed a context-key refresh bug that kept setup view visible after initialization; fixed in follow-up commit.
 
 ## User Setup Required
 
@@ -76,7 +84,8 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-- Automated checks are green; only Extension Development Host manual UX verification remains to close Plan 02-04.
+- Automated checks are green after checkpoint bug fix.
+- A final manual Extension Development Host pass is still required to confirm the user-facing behavior is now correct.
 
 ---
 *Phase: 02-core-chapter-workflow*
