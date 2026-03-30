@@ -51,6 +51,7 @@ completed: 2026-03-29
 
 1. **Task 1-2: manifest + activation integration** - `176ad65` (feat)
 2. **Task 3: manual extension host checkpoint fix** - `2ea5182` (fix)
+3. **Task 3: follow-up UX polish from manual checkpoint** - `274cb36` (fix)
 
 **Plan metadata:** `176ad65` (feat)
 
@@ -74,9 +75,18 @@ completed: 2026-03-29
 - **Verification:** `npm run build && npm run build:test && npm test`
 - **Committed in:** `2ea5182`
 
+**2. Chapter open interaction and context menu copy mismatched user expectation**
+- **Found during:** Task 3 (manual extension host checkpoint retest)
+- **Issue:** Double-clicking chapters did not pin reliably, and the context menu label redundantly included the LeanQuill prefix.
+- **Fix:** Added an internal `leanquill.openChapter` command with double-click timing logic (`preview: true` on first click, `preview: false` on second click in window) and changed context command title to `Update Chapter Status` with `category: LeanQuill`.
+- **Files modified:** `src/chapterTree.ts`, `src/extension.ts`, `package.json`
+- **Verification:** `npm run build && npm run build:test && npm test`
+- **Committed in:** `274cb36`
+
 ## Issues Encountered
 
 - Manual UX check exposed a context-key refresh bug that kept setup view visible after initialization; fixed in follow-up commit.
+- Manual retest surfaced interaction polish gaps (double-click pin and context menu copy); fixed in follow-up commit.
 
 ## User Setup Required
 
