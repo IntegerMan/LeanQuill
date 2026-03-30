@@ -39,15 +39,21 @@ test("buildChapterRows preserves order and marks missing paths", () => {
     makeStatusIndex(),
   );
 
-  assert.equal(rows.length, 4);
-  assert.equal(rows[0]?.kind, "chapter");
-  assert.equal(rows[1]?.kind, "chapter");
-  assert.equal(rows[2]?.kind, "chapter");
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0]?.kind, "book");
 
-  const first = rows[0] as { kind: "chapter"; chapterPath: string; missing: boolean };
-  const second = rows[1] as { kind: "chapter"; chapterPath: string; missing: boolean };
-  const third = rows[2] as { kind: "chapter"; chapterPath: string; missing: boolean };
+  const book = rows[0] as {
+    kind: "book";
+    chapterPath: string;
+    missing: boolean;
+    children: Array<{ chapterPath: string; missing: boolean }>;
+  };
+  const first = book.children[0];
+  const second = book.children[1];
+  const third = book.children[2];
 
+  assert.equal(book.chapterPath, "Book.txt");
+  assert.equal(book.missing, false);
   assert.equal(first.chapterPath, "manuscript/ch2.md");
   assert.equal(second.chapterPath, "manuscript/ch1.md");
   assert.equal(third.chapterPath, "manuscript/missing.md");
@@ -68,4 +74,17 @@ test("buildChapterRows adds Not Included group for orphan manuscript files", () 
     "manuscript/ch2.md",
     "manuscript/ch3.md",
   ]);
+});
+
+test("buildChapterRows marks book node missing when Book.txt is absent", () => {
+  const rows = buildChapterRows(
+    ["manuscript/ch1.md"],
+    ["manuscript/ch1.md"],
+    makeStatusIndex(),
+    false,
+  );
+
+  const book = rows[0] as { kind: "book"; missing: boolean };
+  assert.equal(book.kind, "book");
+  assert.equal(book.missing, true);
 });

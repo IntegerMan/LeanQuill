@@ -5,7 +5,7 @@ import { LeanQuillActionsProvider } from "./actionsView";
 import { getChapterStatusEntry, readChapterStatusIndex, writeChapterStatusEntry } from "./chapterStatus";
 import { ChapterContextPaneProvider } from "./chapterContextPane";
 import { resolveChapterOrder } from "./chapterOrder";
-import { ChapterTreeProvider, isChapterTreeRow } from "./chapterTree";
+import { ChapterTreeProvider, isStatusTrackableTreeNode } from "./chapterTree";
 import { runInitializeFlow, shouldPromptInitialize } from "./initialize";
 import { SafeFileSystem } from "./safeFileSystem";
 import { ChapterOrderResult, ChapterStatus } from "./types";
@@ -123,8 +123,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const chapterOrder = await readChapterOrderState(rootPath);
     statusIndex = await readChapterStatusIndex(rootPath, (warning) => log.warn(warning));
     const manuscriptPaths = await listManuscriptPaths(rootPath);
+    const hasBookTxt = await fs.stat(path.join(rootPath, "Book.txt")).then(() => true).catch(() => false);
 
-    chapterTreeProvider.setData(chapterOrder.chapterPaths, manuscriptPaths, statusIndex);
+    chapterTreeProvider.setData(chapterOrder.chapterPaths, manuscriptPaths, statusIndex, hasBookTxt);
     knownChapterPaths = chapterTreeProvider.getKnownChapterPaths();
 
     const activeEditor = vscode.window.activeTextEditor;
@@ -162,7 +163,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   };
 
   const updateChapterStatusCommand = vscode.commands.registerCommand("leanquill.updateChapterStatus", async (item?: unknown) => {
-    const chapterPath = isChapterTreeRow(item) && !item.missing
+    const chapterPath = isStatusTrackableTreeNode(item) && !item.missing
       ? item.chapterPath
       : chapterContextProvider.getCurrentChapterPath();
 

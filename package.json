@@ -64,7 +64,7 @@
       "view/item/context": [
         {
           "command": "leanquill.updateChapterStatus",
-          "when": "view == leanquill.chapters && viewItem == chapter",
+          "when": "view == leanquill.chapters && (viewItem == chapter || viewItem == book)",
           "group": "leanquill@1"
         }
       ]

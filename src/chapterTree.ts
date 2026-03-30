@@ -41,16 +41,37 @@ export interface ChapterTreeGroup {
   children: ChapterTreeRow[];
 }
 
-export type ChapterTreeNode = ChapterTreeRow | ChapterTreeGroup;
+export interface BookTreeNode {
+  kind: "book";
+  chapterPath: string;
+  title: string;
+  status: ChapterStatus;
+  openIssueCount: number;
+  missing: boolean;
+  children: ChapterTreeRow[];
+}
+
+export type ChapterTreeNode = ChapterTreeRow | ChapterTreeGroup | BookTreeNode;
+export type StatusTrackableTreeNode = ChapterTreeRow | BookTreeNode;
 
 export function isChapterTreeRow(value: unknown): value is ChapterTreeRow {
   return Boolean(value) && typeof value === "object" && (value as { kind?: string }).kind === "chapter";
+}
+
+export function isStatusTrackableTreeNode(value: unknown): value is StatusTrackableTreeNode {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const kind = (value as { kind?: string }).kind;
+  return kind === "chapter" || kind === "book";
 }
 
 export function buildChapterRows(
   orderedChapterPaths: string[],
   discoveredManuscriptPaths: string[],
   statusIndex: ChapterStatusIndex,
+  hasBookTxt = true,
 ): ChapterTreeNode[] {
   const normalizedOrdered = orderedChapterPaths.map(normalizeChapterPath);
   const discoveredSet = new Set(discoveredManuscriptPaths.map(normalizeChapterPath));
@@ -84,19 +105,29 @@ export function buildChapterRows(
     };
   });
 
-  if (notIncludedRows.length === 0) {
-    return orderedRows;
-  }
-
-  return [
-    ...orderedRows,
+  const bookStatus = getChapterStatusEntry(statusIndex, "Book.txt");
+  const root: ChapterTreeNode[] = [
     {
+      kind: "book",
+      chapterPath: "Book.txt",
+      title: bookStatus.title || "Book",
+      status: bookStatus.status,
+      openIssueCount: bookStatus.openIssueCount,
+      missing: !hasBookTxt,
+      children: orderedRows,
+    },
+  ];
+
+  if (notIncludedRows.length > 0) {
+    root.push({
       kind: "group",
       id: "not-included",
       title: "Not Included",
       children: notIncludedRows,
-    },
-  ];
+    });
+  }
+
+  return root;
 }
 
 const STATUS_ICONS: Record<ChapterStatus, string> = {
@@ -127,8 +158,9 @@ export class ChapterTreeProvider implements VSCode.TreeDataProvider<ChapterTreeN
     orderedChapterPaths: string[],
     discoveredManuscriptPaths: string[],
     statusIndex: ChapterStatusIndex,
+    hasBookTxt: boolean,
   ): void {
-    this.rows = buildChapterRows(orderedChapterPaths, discoveredManuscriptPaths, statusIndex);
+    this.rows = buildChapterRows(orderedChapterPaths, discoveredManuscriptPaths, statusIndex, hasBookTxt);
     this.refresh();
   }
 
@@ -139,13 +171,17 @@ export class ChapterTreeProvider implements VSCode.TreeDataProvider<ChapterTreeN
   public getKnownChapterPaths(): Set<string> {
     const paths = new Set<string>();
     for (const row of this.rows) {
-      if (row.kind === "chapter") {
+      if (row.kind === "chapter" || row.kind === "book") {
         paths.add(row.chapterPath);
-        continue;
-      }
-
-      for (const child of row.children) {
-        paths.add(child.chapterPath);
+        if (row.kind === "book") {
+          for (const child of row.children) {
+            paths.add(child.chapterPath);
+          }
+        }
+      } else {
+        for (const child of row.children) {
+          paths.add(child.chapterPath);
+        }
       }
     }
     return paths;
@@ -158,6 +194,26 @@ export class ChapterTreeProvider implements VSCode.TreeDataProvider<ChapterTreeN
       const group = new vscode.TreeItem(element.title, vscode.TreeItemCollapsibleState.Collapsed);
       group.contextValue = "chapter-group";
       return group;
+    }
+
+    if (element.kind === "book") {
+      const item = new vscode.TreeItem(element.title, vscode.TreeItemCollapsibleState.Expanded);
+      item.description = `${element.status} | ${issueCountText(element.openIssueCount)}`;
+      item.tooltip = `${element.title}\n${element.chapterPath}\nStatus: ${element.status}`;
+      item.contextValue = element.missing ? "book-missing" : "book";
+      item.iconPath = element.missing
+        ? new vscode.ThemeIcon("warning")
+        : new vscode.ThemeIcon("book");
+
+      if (!element.missing) {
+        item.command = {
+          command: "leanquill.openChapter",
+          title: "Open Book",
+          arguments: [element.chapterPath],
+        };
+      }
+
+      return item;
     }
 
     const label = element.missing ? `${element.title} (Missing)` : element.title;
@@ -185,7 +241,7 @@ export class ChapterTreeProvider implements VSCode.TreeDataProvider<ChapterTreeN
       return this.rows;
     }
 
-    if (element.kind === "group") {
+    if (element.kind === "group" || element.kind === "book") {
       return element.children;
     }
 
