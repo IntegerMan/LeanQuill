@@ -13,8 +13,11 @@
   "activationEvents": [
     "onCommand:leanquill.initialize",
     "onCommand:leanquill.updateChapterStatus",
+    "onCommand:leanquill.openPlanningWorkspace",
+    "onCommand:leanquill.createOutline",
     "onView:leanquill.chapters",
     "onView:leanquill.chapterContext",
+    "onView:leanquill.outlineTree",
     "workspaceContains:Book.txt",
     "workspaceContains:manuscript"
   ],
@@ -28,6 +31,49 @@
       {
         "command": "leanquill.updateChapterStatus",
         "title": "Update Status",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.openPlanningWorkspace",
+        "title": "LeanQuill: Open Planning Workspace"
+      },
+      {
+        "command": "leanquill.createOutline",
+        "title": "LeanQuill: Create Outline"
+      },
+      {
+        "command": "leanquill.openBeatInEditor",
+        "title": "Open Beat in Editor",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.addOutlinePart",
+        "title": "Add Part",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.addOutlineChapter",
+        "title": "Add Chapter",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.addOutlineBeat",
+        "title": "Add Beat",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.removeOutlineNode",
+        "title": "Remove",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.toggleOutlineActive",
+        "title": "Toggle Active/Inactive",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.renameOutlineNode",
+        "title": "Rename",
         "category": "LeanQuill"
       }
     ],
@@ -53,6 +99,12 @@
           "when": "leanquill.isInitialized"
         },
         {
+          "id": "leanquill.outlineTree",
+          "name": "Outline",
+          "type": "tree",
+          "when": "leanquill.isInitialized"
+        },
+        {
           "id": "leanquill.chapterContext",
           "name": "Context",
           "type": "webview",
@@ -66,6 +118,31 @@
           "command": "leanquill.updateChapterStatus",
           "when": "view == leanquill.chapters",
           "group": "leanquill@1"
+        },
+        {
+          "command": "leanquill.addOutlineChapter",
+          "when": "view == leanquill.outlineTree && viewItem =~ /outlinePart/",
+          "group": "leanquill@1"
+        },
+        {
+          "command": "leanquill.addOutlineBeat",
+          "when": "view == leanquill.outlineTree && viewItem =~ /outlineChapter/",
+          "group": "leanquill@1"
+        },
+        {
+          "command": "leanquill.removeOutlineNode",
+          "when": "view == leanquill.outlineTree",
+          "group": "leanquill@2"
+        },
+        {
+          "command": "leanquill.toggleOutlineActive",
+          "when": "view == leanquill.outlineTree",
+          "group": "leanquill@2"
+        },
+        {
+          "command": "leanquill.renameOutlineNode",
+          "when": "view == leanquill.outlineTree",
+          "group": "leanquill@3"
         }
       ]
     },
