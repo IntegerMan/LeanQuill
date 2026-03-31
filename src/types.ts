@@ -37,6 +37,7 @@ export interface ChapterStatusIndex {
 export interface OutlineBeat {
   id: string;
   title: string;
+  fileName: string;
   active: boolean;
   description: string;
   what: string;

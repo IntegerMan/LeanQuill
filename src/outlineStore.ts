@@ -18,6 +18,7 @@ function normalizeBeat(raw: unknown): OutlineBeat {
     return {
       id: crypto.randomUUID(),
       title: "",
+      fileName: "",
       active: true,
       description: "",
       what: "",
@@ -33,6 +34,7 @@ function normalizeBeat(raw: unknown): OutlineBeat {
   return {
     id: typeof candidate.id === "string" && candidate.id.length > 0 ? candidate.id : crypto.randomUUID(),
     title: typeof candidate.title === "string" ? candidate.title : "",
+    fileName: typeof candidate.fileName === "string" ? candidate.fileName : "",
     active: typeof candidate.active === "boolean" ? candidate.active : true,
     description: typeof candidate.description === "string" ? candidate.description : "",
     what: typeof candidate.what === "string" ? candidate.what : "",

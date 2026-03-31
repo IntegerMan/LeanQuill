@@ -320,7 +320,8 @@ export class OutlineTreeProvider implements VSCode.TreeDataProvider<OutlineTreeN
     if (element.kind === "chapter") {
       const isActive = element.data.active;
       const label = element.data.name;
-      const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
+      const collapsible = element.data.beats.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
+      const item = new vscode.TreeItem(label, collapsible);
       item.description = isActive ? element.data.fileName : `(inactive) ${element.data.fileName}`;
       item.contextValue = isActive ? "outlineChapter" : "outlineChapter:inactive";
       item.iconPath = isActive
@@ -340,6 +341,11 @@ export class OutlineTreeProvider implements VSCode.TreeDataProvider<OutlineTreeN
       ? new vscode.ThemeIcon("note")
       : new vscode.ThemeIcon("note", new vscode.ThemeColor("disabledForeground"));
     item.id = `beat-${element.data.id}`;
+    item.command = {
+      command: "leanquill.openBeatInEditor",
+      title: "Open Beat",
+      arguments: [element.data.id],
+    };
     return item;
   }
 

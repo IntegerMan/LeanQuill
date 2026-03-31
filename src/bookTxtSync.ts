@@ -6,6 +6,7 @@ import { OutlineIndex } from "./types";
  * Generate Book.txt content from outline index.
  * Uses LeanPub `part:` format for multi-part books.
  * Only includes active parts and active chapters.
+ * Active beats with a fileName are listed after their parent chapter.
  */
 export function generateBookTxt(index: OutlineIndex): string {
   const activeParts = index.parts.filter((p) => p.active);
@@ -25,6 +26,12 @@ export function generateBookTxt(index: OutlineIndex): string {
     for (const chapter of part.chapters) {
       if (chapter.active) {
         lines.push(chapter.fileName);
+        // List active beat files after the chapter
+        for (const beat of chapter.beats) {
+          if (beat.active && beat.fileName) {
+            lines.push(`manuscript/${beat.fileName}`);
+          }
+        }
       }
     }
   }

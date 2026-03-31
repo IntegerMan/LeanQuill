@@ -3,6 +3,7 @@ import type * as VSCode from "vscode";
 import { readOutlineIndex, writeOutlineIndex } from "./outlineStore";
 import { SafeFileSystem } from "./safeFileSystem";
 import { OutlineBeat, OutlineIndex } from "./types";
+import { readBeatFile, writeBeatFile } from "./beatManuscriptSync";
 
 function findBeat(
   index: OutlineIndex,
@@ -20,39 +21,11 @@ function findBeat(
   return undefined;
 }
 
-function beatToMarkdown(beat: OutlineBeat): string {
-  return `---\nbeatId: "${beat.id}"\ntitle: "${beat.title}"\n---\n\n${beat.description}`;
-}
-
-function parseFrontmatter(content: string): { beatId: string; title: string; body: string } | undefined {
-  const parts = content.split("---");
-  if (parts.length < 3) {
-    return undefined;
-  }
-
-  const frontmatter = parts[1];
-  const beatIdMatch = frontmatter.match(/beatId:\s*"([^"]+)"/);
-  const titleMatch = frontmatter.match(/title:\s*"([^"]*)"/);
-
-  if (!beatIdMatch) {
-    return undefined;
-  }
-
-  // Body is everything after the second ---
-  const body = parts.slice(2).join("---").replace(/^\n+/, "");
-
-  return {
-    beatId: beatIdMatch[1],
-    title: titleMatch ? titleMatch[1] : "",
-    body,
-  };
-}
-
 export async function openBeatInEditor(
   vscodeApi: typeof VSCode,
   rootPath: string,
   beatId: string,
-  safeFs: SafeFileSystem,
+  _safeFs: SafeFileSystem,
 ): Promise<void> {
   const index = await readOutlineIndex(rootPath);
   const beat = findBeat(index, beatId);
@@ -61,12 +34,18 @@ export async function openBeatInEditor(
     return;
   }
 
-  const beatsDir = path.join(rootPath, ".leanquill", "beats");
-  await safeFs.mkdir(beatsDir);
+  if (!beat.fileName) {
+    await vscodeApi.window.showWarningMessage(`Beat has no manuscript file: ${beat.title}`);
+    return;
+  }
 
-  const filePath = path.join(beatsDir, `${beatId}.md`);
-  const content = beatToMarkdown(beat);
-  await safeFs.writeFile(filePath, content);
+  const filePath = path.join(rootPath, "manuscript", beat.fileName);
+
+  // Ensure the file exists (it should, but create if somehow missing)
+  const content = await readBeatFile(rootPath, beat.fileName);
+  if (content === "") {
+    await writeBeatFile(rootPath, beat.fileName, beat.description);
+  }
 
   await vscodeApi.window.showTextDocument(vscodeApi.Uri.file(filePath), {
     viewColumn: vscodeApi.ViewColumn.Beside,
@@ -81,18 +60,30 @@ export async function syncBeatFromFile(
 ): Promise<boolean> {
   const fs = await import("node:fs/promises");
   const content = await fs.readFile(filePath, "utf8");
-  const parsed = parseFrontmatter(content);
-  if (!parsed) {
+
+  // Determine beat fileName from the file path (relative to manuscript/)
+  const manuscriptDir = path.join(rootPath, "manuscript");
+  const relative = path.relative(manuscriptDir, filePath).replace(/\\/g, "/");
+
+  // Only handle files under beats/
+  if (!relative.startsWith("beats/")) {
     return false;
   }
 
   const index = await readOutlineIndex(rootPath);
-  const beat = findBeat(index, parsed.beatId);
-  if (!beat) {
-    return false;
+
+  // Find beat by fileName match
+  for (const part of index.parts) {
+    for (const chapter of part.chapters) {
+      for (const beat of chapter.beats) {
+        if (beat.fileName === relative) {
+          beat.description = content;
+          await writeOutlineIndex(rootPath, index, safeFs);
+          return true;
+        }
+      }
+    }
   }
 
-  beat.description = parsed.body;
-  await writeOutlineIndex(rootPath, index, safeFs);
-  return true;
+  return false;
 }

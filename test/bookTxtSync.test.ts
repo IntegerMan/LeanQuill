@@ -146,3 +146,111 @@ test("readBookTxt returns null when file does not exist", async () => {
     assert.equal(result, null);
   });
 });
+
+function makeBeat(overrides: Partial<{ id: string; title: string; fileName: string; active: boolean; description: string }> = {}) {
+  return {
+    id: overrides.id ?? "b1",
+    title: overrides.title ?? "Beat",
+    fileName: overrides.fileName ?? "",
+    active: overrides.active ?? true,
+    description: overrides.description ?? "",
+    what: "",
+    who: "",
+    where: "",
+    why: "",
+    customFields: {},
+  };
+}
+
+test("generateBookTxt lists beat files after their parent chapter", () => {
+  const index = makeIndex([
+    {
+      id: "p1",
+      name: "Book",
+      active: true,
+      chapters: [
+        {
+          id: "c1",
+          name: "Author",
+          fileName: "manuscript/00_Author.md",
+          active: true,
+          beats: [
+            makeBeat({ id: "b1", fileName: "beats/author-bio.md" }),
+            makeBeat({ id: "b2", fileName: "beats/author-thanks.md" }),
+          ],
+        },
+        {
+          id: "c2",
+          name: "Foreword",
+          fileName: "manuscript/00_Foreword.md",
+          active: true,
+          beats: [],
+        },
+      ],
+    },
+  ]);
+
+  const result = generateBookTxt(index);
+  const lines = result.split("\n").filter((l) => l.trim().length > 0);
+  assert.deepEqual(lines, [
+    "manuscript/00_Author.md",
+    "manuscript/beats/author-bio.md",
+    "manuscript/beats/author-thanks.md",
+    "manuscript/00_Foreword.md",
+  ]);
+});
+
+test("generateBookTxt excludes inactive beats from Book.txt", () => {
+  const index = makeIndex([
+    {
+      id: "p1",
+      name: "Book",
+      active: true,
+      chapters: [
+        {
+          id: "c1",
+          name: "Ch1",
+          fileName: "manuscript/ch1.md",
+          active: true,
+          beats: [
+            makeBeat({ id: "b1", fileName: "beats/active.md", active: true }),
+            makeBeat({ id: "b2", fileName: "beats/inactive.md", active: false }),
+          ],
+        },
+      ],
+    },
+  ]);
+
+  const result = generateBookTxt(index);
+  assert.ok(result.includes("manuscript/beats/active.md"));
+  assert.ok(!result.includes("manuscript/beats/inactive.md"));
+});
+
+test("generateBookTxt skips beats without fileName", () => {
+  const index = makeIndex([
+    {
+      id: "p1",
+      name: "Book",
+      active: true,
+      chapters: [
+        {
+          id: "c1",
+          name: "Ch1",
+          fileName: "manuscript/ch1.md",
+          active: true,
+          beats: [
+            makeBeat({ id: "b1", fileName: "" }),
+            makeBeat({ id: "b2", fileName: "beats/has-file.md" }),
+          ],
+        },
+      ],
+    },
+  ]);
+
+  const result = generateBookTxt(index);
+  const lines = result.split("\n").filter((l) => l.trim().length > 0);
+  assert.deepEqual(lines, [
+    "manuscript/ch1.md",
+    "manuscript/beats/has-file.md",
+  ]);
+});

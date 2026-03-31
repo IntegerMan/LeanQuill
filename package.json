@@ -35,11 +35,14 @@
       },
       {
         "command": "leanquill.openPlanningWorkspace",
-        "title": "LeanQuill: Open Planning Workspace"
+        "title": "Open Planning Workspace",
+        "category": "LeanQuill",
+        "icon": "$(preview)"
       },
       {
         "command": "leanquill.createOutline",
-        "title": "LeanQuill: Create Outline"
+        "title": "Create Outline",
+        "category": "LeanQuill"
       },
       {
         "command": "leanquill.openBeatInEditor",
@@ -49,7 +52,8 @@
       {
         "command": "leanquill.addOutlinePart",
         "title": "Add Part",
-        "category": "LeanQuill"
+        "category": "LeanQuill",
+        "icon": "$(add)"
       },
       {
         "command": "leanquill.addOutlineChapter",
@@ -74,6 +78,16 @@
       {
         "command": "leanquill.renameOutlineNode",
         "title": "Rename",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.openBookTxt",
+        "title": "Open Book.txt",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.openChapterFromOutline",
+        "title": "Open in Editor",
         "category": "LeanQuill"
       }
     ],
@@ -101,8 +115,7 @@
         {
           "id": "leanquill.outlineTree",
           "name": "Outline",
-          "type": "tree",
-          "when": "leanquill.isInitialized"
+          "type": "tree"
         },
         {
           "id": "leanquill.chapterContext",
@@ -113,6 +126,18 @@
       ]
     },
     "menus": {
+      "view/title": [
+        {
+          "command": "leanquill.openPlanningWorkspace",
+          "when": "view == leanquill.outlineTree && leanquill.isInitialized",
+          "group": "navigation@1"
+        },
+        {
+          "command": "leanquill.addOutlinePart",
+          "when": "view == leanquill.outlineTree && leanquill.isInitialized",
+          "group": "navigation@2"
+        }
+      ],
       "view/item/context": [
         {
           "command": "leanquill.updateChapterStatus",
@@ -125,24 +150,49 @@
           "group": "leanquill@1"
         },
         {
+          "command": "leanquill.addOutlinePart",
+          "when": "view == leanquill.outlineTree && viewItem =~ /outlinePart/",
+          "group": "leanquill@1"
+        },
+        {
+          "command": "leanquill.openBookTxt",
+          "when": "view == leanquill.outlineTree && viewItem =~ /outlinePart/",
+          "group": "leanquill@2"
+        },
+        {
+          "command": "leanquill.openPlanningWorkspace",
+          "when": "view == leanquill.outlineTree && viewItem =~ /outlinePart/",
+          "group": "leanquill@2"
+        },
+        {
           "command": "leanquill.addOutlineBeat",
           "when": "view == leanquill.outlineTree && viewItem =~ /outlineChapter/",
           "group": "leanquill@1"
         },
         {
-          "command": "leanquill.removeOutlineNode",
-          "when": "view == leanquill.outlineTree",
+          "command": "leanquill.openChapterFromOutline",
+          "when": "view == leanquill.outlineTree && viewItem =~ /outlineChapter/",
+          "group": "leanquill@1"
+        },
+        {
+          "command": "leanquill.openBeatInEditor",
+          "when": "view == leanquill.outlineTree && viewItem =~ /outlineBeat/",
+          "group": "leanquill@1"
+        },
+        {
+          "command": "leanquill.renameOutlineNode",
+          "when": "view == leanquill.outlineTree && viewItem =~ /outlineChapter|outlineBeat/",
           "group": "leanquill@2"
         },
         {
           "command": "leanquill.toggleOutlineActive",
-          "when": "view == leanquill.outlineTree",
-          "group": "leanquill@2"
+          "when": "view == leanquill.outlineTree && viewItem =~ /outlineChapter|outlineBeat/",
+          "group": "leanquill@3"
         },
         {
-          "command": "leanquill.renameOutlineNode",
-          "when": "view == leanquill.outlineTree",
-          "group": "leanquill@3"
+          "command": "leanquill.removeOutlineNode",
+          "when": "view == leanquill.outlineTree && viewItem =~ /outlineChapter|outlineBeat/",
+          "group": "leanquill@4"
         }
       ]
     },
@@ -160,6 +210,16 @@
       {
         "view": "leanquill.actions",
         "contents": "Welcome to LeanQuill — your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\nThis project is initialized and ready to use.\n\n[Re-initialize](command:leanquill.initialize)",
+        "when": "leanquill.isInitialized"
+      },
+      {
+        "view": "leanquill.outlineTree",
+        "contents": "This workspace is not a LeanQuill project.\n\nUse the Setup pane above to initialize your repository first.",
+        "when": "!leanquill.isInitialized"
+      },
+      {
+        "view": "leanquill.outlineTree",
+        "contents": "No outline yet. Create one from your existing chapters.\n\n[Create Outline](command:leanquill.createOutline)",
         "when": "leanquill.isInitialized"
       }
     ]
