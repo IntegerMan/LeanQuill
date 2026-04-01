@@ -46,8 +46,8 @@ test("generateBookTxt produces part: lines for active parts (LeanPub format)", (
   const result = generateBookTxt(index);
   assert.ok(result.includes("part: Act One"));
   assert.ok(result.includes("part: Act Two"));
-  assert.ok(result.includes("manuscript/ch1.md"));
-  assert.ok(result.includes("manuscript/ch2.md"));
+  assert.ok(result.includes("ch1.md"));
+  assert.ok(result.includes("ch2.md"));
 });
 
 test("generateBookTxt lists active chapter filenames under their parts", () => {
@@ -66,8 +66,8 @@ test("generateBookTxt lists active chapter filenames under their parts", () => {
   const result = generateBookTxt(index);
   const lines = result.split("\n").filter((l) => l.trim().length > 0);
   // Single part — no part: line needed
-  assert.ok(lines.includes("manuscript/ch1.md"));
-  assert.ok(lines.includes("manuscript/ch2.md"));
+  assert.ok(lines.includes("ch1.md"));
+  assert.ok(lines.includes("ch2.md"));
 });
 
 test("generateBookTxt excludes deactivated parts and chapters", () => {
@@ -92,9 +92,9 @@ test("generateBookTxt excludes deactivated parts and chapters", () => {
   ]);
 
   const result = generateBookTxt(index);
-  assert.ok(result.includes("manuscript/active.md"));
-  assert.ok(!result.includes("manuscript/inactive.md"));
-  assert.ok(!result.includes("manuscript/skipped.md"));
+  assert.ok(result.includes("active.md"));
+  assert.ok(!result.includes("inactive.md"));
+  assert.ok(!result.includes("skipped.md"));
   assert.ok(!result.includes("Skipped Part"));
 });
 
@@ -106,8 +106,9 @@ test("generateBookTxt with empty outline produces empty string", () => {
 
 test("detectExternalBookTxtEdit returns false when content matches", async () => {
   await withTempDir(async (dir) => {
-    const content = "manuscript/ch1.md\nmanuscript/ch2.md\n";
-    await fs.writeFile(path.join(dir, "Book.txt"), content, "utf8");
+    const content = "ch1.md\nch2.md\n";
+    await fs.mkdir(path.join(dir, "manuscript"), { recursive: true });
+    await fs.writeFile(path.join(dir, "manuscript", "Book.txt"), content, "utf8");
 
     const edited = await detectExternalBookTxtEdit(dir, content);
     assert.equal(edited, false);
@@ -116,9 +117,10 @@ test("detectExternalBookTxtEdit returns false when content matches", async () =>
 
 test("detectExternalBookTxtEdit returns true when content differs", async () => {
   await withTempDir(async (dir) => {
-    await fs.writeFile(path.join(dir, "Book.txt"), "manuscript/ch1.md\n", "utf8");
+    await fs.mkdir(path.join(dir, "manuscript"), { recursive: true });
+    await fs.writeFile(path.join(dir, "manuscript", "Book.txt"), "ch1.md\n", "utf8");
 
-    const edited = await detectExternalBookTxtEdit(dir, "manuscript/other.md\n");
+    const edited = await detectExternalBookTxtEdit(dir, "other.md\n");
     assert.equal(edited, true);
   });
 });
@@ -132,8 +134,9 @@ test("detectExternalBookTxtEdit returns false when Book.txt does not exist", asy
 
 test("readBookTxt returns file content when exists", async () => {
   await withTempDir(async (dir) => {
-    const content = "manuscript/ch1.md\nmanuscript/ch2.md\n";
-    await fs.writeFile(path.join(dir, "Book.txt"), content, "utf8");
+    const content = "ch1.md\nch2.md\n";
+    await fs.mkdir(path.join(dir, "manuscript"), { recursive: true });
+    await fs.writeFile(path.join(dir, "manuscript", "Book.txt"), content, "utf8");
 
     const result = await readBookTxt(dir);
     assert.equal(result, content);
@@ -154,10 +157,6 @@ function makeBeat(overrides: Partial<{ id: string; title: string; fileName: stri
     fileName: overrides.fileName ?? "",
     active: overrides.active ?? true,
     description: overrides.description ?? "",
-    what: "",
-    who: "",
-    where: "",
-    why: "",
     customFields: {},
   };
 }
@@ -193,10 +192,10 @@ test("generateBookTxt lists beat files after their parent chapter", () => {
   const result = generateBookTxt(index);
   const lines = result.split("\n").filter((l) => l.trim().length > 0);
   assert.deepEqual(lines, [
-    "manuscript/00_Author.md",
-    "manuscript/beats/author-bio.md",
-    "manuscript/beats/author-thanks.md",
-    "manuscript/00_Foreword.md",
+    "00_Author.md",
+    "beats/author-bio.md",
+    "beats/author-thanks.md",
+    "00_Foreword.md",
   ]);
 });
 
@@ -222,8 +221,8 @@ test("generateBookTxt excludes inactive beats from Book.txt", () => {
   ]);
 
   const result = generateBookTxt(index);
-  assert.ok(result.includes("manuscript/beats/active.md"));
-  assert.ok(!result.includes("manuscript/beats/inactive.md"));
+  assert.ok(result.includes("beats/active.md"));
+  assert.ok(!result.includes("beats/inactive.md"));
 });
 
 test("generateBookTxt skips beats without fileName", () => {
@@ -250,7 +249,7 @@ test("generateBookTxt skips beats without fileName", () => {
   const result = generateBookTxt(index);
   const lines = result.split("\n").filter((l) => l.trim().length > 0);
   assert.deepEqual(lines, [
-    "manuscript/ch1.md",
-    "manuscript/beats/has-file.md",
+    "ch1.md",
+    "beats/has-file.md",
   ]);
 });

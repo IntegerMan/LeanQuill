@@ -129,7 +129,7 @@ export class PlanningPanelProvider {
     if (field.startsWith("custom:")) {
       const customKey = field.slice(7);
       found.beat.customFields[customKey] = value;
-    } else if (field in found.beat) {
+    } else if (field === "title" || field === "description") {
       (found.beat as Record<string, unknown>)[field] = value;
     }
 

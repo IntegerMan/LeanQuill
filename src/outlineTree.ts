@@ -1,8 +1,22 @@
 import * as crypto from "node:crypto";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { readOutlineIndex, writeOutlineIndex } from "./outlineStore";
 import { SafeFileSystem } from "./safeFileSystem";
-import { OutlineBeat, OutlineChapter, OutlineIndex, OutlinePart } from "./types";
+import { OutlineBeat, OutlineChapter, OutlineIndex, OutlinePart, ChapterStatus } from "./types";
+
+// --- Status icon mapping ---
+
+const STATUS_ICONS: Record<ChapterStatus, string> = {
+  "planning": "circle-outline",
+  "not-started": "dash",
+  "drafting": "edit",
+  "draft-complete": "pass",
+  "editing": "pencil",
+  "review-pending": "clock",
+  "final": "verified",
+};
 
 // --- Node types ---
 
@@ -24,7 +38,19 @@ export interface OutlineBeatNode {
   parentPartId: string;
 }
 
-export type OutlineTreeNode = OutlinePartNode | OutlineChapterNode | OutlineBeatNode;
+export type OutlineTreeNode = OutlinePartNode | OutlineChapterNode | OutlineBeatNode | OutlineOrphanGroupNode | OutlineOrphanNode;
+
+// --- Orphan (Not Included) node types ---
+
+export interface OutlineOrphanGroupNode {
+  kind: "orphanGroup";
+  data: { fileNames: string[] };
+}
+
+export interface OutlineOrphanNode {
+  kind: "orphan";
+  data: { fileName: string };
+}
 
 // --- Pure tree builder ---
 
@@ -33,6 +59,50 @@ export function buildOutlineTree(index: OutlineIndex): OutlineTreeNode[] {
     kind: "part" as const,
     data: part,
   }));
+}
+
+// --- Orphan file discovery ---
+
+function collectReferencedFiles(index: OutlineIndex): Set<string> {
+  const referenced = new Set<string>();
+  for (const part of index.parts) {
+    for (const ch of part.chapters) {
+      if (ch.fileName) {
+        referenced.add(ch.fileName.split("\\").join("/"));
+      }
+      for (const beat of ch.beats) {
+        if (beat.fileName) {
+          referenced.add(beat.fileName.split("\\").join("/"));
+        }
+      }
+    }
+  }
+  return referenced;
+}
+
+async function discoverOrphanFiles(rootPath: string, index: OutlineIndex): Promise<string[]> {
+  const manuscriptDir = path.join(rootPath, "manuscript");
+  let entries: string[];
+  try {
+    entries = await fs.readdir(manuscriptDir);
+  } catch {
+    return [];
+  }
+
+  const referenced = collectReferencedFiles(index);
+  const orphans: string[] = [];
+
+  for (const entry of entries) {
+    if (!entry.endsWith(".md")) {
+      continue;
+    }
+    const relativePath = `manuscript/${entry}`;
+    if (!referenced.has(relativePath)) {
+      orphans.push(relativePath);
+    }
+  }
+
+  return orphans.sort();
 }
 
 function getPartChildren(part: OutlinePart): OutlineChapterNode[] {
@@ -152,24 +222,12 @@ function reorderChapter(
       targetPart.chapters.push(srcChapter);
     }
   } else if (targetKind === "beat") {
-    // Demote chapter to beat
-    const beat: OutlineBeat = {
-      id: crypto.randomUUID(),
-      title: srcChapter.name,
-      active: srcChapter.active,
-      description: "",
-      what: "",
-      who: "",
-      where: "",
-      why: "",
-      customFields: {},
-    };
-    // Find the chapter containing the target beat and insert there
+    // Drop chapter next to the chapter that contains the target beat
     for (const part of index.parts) {
       for (const ch of part.chapters) {
-        const beatIdx = ch.beats.findIndex((b) => b.id === targetId);
-        if (beatIdx !== -1) {
-          ch.beats.splice(beatIdx, 0, beat);
+        if (ch.beats.some((b) => b.id === targetId)) {
+          const chIdx = part.chapters.indexOf(ch);
+          part.chapters.splice(chIdx, 0, srcChapter);
           return index;
         }
       }
@@ -220,33 +278,19 @@ function reorderBeat(
       }
     }
   } else if (targetKind === "chapter") {
-    // Promote beat to chapter
-    const chapter: OutlineChapter = {
-      id: crypto.randomUUID(),
-      name: srcBeat.title,
-      fileName: "",
-      active: srcBeat.active,
-      beats: [],
-    };
+    // Move beat into target chapter (append to its beats)
     for (const part of index.parts) {
-      const targetIdx = part.chapters.findIndex((c) => c.id === targetId);
-      if (targetIdx !== -1) {
-        part.chapters.splice(targetIdx, 0, chapter);
+      const targetCh = part.chapters.find((c) => c.id === targetId);
+      if (targetCh) {
+        targetCh.beats.push(srcBeat);
         return index;
       }
     }
   } else if (targetKind === "part") {
-    // Drop beat into a part as a new chapter
-    const chapter: OutlineChapter = {
-      id: crypto.randomUUID(),
-      name: srcBeat.title,
-      fileName: "",
-      active: srcBeat.active,
-      beats: [],
-    };
+    // Move beat into first chapter of target part
     const targetPart = index.parts.find((p) => p.id === targetId);
-    if (targetPart) {
-      targetPart.chapters.push(chapter);
+    if (targetPart && targetPart.chapters.length > 0) {
+      targetPart.chapters[0].beats.push(srcBeat);
     }
   } else {
     // No target: append to first chapter of first part
@@ -320,14 +364,51 @@ export class OutlineTreeProvider implements VSCode.TreeDataProvider<OutlineTreeN
     if (element.kind === "chapter") {
       const isActive = element.data.active;
       const label = element.data.name;
+      const status = element.data.status;
+      const statusIcon = STATUS_ICONS[status] || "dash";
       const collapsible = element.data.beats.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
       const item = new vscode.TreeItem(label, collapsible);
-      item.description = isActive ? element.data.fileName : `(inactive) ${element.data.fileName}`;
+      const statusLabel = `(${status})`;
+      const filePart = element.data.fileName || "";
+      item.description = isActive
+        ? `${statusLabel} ${filePart}`.trim()
+        : `(inactive) ${statusLabel} ${filePart}`.trim();
       item.contextValue = isActive ? "outlineChapter" : "outlineChapter:inactive";
       item.iconPath = isActive
-        ? new vscode.ThemeIcon("file-text")
-        : new vscode.ThemeIcon("file-text", new vscode.ThemeColor("disabledForeground"));
+        ? new vscode.ThemeIcon(statusIcon)
+        : new vscode.ThemeIcon(statusIcon, new vscode.ThemeColor("disabledForeground"));
       item.id = `chapter-${element.data.id}`;
+      return item;
+    }
+
+    if (element.kind === "orphanGroup") {
+      const count = element.data.fileNames.length;
+      const label = count > 0
+        ? `Not Included (${count} file${count === 1 ? "" : "s"})`
+        : "Not Included";
+      const collapsible = count > 0
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None;
+      const item = new vscode.TreeItem(label, collapsible);
+      item.contextValue = "outlineOrphanGroup";
+      item.iconPath = new vscode.ThemeIcon("question", new vscode.ThemeColor("disabledForeground"));
+      item.tooltip = "Manuscript files not referenced by the outline. Drag chapters here to exclude them.";
+      item.id = "orphan-group";
+      return item;
+    }
+
+    if (element.kind === "orphan") {
+      const label = path.basename(element.data.fileName);
+      const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
+      item.description = element.data.fileName;
+      item.contextValue = "outlineOrphan";
+      item.iconPath = new vscode.ThemeIcon("file", new vscode.ThemeColor("disabledForeground"));
+      item.id = `orphan-${element.data.fileName}`;
+      item.command = {
+        command: "vscode.open",
+        title: "Open File",
+        arguments: [vscode.Uri.file(path.join(this.rootPath, element.data.fileName))],
+      };
       return item;
     }
 
@@ -335,7 +416,7 @@ export class OutlineTreeProvider implements VSCode.TreeDataProvider<OutlineTreeN
     const isActive = element.data.active;
     const label = element.data.title || "(untitled beat)";
     const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
-    item.description = isActive ? undefined : "(inactive)";
+    item.description = isActive ? element.data.fileName || undefined : "(inactive)";
     item.contextValue = isActive ? "outlineBeat" : "outlineBeat:inactive";
     item.iconPath = isActive
       ? new vscode.ThemeIcon("note")
@@ -355,7 +436,14 @@ export class OutlineTreeProvider implements VSCode.TreeDataProvider<OutlineTreeN
     }
 
     if (!element) {
-      return buildOutlineTree(this._index);
+      const parts = buildOutlineTree(this._index);
+      // Only show orphans when outline has content — otherwise the
+      // "Create Outline" welcome content must remain visible.
+      if (parts.length > 0) {
+        const orphans = await discoverOrphanFiles(this.rootPath, this._index);
+        return [...parts, { kind: "orphanGroup" as const, data: { fileNames: orphans } }];
+      }
+      return parts;
     }
 
     if (element.kind === "part") {
@@ -364,6 +452,13 @@ export class OutlineTreeProvider implements VSCode.TreeDataProvider<OutlineTreeN
 
     if (element.kind === "chapter") {
       return getChapterChildren(element.data, element.parentPartId);
+    }
+
+    if (element.kind === "orphanGroup") {
+      return element.data.fileNames.map((fileName) => ({
+        kind: "orphan" as const,
+        data: { fileName },
+      }));
     }
 
     return [];
@@ -410,12 +505,43 @@ export class OutlineDragDropController implements VSCode.TreeDragAndDropControll
       return;
     }
 
+    // Drop onto "Not Included" → exclude from outline
+    if (target?.kind === "orphanGroup") {
+      await this.handleExcludeDrop(sourceIds);
+      return;
+    }
+
     const index = await readOutlineIndex(this.rootPath);
     const targetId = target?.data.id;
     const targetKind = target?.kind;
 
     const updated = reorderOutline(index, sourceIds, targetId, targetKind);
     await writeOutlineIndex(this.rootPath, updated, this.safeFs);
+    this.onReorder();
+  }
+
+  private async handleExcludeDrop(sourceIds: { id: string; kind: string }[]): Promise<void> {
+    const chapterIds = sourceIds.filter((s) => s.kind === "chapter");
+    if (chapterIds.length === 0) {
+      return;
+    }
+
+    const label = chapterIds.length === 1 ? "this chapter" : `these ${chapterIds.length} chapters`;
+    const confirm = await this.vscodeApi.window.showWarningMessage(
+      `Remove ${label} from the outline? The manuscript file will be kept on disk.`,
+      { modal: true },
+      "Remove from Outline",
+    );
+    if (confirm !== "Remove from Outline") {
+      return;
+    }
+
+    const idsToRemove = new Set(chapterIds.map((s) => s.id));
+    const index = await readOutlineIndex(this.rootPath);
+    for (const part of index.parts) {
+      part.chapters = part.chapters.filter((c) => !idsToRemove.has(c.id));
+    }
+    await writeOutlineIndex(this.rootPath, index, this.safeFs);
     this.onReorder();
   }
 }

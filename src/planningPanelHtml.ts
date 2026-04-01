@@ -45,22 +45,6 @@ function renderBeatCard(beat: OutlineBeat): string {
           <label class="field-label">Title</label>
           <input type="text" class="field-input" data-beat-id="${escapeHtml(beat.id)}" data-field="title" value="${escapeHtml(beat.title)}" />
         </div>
-        <div class="field-row">
-          <label class="field-label">What</label>
-          <textarea class="field-textarea" data-beat-id="${escapeHtml(beat.id)}" data-field="what" rows="2">${escapeHtml(beat.what)}</textarea>
-        </div>
-        <div class="field-row">
-          <label class="field-label">Who</label>
-          <input type="text" class="field-input" data-beat-id="${escapeHtml(beat.id)}" data-field="who" value="${escapeHtml(beat.who)}" />
-        </div>
-        <div class="field-row">
-          <label class="field-label">Where</label>
-          <input type="text" class="field-input" data-beat-id="${escapeHtml(beat.id)}" data-field="where" value="${escapeHtml(beat.where)}" />
-        </div>
-        <div class="field-row">
-          <label class="field-label">Why</label>
-          <textarea class="field-textarea" data-beat-id="${escapeHtml(beat.id)}" data-field="why" rows="2">${escapeHtml(beat.why)}</textarea>
-        </div>
         ${customFieldsHtml}
         <div class="card-actions">
           <button class="btn btn--secondary" data-action="add-field" data-beat-id="${escapeHtml(beat.id)}">Add Field</button>

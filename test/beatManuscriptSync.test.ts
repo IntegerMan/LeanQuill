@@ -64,7 +64,7 @@ describe("collectExistingBeatSlugs", () => {
           {
             id: "c1", name: "Ch1", fileName: "ch1.md", active: true,
             beats: [
-              { id: "b1", title: "B1", fileName: "beats/b1.md", active: true, description: "", what: "", who: "", where: "", why: "", customFields: {} },
+              { id: "b1", title: "B1", fileName: "beats/b1.md", active: true, description: "", customFields: {} },
             ],
           },
         ],
@@ -75,8 +75,8 @@ describe("collectExistingBeatSlugs", () => {
           {
             id: "c2", name: "Ch2", fileName: "ch2.md", active: true,
             beats: [
-              { id: "b2", title: "B2", fileName: "beats/b2.md", active: true, description: "", what: "", who: "", where: "", why: "", customFields: {} },
-              { id: "b3", title: "B3", fileName: "", active: true, description: "", what: "", who: "", where: "", why: "", customFields: {} },
+              { id: "b2", title: "B2", fileName: "beats/b2.md", active: true, description: "", customFields: {} },
+              { id: "b3", title: "B3", fileName: "", active: true, description: "", customFields: {} },
             ],
           },
         ],

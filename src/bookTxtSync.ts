@@ -25,11 +25,13 @@ export function generateBookTxt(index: OutlineIndex): string {
 
     for (const chapter of part.chapters) {
       if (chapter.active) {
-        lines.push(chapter.fileName);
-        // List active beat files after the chapter
+        // Strip manuscript/ prefix — Book.txt paths are relative to manuscript/
+        const chapterEntry = chapter.fileName.replace(/^manuscript\//, "");
+        lines.push(chapterEntry);
+        // List active beat files after the chapter (already relative to manuscript/)
         for (const beat of chapter.beats) {
           if (beat.active && beat.fileName) {
-            lines.push(`manuscript/${beat.fileName}`);
+            lines.push(beat.fileName);
           }
         }
       }
@@ -40,12 +42,11 @@ export function generateBookTxt(index: OutlineIndex): string {
 }
 
 /**
- * Write Book.txt to the project root.
- * Book.txt is a root-level LeanPub file — NOT inside .leanquill/,
- * so we use raw fs.writeFile (not SafeFileSystem).
+ * Write Book.txt inside the manuscript directory.
+ * LeanPub expects manuscript/Book.txt with paths relative to manuscript/.
  */
 export async function writeBookTxt(rootPath: string, content: string): Promise<void> {
-  await fs.writeFile(path.join(rootPath, "Book.txt"), content, "utf8");
+  await fs.writeFile(path.join(rootPath, "manuscript", "Book.txt"), content, "utf8");
 }
 
 /**
@@ -53,7 +54,7 @@ export async function writeBookTxt(rootPath: string, content: string): Promise<v
  */
 export async function readBookTxt(rootPath: string): Promise<string | null> {
   try {
-    return await fs.readFile(path.join(rootPath, "Book.txt"), "utf8");
+    return await fs.readFile(path.join(rootPath, "manuscript", "Book.txt"), "utf8");
   } catch {
     return null;
   }

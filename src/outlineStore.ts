@@ -2,7 +2,21 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
 import { SafeFileSystem } from "./safeFileSystem";
-import { OutlineBeat, OutlineChapter, OutlineIndex, OutlinePart } from "./types";
+import { ChapterStatus, OutlineBeat, OutlineChapter, OutlineIndex, OutlinePart } from "./types";
+
+const VALID_STATUSES: ChapterStatus[] = [
+  "planning",
+  "not-started",
+  "drafting",
+  "draft-complete",
+  "editing",
+  "review-pending",
+  "final",
+];
+
+function isChapterStatus(value: unknown): value is ChapterStatus {
+  return typeof value === "string" && VALID_STATUSES.includes(value as ChapterStatus);
+}
 
 const OUTLINE_FILE = ".leanquill/outline-index.json";
 
@@ -21,10 +35,6 @@ function normalizeBeat(raw: unknown): OutlineBeat {
       fileName: "",
       active: true,
       description: "",
-      what: "",
-      who: "",
-      where: "",
-      why: "",
       customFields: {},
     };
   }
@@ -37,10 +47,6 @@ function normalizeBeat(raw: unknown): OutlineBeat {
     fileName: typeof candidate.fileName === "string" ? candidate.fileName : "",
     active: typeof candidate.active === "boolean" ? candidate.active : true,
     description: typeof candidate.description === "string" ? candidate.description : "",
-    what: typeof candidate.what === "string" ? candidate.what : "",
-    who: typeof candidate.who === "string" ? candidate.who : "",
-    where: typeof candidate.where === "string" ? candidate.where : "",
-    why: typeof candidate.why === "string" ? candidate.why : "",
     customFields:
       candidate.customFields && typeof candidate.customFields === "object" && !Array.isArray(candidate.customFields)
         ? Object.fromEntries(
@@ -70,6 +76,7 @@ function normalizeChapter(raw: unknown): OutlineChapter {
     name: typeof candidate.name === "string" ? candidate.name : "",
     fileName: typeof candidate.fileName === "string" ? candidate.fileName : "",
     active: typeof candidate.active === "boolean" ? candidate.active : true,
+    status: isChapterStatus(candidate.status) ? candidate.status : "not-started",
     beats: Array.isArray(candidate.beats) ? candidate.beats.map(normalizeBeat) : [],
   };
 }
@@ -152,6 +159,7 @@ export function bootstrapOutline(chapterPaths: string[]): OutlineIndex {
           name: deriveChapterName(filePath),
           fileName: filePath,
           active: true,
+          status: "not-started" as const,
           beats: [],
         })),
       },

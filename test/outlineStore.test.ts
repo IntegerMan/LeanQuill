@@ -151,10 +151,6 @@ test("normalizeOutlineIndex coerces missing fields to defaults", () => {
   assert.equal(index.parts[0].chapters[0].beats[0].title, "");
   assert.equal(index.parts[0].chapters[0].beats[0].active, true);
   assert.equal(index.parts[0].chapters[0].beats[0].description, "");
-  assert.equal(index.parts[0].chapters[0].beats[0].what, "");
-  assert.equal(index.parts[0].chapters[0].beats[0].who, "");
-  assert.equal(index.parts[0].chapters[0].beats[0].where, "");
-  assert.equal(index.parts[0].chapters[0].beats[0].why, "");
   assert.deepEqual(index.parts[0].chapters[0].beats[0].customFields, {});
 });
 
@@ -162,4 +158,55 @@ test("normalizeOutlineIndex returns empty index for null input", () => {
   const index = normalizeOutlineIndex(null);
   assert.equal(index.schemaVersion, 1);
   assert.deepEqual(index.parts, []);
+});
+
+test("normalizeOutlineIndex defaults chapter status to not-started", () => {
+  const raw = {
+    parts: [
+      {
+        id: "p1",
+        name: "Part",
+        active: true,
+        chapters: [
+          { id: "c1", name: "Ch", fileName: "", active: true, beats: [] },
+        ],
+      },
+    ],
+  };
+  const index = normalizeOutlineIndex(raw);
+  assert.equal(index.parts[0].chapters[0].status, "not-started");
+});
+
+test("normalizeOutlineIndex preserves valid chapter status", () => {
+  const raw = {
+    parts: [
+      {
+        id: "p1",
+        name: "Part",
+        active: true,
+        chapters: [
+          { id: "c1", name: "Ch", fileName: "", active: true, status: "drafting", beats: [] },
+        ],
+      },
+    ],
+  };
+  const index = normalizeOutlineIndex(raw);
+  assert.equal(index.parts[0].chapters[0].status, "drafting");
+});
+
+test("normalizeOutlineIndex coerces invalid chapter status to not-started", () => {
+  const raw = {
+    parts: [
+      {
+        id: "p1",
+        name: "Part",
+        active: true,
+        chapters: [
+          { id: "c1", name: "Ch", fileName: "", active: true, status: "bogus", beats: [] },
+        ],
+      },
+    ],
+  };
+  const index = normalizeOutlineIndex(raw);
+  assert.equal(index.parts[0].chapters[0].status, "not-started");
 });

@@ -20,7 +20,7 @@ async function listMarkdownFiles(manuscriptDir: string): Promise<string[]> {
 
 export async function resolveChapterOrder(rootPath: string): Promise<ChapterOrderResult> {
   const manuscriptDir = path.join(rootPath, "manuscript");
-  const bookTxtPath = path.join(rootPath, "Book.txt");
+  const bookTxtPath = path.join(rootPath, "manuscript", "Book.txt");
   const markdownFiles = await listMarkdownFiles(manuscriptDir);
 
   try {
@@ -41,19 +41,15 @@ export async function resolveChapterOrder(rootPath: string): Promise<ChapterOrde
       }
       seen.add(relPath);
 
+      // Paths in Book.txt are relative to manuscript/
       const normalizedRel = relPath.split("\\").join("/");
-      if (!normalizedRel.startsWith("manuscript/")) {
-        warnings.push(`Book.txt entry is not under manuscript/: ${relPath}`);
-        continue;
-      }
-
-      const fileName = normalizedRel.slice("manuscript/".length);
-      if (!markdownFiles.includes(fileName)) {
+      if (!markdownFiles.includes(normalizedRel)) {
         warnings.push(`Book.txt references missing manuscript file: ${relPath}`);
         continue;
       }
 
-      ordered.push(normalizedRel);
+      // Internally we use manuscript/-prefixed paths
+      ordered.push(`manuscript/${normalizedRel}`);
     }
 
     return {

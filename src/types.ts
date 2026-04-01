@@ -40,10 +40,6 @@ export interface OutlineBeat {
   fileName: string;
   active: boolean;
   description: string;
-  what: string;
-  who: string;
-  where: string;
-  why: string;
   customFields: Record<string, string>;
 }
 
@@ -52,6 +48,7 @@ export interface OutlineChapter {
   name: string;
   fileName: string;
   active: boolean;
+  status: ChapterStatus;
   beats: OutlineBeat[];
 }
 
