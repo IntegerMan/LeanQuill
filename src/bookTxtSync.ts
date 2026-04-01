@@ -1,42 +1,48 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { OutlineIndex } from "./types";
+import { OutlineIndex, OutlineNode } from "./types";
+
+/**
+ * Recursively collect file entries from active nodes via depth-first traversal.
+ * Nodes with trait "part" emit `part: {title}` when there are multiple
+ * active top-level part nodes. All other nodes with a fileName emit
+ * the path stripped of the `manuscript/` prefix.
+ */
+function flattenNodes(nodes: OutlineNode[], emitParts: boolean, lines: string[]): void {
+  for (const node of nodes) {
+    if (!node.active) {
+      continue;
+    }
+
+    if (node.traits.includes("part") && emitParts) {
+      lines.push(`part: ${node.title}`);
+    }
+
+    if (node.fileName) {
+      const entry = node.fileName.replace(/^manuscript\//, "");
+      lines.push(entry);
+    }
+
+    flattenNodes(node.children, emitParts, lines);
+  }
+}
 
 /**
  * Generate Book.txt content from outline index.
  * Uses LeanPub `part:` format for multi-part books.
- * Only includes active parts and active chapters.
- * Active beats with a fileName are listed after their parent chapter.
+ * Only includes active nodes. Depth-first traversal.
  */
 export function generateBookTxt(index: OutlineIndex): string {
-  const activeParts = index.parts.filter((p) => p.active);
+  const activeTopLevel = index.nodes.filter((n) => n.active);
 
-  if (activeParts.length === 0) {
+  if (activeTopLevel.length === 0) {
     return "";
   }
 
+  const multiPart = activeTopLevel.filter((n) => n.traits.includes("part")).length > 1;
+
   const lines: string[] = [];
-  const multiPart = activeParts.length > 1;
-
-  for (const part of activeParts) {
-    if (multiPart) {
-      lines.push(`part: ${part.name}`);
-    }
-
-    for (const chapter of part.chapters) {
-      if (chapter.active) {
-        // Strip manuscript/ prefix — Book.txt paths are relative to manuscript/
-        const chapterEntry = chapter.fileName.replace(/^manuscript\//, "");
-        lines.push(chapterEntry);
-        // List active beat files after the chapter (already relative to manuscript/)
-        for (const beat of chapter.beats) {
-          if (beat.active && beat.fileName) {
-            lines.push(beat.fileName);
-          }
-        }
-      }
-    }
-  }
+  flattenNodes(index.nodes, multiPart, lines);
 
   return lines.length > 0 ? lines.join("\n") + "\n" : "";
 }

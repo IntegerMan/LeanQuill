@@ -3,11 +3,23 @@ import assert from "node:assert/strict";
 import {
   renderOutlineContextHtml,
   buildBookContext,
-  buildPartContext,
-  buildChapterContext,
-  buildBeatContext,
+  buildNodeContext,
 } from "../src/outlineContextPane";
-import { OutlineIndex } from "../src/types";
+import { OutlineIndex, OutlineNode } from "../src/types";
+
+function makeNode(overrides: Partial<OutlineNode> = {}): OutlineNode {
+  return {
+    id: overrides.id ?? "n1",
+    title: overrides.title ?? "Node",
+    fileName: overrides.fileName ?? "",
+    active: overrides.active ?? true,
+    status: overrides.status ?? "not-started",
+    description: overrides.description ?? "",
+    customFields: overrides.customFields ?? {},
+    traits: overrides.traits ?? [],
+    children: overrides.children ?? [],
+  };
+}
 
 test("renders empty state when no model provided", () => {
   const html = renderOutlineContextHtml();
@@ -18,74 +30,56 @@ test("renders empty state when no model provided", () => {
 
 test("renders book overview with status summary", () => {
   const index: OutlineIndex = {
-    schemaVersion: 1,
-    parts: [
-      {
-        id: "p1",
-        name: "Part",
-        active: true,
-        chapters: [
-          { id: "c1", name: "Ch1", fileName: "manuscript/ch1.md", active: true, status: "drafting", beats: [] },
-          { id: "c2", name: "Ch2", fileName: "manuscript/ch2.md", active: true, status: "drafting", beats: [{ id: "b1", title: "B1", fileName: "", active: true, description: "", customFields: {} }] },
-          { id: "c3", name: "Ch3", fileName: "manuscript/ch3.md", active: true, status: "final", beats: [] },
+    schemaVersion: 2,
+    nodes: [
+      makeNode({
+        id: "p1", title: "Part", traits: ["part"],
+        children: [
+          makeNode({ id: "c1", status: "drafting" }),
+          makeNode({
+            id: "c2", status: "drafting",
+            children: [makeNode({ id: "b1", status: "not-started" })],
+          }),
+          makeNode({ id: "c3", status: "final" }),
         ],
-      },
+      }),
     ],
   };
   const model = buildBookContext(index);
   const html = renderOutlineContextHtml(model);
 
   assert.match(html, /Book Overview/);
-  assert.match(html, /Chapters.*3/s);
-  assert.match(html, /Beats.*1/s);
+  assert.match(html, /Total Nodes/);
+  assert.equal(model.totalNodes, 5); // p1, c1, c2, b1, c3
   assert.equal(model.statusSummary.drafting, 2);
   assert.equal(model.statusSummary.final, 1);
+  assert.equal(model.statusSummary["not-started"], 2); // p1 + b1
 });
 
-test("renders part context with chapter and beat counts", () => {
-  const model = buildPartContext({
-    id: "p1",
-    name: "Act Two",
-    active: false,
-    chapters: [
-      { id: "c1", name: "Ch", fileName: "", active: true, status: "not-started", beats: [{ id: "b1", title: "B", fileName: "", active: true, description: "", customFields: {} }] },
-    ],
-  });
-  const html = renderOutlineContextHtml(model);
-
-  assert.match(html, /Act Two/);
-  assert.match(html, /Inactive/i);
-  assert.equal(model.chapterCount, 1);
-  assert.equal(model.beatCount, 1);
-});
-
-test("renders chapter context with status and update button", () => {
-  const model = buildChapterContext({
-    id: "c1",
-    name: "Chapter One",
+test("renders node context with status and update button", () => {
+  const node = makeNode({
+    title: "Chapter One",
     fileName: "manuscript/ch1.md",
-    active: true,
     status: "editing",
-    beats: [],
   });
+  const model = buildNodeContext(node, 1);
   const html = renderOutlineContextHtml(model);
 
   assert.match(html, /Chapter One/);
   assert.match(html, /editing/);
   assert.match(html, /Update Status/);
-  assert.match(html, /command:leanquill.updateOutlineChapterStatus/);
+  assert.match(html, /command:leanquill.updateNodeStatus/);
   assert.match(html, /manuscript\/ch1\.md/);
 });
 
-test("renders beat context with description and custom fields", () => {
-  const model = buildBeatContext({
-    id: "b1",
+test("renders node context with description and custom fields", () => {
+  const node = makeNode({
     title: "Opening Scene",
-    fileName: "manuscript/beats/opening.md",
-    active: true,
+    fileName: "manuscript/opening.md",
     description: "The hero enters the arena.",
     customFields: { mood: "tense", pov: "third" },
   });
+  const model = buildNodeContext(node, 2);
   const html = renderOutlineContextHtml(model);
 
   assert.match(html, /Opening Scene/);
@@ -94,20 +88,40 @@ test("renders beat context with description and custom fields", () => {
   assert.match(html, /tense/);
   assert.match(html, /pov/);
   assert.match(html, /third/);
-  assert.match(html, /manuscript\/beats\/opening\.md/);
+  assert.match(html, /manuscript\/opening\.md/);
 });
 
-test("renders inactive beat with badge", () => {
-  const model = buildBeatContext({
-    id: "b1",
+test("renders inactive node with badge", () => {
+  const node = makeNode({
     title: "Cut Scene",
-    fileName: "",
     active: false,
-    description: "",
-    customFields: {},
   });
+  const model = buildNodeContext(node, 1);
   const html = renderOutlineContextHtml(model);
 
   assert.match(html, /Cut Scene/);
   assert.match(html, /Inactive/i);
+});
+
+test("renders node with traits badges", () => {
+  const node = makeNode({
+    title: "Front Matter",
+    traits: ["front-matter"],
+  });
+  const model = buildNodeContext(node, 0);
+  const html = renderOutlineContextHtml(model);
+
+  assert.match(html, /front-matter/);
+});
+
+test("renders node with child count", () => {
+  const node = makeNode({
+    title: "Act One",
+    children: [makeNode({ id: "c1" }), makeNode({ id: "c2" })],
+  });
+  const model = buildNodeContext(node, 0);
+  assert.equal(model.childCount, 2);
+  const html = renderOutlineContextHtml(model);
+  assert.match(html, /Children/);
+  assert.match(html, /2/);
 });

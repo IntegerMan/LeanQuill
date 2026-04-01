@@ -32,34 +32,21 @@ export interface ChapterStatusIndex {
   chapters: Record<string, ChapterStatusEntry>;
 }
 
-// --- Outline & Beat Planning types (Phase 3) ---
+// --- Outline types (recursive node model) ---
 
-export interface OutlineBeat {
+export interface OutlineNode {
   id: string;
   title: string;
   fileName: string;
   active: boolean;
+  status: ChapterStatus;
   description: string;
   customFields: Record<string, string>;
-}
-
-export interface OutlineChapter {
-  id: string;
-  name: string;
-  fileName: string;
-  active: boolean;
-  status: ChapterStatus;
-  beats: OutlineBeat[];
-}
-
-export interface OutlinePart {
-  id: string;
-  name: string;
-  active: boolean;
-  chapters: OutlineChapter[];
+  traits: string[];
+  children: OutlineNode[];
 }
 
 export interface OutlineIndex {
   schemaVersion: number;
-  parts: OutlinePart[];
+  nodes: OutlineNode[];
 }

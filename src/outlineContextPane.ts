@@ -1,5 +1,5 @@
 import type * as VSCode from "vscode";
-import { ChapterStatus, OutlineBeat, OutlineChapter, OutlineIndex, OutlinePart } from "./types";
+import { ChapterStatus, OutlineNode, OutlineIndex } from "./types";
 
 function escapeHtml(value: string): string {
   return value
@@ -10,45 +10,48 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-// --- Context models for each outline level ---
+// --- Context models ---
 
 export interface BookContextModel {
   kind: "book";
-  totalParts: number;
-  totalChapters: number;
-  totalBeats: number;
+  totalNodes: number;
   statusSummary: Record<ChapterStatus, number>;
 }
 
-export interface PartContextModel {
-  kind: "part";
-  name: string;
-  active: boolean;
-  chapterCount: number;
-  beatCount: number;
-}
-
-export interface ChapterContextModel {
-  kind: "chapter";
-  name: string;
-  fileName: string;
-  active: boolean;
-  status: ChapterStatus;
-  beatCount: number;
-}
-
-export interface BeatContextModel {
-  kind: "beat";
+export interface NodeContextModel {
+  kind: "node";
   title: string;
   fileName: string;
   active: boolean;
+  status: ChapterStatus;
   description: string;
   customFields: Record<string, string>;
+  traits: string[];
+  childCount: number;
+  depth: number;
 }
 
-export type OutlineContextModel = BookContextModel | PartContextModel | ChapterContextModel | BeatContextModel;
+export type OutlineContextModel = BookContextModel | NodeContextModel;
 
 // --- Model builders ---
+
+function countNodes(nodes: OutlineNode[]): number {
+  let count = 0;
+  for (const node of nodes) {
+    count++;
+    count += countNodes(node.children);
+  }
+  return count;
+}
+
+function collectStatusSummary(nodes: OutlineNode[], summary: Record<ChapterStatus, number>): void {
+  for (const node of nodes) {
+    if (node.status) {
+      summary[node.status] = (summary[node.status] || 0) + 1;
+    }
+    collectStatusSummary(node.children, summary);
+  }
+}
 
 export function buildBookContext(index: OutlineIndex): BookContextModel {
   const statusSummary: Record<ChapterStatus, number> = {
@@ -60,57 +63,26 @@ export function buildBookContext(index: OutlineIndex): BookContextModel {
     "review-pending": 0,
     "final": 0,
   };
-  let totalChapters = 0;
-  let totalBeats = 0;
-  for (const part of index.parts) {
-    for (const ch of part.chapters) {
-      totalChapters++;
-      statusSummary[ch.status] = (statusSummary[ch.status] || 0) + 1;
-      totalBeats += ch.beats.length;
-    }
-  }
+  collectStatusSummary(index.nodes, statusSummary);
   return {
     kind: "book",
-    totalParts: index.parts.length,
-    totalChapters,
-    totalBeats,
+    totalNodes: countNodes(index.nodes),
     statusSummary,
   };
 }
 
-export function buildPartContext(part: OutlinePart): PartContextModel {
-  let beatCount = 0;
-  for (const ch of part.chapters) {
-    beatCount += ch.beats.length;
-  }
+export function buildNodeContext(node: OutlineNode, depth: number): NodeContextModel {
   return {
-    kind: "part",
-    name: part.name,
-    active: part.active,
-    chapterCount: part.chapters.length,
-    beatCount,
-  };
-}
-
-export function buildChapterContext(chapter: OutlineChapter): ChapterContextModel {
-  return {
-    kind: "chapter",
-    name: chapter.name,
-    fileName: chapter.fileName,
-    active: chapter.active,
-    status: chapter.status,
-    beatCount: chapter.beats.length,
-  };
-}
-
-export function buildBeatContext(beat: OutlineBeat): BeatContextModel {
-  return {
-    kind: "beat",
-    title: beat.title,
-    fileName: beat.fileName,
-    active: beat.active,
-    description: beat.description,
-    customFields: beat.customFields,
+    kind: "node",
+    title: node.title,
+    fileName: node.fileName,
+    active: node.active,
+    status: node.status,
+    description: node.description,
+    customFields: node.customFields,
+    traits: node.traits,
+    childCount: node.children.length,
+    depth,
   };
 }
 
@@ -169,47 +141,21 @@ function renderBookHtml(model: BookContextModel): string {
   <main class="stack">
     <section class="card">
       <h1 class="title">Book Overview</h1>
-      <div class="meta"><span class="label">Parts</span><span class="value">${model.totalParts}</span></div>
-      <div class="meta"><span class="label">Chapters</span><span class="value">${model.totalChapters}</span></div>
-      <div class="meta"><span class="label">Beats</span><span class="value">${model.totalBeats}</span></div>
+      <div class="meta"><span class="label">Total Nodes</span><span class="value">${model.totalNodes}</span></div>
     </section>
     <section class="card">
-      <span class="label">Chapter Status</span>
-      ${statusRows || '<span class="value">No chapters yet</span>'}
+      <span class="label">Status Summary</span>
+      ${statusRows || '<span class="value">No nodes yet</span>'}
     </section>
   </main>`);
 }
 
-function renderPartHtml(model: PartContextModel): string {
+function renderNodeHtml(model: NodeContextModel): string {
   const activeLabel = model.active ? "" : ' <span class="badge inactive">Inactive</span>';
-  return wrapHtml(`
-  <main class="stack">
-    <section class="card">
-      <h1 class="title">${escapeHtml(model.name)}${activeLabel}</h1>
-      <div class="meta"><span class="label">Chapters</span><span class="value">${model.chapterCount}</span></div>
-      <div class="meta"><span class="label">Beats</span><span class="value">${model.beatCount}</span></div>
-    </section>
-  </main>`);
-}
+  const traitsHtml = model.traits.length > 0
+    ? model.traits.map((t) => `<span class="badge">${escapeHtml(t)}</span>`).join(" ")
+    : "";
 
-function renderChapterHtml(model: ChapterContextModel): string {
-  const activeLabel = model.active ? "" : ' <span class="badge inactive">Inactive</span>';
-  return wrapHtml(`
-  <main class="stack">
-    <section class="card">
-      <h1 class="title">${escapeHtml(model.name)}${activeLabel}</h1>
-      <div class="meta"><span class="label">Status</span><span class="badge">${escapeHtml(model.status)}</span></div>
-      <div class="meta"><span class="label">Beats</span><span class="value">${model.beatCount}</span></div>
-      <a class="action" href="command:leanquill.updateOutlineChapterStatus">Update Status</a>
-    </section>
-    <section class="card">
-      <p class="path">${escapeHtml(model.fileName || "(no file assigned)")}</p>
-    </section>
-  </main>`);
-}
-
-function renderBeatHtml(model: BeatContextModel): string {
-  const activeLabel = model.active ? "" : ' <span class="badge inactive">Inactive</span>';
   const descSection = model.description
     ? `<div class="desc">${escapeHtml(model.description)}</div>`
     : "";
@@ -228,7 +174,11 @@ function renderBeatHtml(model: BeatContextModel): string {
   <main class="stack">
     <section class="card">
       <h1 class="title">${escapeHtml(model.title || "(untitled)")}${activeLabel}</h1>
+      <div class="meta"><span class="label">Status</span><span class="badge">${escapeHtml(model.status)}</span></div>
+      ${traitsHtml ? `<div class="meta"><span class="label">Traits</span><span>${traitsHtml}</span></div>` : ""}
+      ${model.childCount > 0 ? `<div class="meta"><span class="label">Children</span><span class="value">${model.childCount}</span></div>` : ""}
       ${descSection}
+      <a class="action" href="command:leanquill.updateNodeStatus">Update Status</a>
     </section>
     ${fieldsSection}
     <section class="card">
@@ -243,9 +193,7 @@ export function renderOutlineContextHtml(model?: OutlineContextModel): string {
   }
   switch (model.kind) {
     case "book": return renderBookHtml(model);
-    case "part": return renderPartHtml(model);
-    case "chapter": return renderChapterHtml(model);
-    case "beat": return renderBeatHtml(model);
+    case "node": return renderNodeHtml(model);
   }
 }
 

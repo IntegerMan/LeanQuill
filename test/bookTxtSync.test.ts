@@ -8,7 +8,7 @@ import {
   readBookTxt,
   detectExternalBookTxtEdit,
 } from "../src/bookTxtSync";
-import { OutlineIndex } from "../src/types";
+import { OutlineIndex, OutlineNode } from "../src/types";
 
 async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "leanquill-booktxt-"));
@@ -19,28 +19,34 @@ async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   }
 }
 
-function makeIndex(parts: OutlineIndex["parts"]): OutlineIndex {
-  return { schemaVersion: 1, parts };
+function makeNode(overrides: Partial<OutlineNode> = {}): OutlineNode {
+  return {
+    id: overrides.id ?? "n1",
+    title: overrides.title ?? "Node",
+    fileName: overrides.fileName ?? "",
+    active: overrides.active ?? true,
+    status: overrides.status ?? "not-started",
+    description: overrides.description ?? "",
+    customFields: overrides.customFields ?? {},
+    traits: overrides.traits ?? [],
+    children: overrides.children ?? [],
+  };
 }
 
-test("generateBookTxt produces part: lines for active parts (LeanPub format)", () => {
+function makeIndex(nodes: OutlineNode[]): OutlineIndex {
+  return { schemaVersion: 2, nodes };
+}
+
+test("generateBookTxt produces part: lines for multiple active part nodes", () => {
   const index = makeIndex([
-    {
-      id: "p1",
-      name: "Act One",
-      active: true,
-      chapters: [
-        { id: "c1", name: "Ch1", fileName: "manuscript/ch1.md", active: true, beats: [] },
-      ],
-    },
-    {
-      id: "p2",
-      name: "Act Two",
-      active: true,
-      chapters: [
-        { id: "c2", name: "Ch2", fileName: "manuscript/ch2.md", active: true, beats: [] },
-      ],
-    },
+    makeNode({
+      id: "p1", title: "Act One", traits: ["part"],
+      children: [makeNode({ id: "c1", fileName: "manuscript/ch1.md" })],
+    }),
+    makeNode({
+      id: "p2", title: "Act Two", traits: ["part"],
+      children: [makeNode({ id: "c2", fileName: "manuscript/ch2.md" })],
+    }),
   ]);
 
   const result = generateBookTxt(index);
@@ -50,45 +56,39 @@ test("generateBookTxt produces part: lines for active parts (LeanPub format)", (
   assert.ok(result.includes("ch2.md"));
 });
 
-test("generateBookTxt lists active chapter filenames under their parts", () => {
+test("generateBookTxt omits part: line for single part node", () => {
   const index = makeIndex([
-    {
-      id: "p1",
-      name: "Book",
-      active: true,
-      chapters: [
-        { id: "c1", name: "Ch1", fileName: "manuscript/ch1.md", active: true, beats: [] },
-        { id: "c2", name: "Ch2", fileName: "manuscript/ch2.md", active: true, beats: [] },
+    makeNode({
+      id: "p1", title: "Book", traits: ["part"],
+      children: [
+        makeNode({ id: "c1", fileName: "manuscript/ch1.md" }),
+        makeNode({ id: "c2", fileName: "manuscript/ch2.md" }),
       ],
-    },
+    }),
   ]);
 
   const result = generateBookTxt(index);
   const lines = result.split("\n").filter((l) => l.trim().length > 0);
-  // Single part — no part: line needed
+  assert.ok(!result.includes("part:"));
   assert.ok(lines.includes("ch1.md"));
   assert.ok(lines.includes("ch2.md"));
 });
 
-test("generateBookTxt excludes deactivated parts and chapters", () => {
+test("generateBookTxt excludes inactive nodes and their descendants", () => {
   const index = makeIndex([
-    {
-      id: "p1",
-      name: "Active Part",
-      active: true,
-      chapters: [
-        { id: "c1", name: "Active", fileName: "manuscript/active.md", active: true, beats: [] },
-        { id: "c2", name: "Inactive", fileName: "manuscript/inactive.md", active: false, beats: [] },
+    makeNode({
+      id: "p1", title: "Active Part", traits: ["part"],
+      children: [
+        makeNode({ id: "c1", fileName: "manuscript/active.md" }),
+        makeNode({ id: "c2", fileName: "manuscript/inactive.md", active: false }),
       ],
-    },
-    {
-      id: "p2",
-      name: "Skipped Part",
-      active: false,
-      chapters: [
-        { id: "c3", name: "Also Skipped", fileName: "manuscript/skipped.md", active: true, beats: [] },
+    }),
+    makeNode({
+      id: "p2", title: "Skipped Part", traits: ["part"], active: false,
+      children: [
+        makeNode({ id: "c3", fileName: "manuscript/skipped.md" }),
       ],
-    },
+    }),
   ]);
 
   const result = generateBookTxt(index);
@@ -102,6 +102,70 @@ test("generateBookTxt with empty outline produces empty string", () => {
   const index = makeIndex([]);
   const result = generateBookTxt(index);
   assert.equal(result, "");
+});
+
+test("generateBookTxt handles deeply nested nodes via depth-first traversal", () => {
+  const index = makeIndex([
+    makeNode({
+      id: "p1", title: "Book", traits: ["part"],
+      children: [
+        makeNode({
+          id: "c1", title: "Chapter", fileName: "manuscript/chapter.md",
+          children: [
+            makeNode({ id: "s1", fileName: "manuscript/scene-a.md" }),
+            makeNode({ id: "s2", fileName: "manuscript/scene-b.md" }),
+          ],
+        }),
+        makeNode({ id: "c2", fileName: "manuscript/epilogue.md" }),
+      ],
+    }),
+  ]);
+
+  const result = generateBookTxt(index);
+  const lines = result.split("\n").filter((l) => l.trim().length > 0);
+  assert.deepEqual(lines, [
+    "chapter.md",
+    "scene-a.md",
+    "scene-b.md",
+    "epilogue.md",
+  ]);
+});
+
+test("generateBookTxt excludes inactive children but keeps siblings", () => {
+  const index = makeIndex([
+    makeNode({
+      id: "p1", title: "Book", traits: ["part"],
+      children: [
+        makeNode({
+          id: "c1", title: "Ch1", fileName: "manuscript/ch1.md",
+          children: [
+            makeNode({ id: "b1", fileName: "manuscript/active-beat.md" }),
+            makeNode({ id: "b2", fileName: "manuscript/inactive-beat.md", active: false }),
+          ],
+        }),
+      ],
+    }),
+  ]);
+
+  const result = generateBookTxt(index);
+  assert.ok(result.includes("active-beat.md"));
+  assert.ok(!result.includes("inactive-beat.md"));
+});
+
+test("generateBookTxt skips nodes without fileName", () => {
+  const index = makeIndex([
+    makeNode({
+      id: "p1", title: "Book", traits: ["part"],
+      children: [
+        makeNode({ id: "c1", title: "No File" }),
+        makeNode({ id: "c2", fileName: "manuscript/has-file.md" }),
+      ],
+    }),
+  ]);
+
+  const result = generateBookTxt(index);
+  const lines = result.split("\n").filter((l) => l.trim().length > 0);
+  assert.deepEqual(lines, ["has-file.md"]);
 });
 
 test("detectExternalBookTxtEdit returns false when content matches", async () => {
@@ -127,7 +191,7 @@ test("detectExternalBookTxtEdit returns true when content differs", async () => 
 
 test("detectExternalBookTxtEdit returns false when Book.txt does not exist", async () => {
   await withTempDir(async (dir) => {
-    const edited = await detectExternalBookTxtEdit(dir, "manuscript/ch1.md\n");
+    const edited = await detectExternalBookTxtEdit(dir, "ch1.md\n");
     assert.equal(edited, false);
   });
 });
@@ -148,108 +212,4 @@ test("readBookTxt returns null when file does not exist", async () => {
     const result = await readBookTxt(dir);
     assert.equal(result, null);
   });
-});
-
-function makeBeat(overrides: Partial<{ id: string; title: string; fileName: string; active: boolean; description: string }> = {}) {
-  return {
-    id: overrides.id ?? "b1",
-    title: overrides.title ?? "Beat",
-    fileName: overrides.fileName ?? "",
-    active: overrides.active ?? true,
-    description: overrides.description ?? "",
-    customFields: {},
-  };
-}
-
-test("generateBookTxt lists beat files after their parent chapter", () => {
-  const index = makeIndex([
-    {
-      id: "p1",
-      name: "Book",
-      active: true,
-      chapters: [
-        {
-          id: "c1",
-          name: "Author",
-          fileName: "manuscript/00_Author.md",
-          active: true,
-          beats: [
-            makeBeat({ id: "b1", fileName: "beats/author-bio.md" }),
-            makeBeat({ id: "b2", fileName: "beats/author-thanks.md" }),
-          ],
-        },
-        {
-          id: "c2",
-          name: "Foreword",
-          fileName: "manuscript/00_Foreword.md",
-          active: true,
-          beats: [],
-        },
-      ],
-    },
-  ]);
-
-  const result = generateBookTxt(index);
-  const lines = result.split("\n").filter((l) => l.trim().length > 0);
-  assert.deepEqual(lines, [
-    "00_Author.md",
-    "beats/author-bio.md",
-    "beats/author-thanks.md",
-    "00_Foreword.md",
-  ]);
-});
-
-test("generateBookTxt excludes inactive beats from Book.txt", () => {
-  const index = makeIndex([
-    {
-      id: "p1",
-      name: "Book",
-      active: true,
-      chapters: [
-        {
-          id: "c1",
-          name: "Ch1",
-          fileName: "manuscript/ch1.md",
-          active: true,
-          beats: [
-            makeBeat({ id: "b1", fileName: "beats/active.md", active: true }),
-            makeBeat({ id: "b2", fileName: "beats/inactive.md", active: false }),
-          ],
-        },
-      ],
-    },
-  ]);
-
-  const result = generateBookTxt(index);
-  assert.ok(result.includes("beats/active.md"));
-  assert.ok(!result.includes("beats/inactive.md"));
-});
-
-test("generateBookTxt skips beats without fileName", () => {
-  const index = makeIndex([
-    {
-      id: "p1",
-      name: "Book",
-      active: true,
-      chapters: [
-        {
-          id: "c1",
-          name: "Ch1",
-          fileName: "manuscript/ch1.md",
-          active: true,
-          beats: [
-            makeBeat({ id: "b1", fileName: "" }),
-            makeBeat({ id: "b2", fileName: "beats/has-file.md" }),
-          ],
-        },
-      ],
-    },
-  ]);
-
-  const result = generateBookTxt(index);
-  const lines = result.split("\n").filter((l) => l.trim().length > 0);
-  assert.deepEqual(lines, [
-    "ch1.md",
-    "beats/has-file.md",
-  ]);
 });

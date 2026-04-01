@@ -1,27 +1,9 @@
 import * as crypto from "node:crypto";
 import type * as VSCode from "vscode";
-import { readOutlineIndex, writeOutlineIndex } from "./outlineStore";
+import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml } from "./planningPanelHtml";
 import { SafeFileSystem } from "./safeFileSystem";
-import { OutlineBeat, OutlineIndex } from "./types";
-
-function findBeatInIndex(
-  index: OutlineIndex,
-  beatId: string,
-): { beat: OutlineBeat; partIdx: number; chapterIdx: number; beatIdx: number } | undefined {
-  for (let pi = 0; pi < index.parts.length; pi++) {
-    const part = index.parts[pi];
-    for (let ci = 0; ci < part.chapters.length; ci++) {
-      const chapter = part.chapters[ci];
-      for (let bi = 0; bi < chapter.beats.length; bi++) {
-        if (chapter.beats[bi].id === beatId) {
-          return { beat: chapter.beats[bi], partIdx: pi, chapterIdx: ci, beatIdx: bi };
-        }
-      }
-    }
-  }
-  return undefined;
-}
+import { OutlineNode, OutlineIndex } from "./types";
 
 export class PlanningPanelProvider {
   private _panel: VSCode.WebviewPanel | undefined;
@@ -101,36 +83,36 @@ export class PlanningPanelProvider {
         this._activeTab = msg.tabId as string;
         break;
 
-      case "beat:updateField":
-        await this._updateBeatField(msg.beatId as string, msg.field as string, msg.value as string);
+      case "node:updateField":
+        await this._updateNodeField(msg.nodeId as string, msg.field as string, msg.value as string);
         break;
 
-      case "beat:openInEditor":
-        await this.vscodeApi.commands.executeCommand("leanquill.openBeatInEditor", msg.beatId as string);
+      case "node:openInEditor":
+        await this.vscodeApi.commands.executeCommand("leanquill.openNodeInEditor", msg.nodeId as string);
         break;
 
-      case "beat:toggleActive":
-        await this._toggleBeatActive(msg.beatId as string);
+      case "node:toggleActive":
+        await this._toggleNodeActive(msg.nodeId as string);
         break;
 
-      case "beat:addCustomField":
-        await this._addCustomField(msg.beatId as string, msg.fieldName as string);
+      case "node:addCustomField":
+        await this._addCustomField(msg.nodeId as string, msg.fieldName as string);
         break;
     }
   }
 
-  private async _updateBeatField(beatId: string, field: string, value: string): Promise<void> {
+  private async _updateNodeField(nodeId: string, field: string, value: string): Promise<void> {
     const index = await readOutlineIndex(this.rootPath);
-    const found = findBeatInIndex(index, beatId);
+    const found = findNodeById(index.nodes, nodeId);
     if (!found) {
       return;
     }
 
     if (field.startsWith("custom:")) {
       const customKey = field.slice(7);
-      found.beat.customFields[customKey] = value;
+      found.node.customFields[customKey] = value;
     } else if (field === "title" || field === "description") {
-      (found.beat as Record<string, unknown>)[field] = value;
+      (found.node as Record<string, unknown>)[field] = value;
     }
 
     // Debounced write (D-28: 300ms)
@@ -142,26 +124,26 @@ export class PlanningPanelProvider {
     }, 300);
   }
 
-  private async _toggleBeatActive(beatId: string): Promise<void> {
+  private async _toggleNodeActive(nodeId: string): Promise<void> {
     const index = await readOutlineIndex(this.rootPath);
-    const found = findBeatInIndex(index, beatId);
+    const found = findNodeById(index.nodes, nodeId);
     if (!found) {
       return;
     }
 
-    found.beat.active = !found.beat.active;
+    found.node.active = !found.node.active;
     await writeOutlineIndex(this.rootPath, index, this.safeFs);
     await this._renderPanel();
   }
 
-  private async _addCustomField(beatId: string, fieldName: string): Promise<void> {
+  private async _addCustomField(nodeId: string, fieldName: string): Promise<void> {
     const index = await readOutlineIndex(this.rootPath);
-    const found = findBeatInIndex(index, beatId);
+    const found = findNodeById(index.nodes, nodeId);
     if (!found) {
       return;
     }
 
-    found.beat.customFields[fieldName] = "";
+    found.node.customFields[fieldName] = "";
     await writeOutlineIndex(this.rootPath, index, this.safeFs);
     await this._renderPanel();
   }

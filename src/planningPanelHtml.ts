@@ -1,4 +1,4 @@
-import { OutlineBeat, OutlineChapter, OutlineIndex, OutlinePart } from "./types";
+import { OutlineNode, OutlineIndex } from "./types";
 
 function escapeHtml(value: string): string {
   return value
@@ -16,81 +16,89 @@ function truncate(text: string, maxLen: number): string {
   return text.slice(0, maxLen) + "…";
 }
 
-function renderBeatCard(beat: OutlineBeat): string {
-  const inactiveClass = beat.active ? "" : " card--inactive";
-  const firstLine = truncate(beat.description.split("\n")[0] || "", 80);
-  const badge = beat.active
+function renderNodeCard(node: OutlineNode): string {
+  const inactiveClass = node.active ? "" : " card--inactive";
+  const firstLine = truncate(node.description.split("\n")[0] || "", 80);
+  const badge = node.active
     ? '<span class="badge badge--active">Active</span>'
     : '<span class="badge badge--inactive">Inactive</span>';
 
-  const customFieldsHtml = Object.entries(beat.customFields)
+  const customFieldsHtml = Object.entries(node.customFields)
     .map(
       ([key, val]) => `
       <div class="field-row">
         <label class="field-label">${escapeHtml(key)}</label>
-        <input type="text" class="field-input" data-beat-id="${escapeHtml(beat.id)}" data-field="custom:${escapeHtml(key)}" value="${escapeHtml(val)}" />
+        <input type="text" class="field-input" data-node-id="${escapeHtml(node.id)}" data-field="custom:${escapeHtml(key)}" value="${escapeHtml(val)}" />
       </div>`,
     )
     .join("");
 
   return `
-    <div class="card${inactiveClass}" data-beat-id="${escapeHtml(beat.id)}">
-      <div class="card-header" data-action="toggle-expand" data-beat-id="${escapeHtml(beat.id)}">
-        <span class="card-title">${escapeHtml(beat.title || "(untitled beat)")}</span>
+    <div class="card${inactiveClass}" data-node-id="${escapeHtml(node.id)}">
+      <div class="card-header" data-action="toggle-expand" data-node-id="${escapeHtml(node.id)}">
+        <span class="card-title">${escapeHtml(node.title || "(untitled)")}</span>
         ${badge}
       </div>
       <p class="card-excerpt">${escapeHtml(firstLine)}</p>
-      <div class="card-details" data-details-for="${escapeHtml(beat.id)}" style="display:none;">
+      <div class="card-details" data-details-for="${escapeHtml(node.id)}" style="display:none;">
         <div class="field-row">
           <label class="field-label">Title</label>
-          <input type="text" class="field-input" data-beat-id="${escapeHtml(beat.id)}" data-field="title" value="${escapeHtml(beat.title)}" />
+          <input type="text" class="field-input" data-node-id="${escapeHtml(node.id)}" data-field="title" value="${escapeHtml(node.title)}" />
         </div>
         ${customFieldsHtml}
         <div class="card-actions">
-          <button class="btn btn--secondary" data-action="add-field" data-beat-id="${escapeHtml(beat.id)}">Add Field</button>
-          <button class="btn btn--secondary" data-action="toggle-active" data-beat-id="${escapeHtml(beat.id)}">${beat.active ? "Deactivate" : "Activate"}</button>
-          <button class="btn btn--primary" data-action="open-in-editor" data-beat-id="${escapeHtml(beat.id)}">Open in Editor</button>
+          <button class="btn btn--secondary" data-action="add-field" data-node-id="${escapeHtml(node.id)}">Add Field</button>
+          <button class="btn btn--secondary" data-action="toggle-active" data-node-id="${escapeHtml(node.id)}">${node.active ? "Deactivate" : "Activate"}</button>
+          <button class="btn btn--primary" data-action="open-in-editor" data-node-id="${escapeHtml(node.id)}">Open in Editor</button>
         </div>
       </div>
     </div>`;
 }
 
-function renderGroupHeader(partName: string, chapterName: string): string {
-  return `<div class="group-header"><span class="group-part">${escapeHtml(partName)}</span> › <span class="group-chapter">${escapeHtml(chapterName)}</span></div>`;
+function renderGroupHeader(breadcrumb: string): string {
+  return `<div class="group-header">${breadcrumb}</div>`;
 }
 
-function renderOutlineTab(index: OutlineIndex): string {
-  if (index.parts.length === 0) {
-    return '<div class="empty-state"><p>No outline yet. Use the sidebar tree or command palette to create one.</p></div>';
-  }
+function renderNodeSections(nodes: OutlineNode[], breadcrumb: string, sections: string[]): void {
+  for (const node of nodes) {
+    const currentCrumb = breadcrumb
+      ? `${breadcrumb} › <span class="group-chapter">${escapeHtml(node.title)}</span>`
+      : `<span class="group-part">${escapeHtml(node.title)}</span>`;
 
-  const filterOptions: string[] = ['<option value="all">Show All</option>'];
-  const sections: string[] = [];
+    // Render cards for leaf nodes or nodes with content
+    if (node.children.length === 0 || node.description || node.fileName) {
+      const childCards = node.children.map((child) => renderNodeCard(child)).join("");
+      const selfCard = node.description || node.fileName ? renderNodeCard(node) : "";
+      const allCards = selfCard + childCards;
 
-  for (const part of index.parts) {
-    filterOptions.push(`<option value="part:${escapeHtml(part.id)}">${escapeHtml(part.name)}</option>`);
-    for (const chapter of part.chapters) {
-      filterOptions.push(
-        `<option value="chapter:${escapeHtml(chapter.id)}">&nbsp;&nbsp;${escapeHtml(chapter.name)}</option>`,
-      );
-
-      const beatCards = chapter.beats.map((beat) => renderBeatCard(beat)).join("");
-      if (chapter.beats.length > 0 || true) {
+      if (allCards) {
         sections.push(`
-          <section class="card-group" data-part-id="${escapeHtml(part.id)}" data-chapter-id="${escapeHtml(chapter.id)}">
-            ${renderGroupHeader(part.name, chapter.name)}
-            <div class="card-grid">${beatCards}</div>
+          <section class="card-group" data-node-id="${escapeHtml(node.id)}">
+            ${renderGroupHeader(currentCrumb)}
+            <div class="card-grid">${allCards}</div>
           </section>`);
       }
     }
+
+    // Recurse children that themselves have children (branch nodes)
+    const branchChildren = node.children.filter((c) => c.children.length > 0);
+    if (branchChildren.length > 0) {
+      renderNodeSections(branchChildren, currentCrumb, sections);
+    }
+  }
+}
+
+function renderOutlineTab(index: OutlineIndex): string {
+  if (index.nodes.length === 0) {
+    return '<div class="empty-state"><p>No outline yet. Use the sidebar tree or command palette to create one.</p></div>';
   }
 
-  return `
-    <div class="filter-bar">
-      <label for="filter-select">Filter:</label>
-      <select id="filter-select">${filterOptions.join("")}</select>
-    </div>
-    ${sections.join("")}`;
+  const sections: string[] = [];
+  renderNodeSections(index.nodes, "", sections);
+
+  return sections.length > 0
+    ? sections.join("")
+    : '<div class="empty-state"><p>Outline exists but has no content nodes yet.</p></div>';
 }
 
 function renderStubTab(name: string): string {
@@ -273,8 +281,8 @@ export function renderPlanningHtml(
       // Card expand/collapse
       document.querySelectorAll('[data-action="toggle-expand"]').forEach(el => {
         el.addEventListener('click', () => {
-          const beatId = el.getAttribute('data-beat-id');
-          const details = document.querySelector('[data-details-for="' + beatId + '"]');
+          const nodeId = el.getAttribute('data-node-id');
+          const details = document.querySelector('[data-details-for="' + nodeId + '"');
           if (details) {
             details.style.display = details.style.display === 'none' ? 'flex' : 'none';
           }
@@ -284,14 +292,14 @@ export function renderPlanningHtml(
       // Field edits with debounce (D-28: 300ms)
       function onFieldChange(e) {
         const el = e.target;
-        const beatId = el.getAttribute('data-beat-id');
+        const nodeId = el.getAttribute('data-node-id');
         const field = el.getAttribute('data-field');
-        if (!beatId || !field) return;
+        if (!nodeId || !field) return;
         const value = el.value;
-        const key = beatId + ':' + field;
+        const key = nodeId + ':' + field;
         if (debounceTimers[key]) clearTimeout(debounceTimers[key]);
         debounceTimers[key] = setTimeout(() => {
-          vscode.postMessage({ type: 'beat:updateField', beatId: beatId, field: field, value: value });
+          vscode.postMessage({ type: 'node:updateField', nodeId: nodeId, field: field, value: value });
         }, 300);
       }
       document.querySelectorAll('.field-input, .field-textarea').forEach(el => {
@@ -301,49 +309,31 @@ export function renderPlanningHtml(
       // Toggle active (D-16)
       document.querySelectorAll('[data-action="toggle-active"]').forEach(el => {
         el.addEventListener('click', () => {
-          const beatId = el.getAttribute('data-beat-id');
-          vscode.postMessage({ type: 'beat:toggleActive', beatId: beatId });
+          const nodeId = el.getAttribute('data-node-id');
+          vscode.postMessage({ type: 'node:toggleActive', nodeId: nodeId });
         });
       });
 
       // Open in Editor (D-17)
       document.querySelectorAll('[data-action="open-in-editor"]').forEach(el => {
         el.addEventListener('click', () => {
-          const beatId = el.getAttribute('data-beat-id');
-          vscode.postMessage({ type: 'beat:openInEditor', beatId: beatId });
+          const nodeId = el.getAttribute('data-node-id');
+          vscode.postMessage({ type: 'node:openInEditor', nodeId: nodeId });
         });
       });
 
       // Add custom field (D-15)
       document.querySelectorAll('[data-action="add-field"]').forEach(el => {
         el.addEventListener('click', () => {
-          const beatId = el.getAttribute('data-beat-id');
+          const nodeId = el.getAttribute('data-node-id');
           const name = prompt('Enter field name:');
           if (name && name.trim()) {
-            vscode.postMessage({ type: 'beat:addCustomField', beatId: beatId, fieldName: name.trim() });
+            vscode.postMessage({ type: 'node:addCustomField', nodeId: nodeId, fieldName: name.trim() });
           }
         });
       });
 
-      // Filter (D-33)
-      const filterSelect = document.getElementById('filter-select');
-      if (filterSelect) {
-        filterSelect.addEventListener('change', () => {
-          const val = filterSelect.value;
-          document.querySelectorAll('.card-group').forEach(group => {
-            if (val === 'all') {
-              group.classList.remove('card-group--hidden');
-              return;
-            }
-            const [type, id] = val.split(':');
-            if (type === 'part') {
-              group.classList.toggle('card-group--hidden', group.getAttribute('data-part-id') !== id);
-            } else if (type === 'chapter') {
-              group.classList.toggle('card-group--hidden', group.getAttribute('data-chapter-id') !== id);
-            }
-          });
-        });
-      }
+
 
       // Incoming messages from extension host
       window.addEventListener('message', event => {
