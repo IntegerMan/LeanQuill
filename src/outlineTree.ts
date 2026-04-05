@@ -138,17 +138,8 @@ export function reorderOutline(
       return result;
     }
 
-    const targetNode = targetResult.node;
-    const sourceHasPart = removed.traits.includes("part");
-    const targetHasPart = targetNode.traits.includes("part");
-
-    // Same-trait peer reorder: insert before target at same level
-    if (sourceHasPart === targetHasPart) {
-      targetResult.siblings.splice(targetResult.index, 0, removed);
-    } else {
-      // Different level — nest as child of target
-      targetNode.children.push(removed);
-    }
+    // Drop on a node = nest as child of that node
+    targetResult.node.children.push(removed);
   } else {
     // Drop on non-node (orphan group etc.) — append to top level
     result.nodes.push(removed);
