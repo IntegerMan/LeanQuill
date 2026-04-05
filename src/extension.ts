@@ -447,8 +447,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Rename the manuscript file to match new slug if it has one
     if (found.node.fileName) {
       const existingSlugs = collectExistingSlugs(index.nodes);
-      existingSlugs.delete(found.node.fileName);
-      const newFileName = generateNodeFileName(newName, existingSlugs);
+      const oldSlug = found.node.fileName.replace(/^manuscript\//, "");
+      existingSlugs.delete(oldSlug);
+      const newSlug = generateNodeFileName(newName, existingSlugs);
+      const newFileName = `manuscript/${newSlug}`;
       const content = await readNodeFile(rootPath, found.node.fileName);
       await renameNodeFile(rootPath, found.node.fileName, newFileName, content);
       found.node.fileName = newFileName;

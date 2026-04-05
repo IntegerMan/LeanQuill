@@ -28,7 +28,7 @@ export async function resolveChapterOrder(rootPath: string): Promise<ChapterOrde
     const lines = rawBookTxt
       .split(/\r?\n/)
       .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith("#"));
+      .filter((line) => line.length > 0 && !line.startsWith("#") && !line.startsWith("part:"));
 
     const seen = new Set<string>();
     const warnings: string[] = [];

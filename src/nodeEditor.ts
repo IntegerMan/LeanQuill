@@ -24,7 +24,7 @@ export async function openNodeInEditor(
     return;
   }
 
-  const filePath = path.join(rootPath, "manuscript", node.fileName);
+  const filePath = path.join(rootPath, node.fileName);
 
   // Ensure the file exists (create with description if somehow missing)
   const content = await readNodeFile(rootPath, node.fileName);
@@ -46,9 +46,8 @@ export async function syncNodeFromFile(
   const fsModule = await import("node:fs/promises");
   const content = await fsModule.readFile(filePath, "utf8");
 
-  // Determine fileName from the file path (relative to manuscript/)
-  const manuscriptDir = path.join(rootPath, "manuscript");
-  const relative = path.relative(manuscriptDir, filePath).replace(/\\/g, "/");
+  // Determine fileName from the file path (relative to rootPath, including manuscript/ prefix)
+  const relative = path.relative(rootPath, filePath).replace(/\\/g, "/");
 
   const index = await readOutlineIndex(rootPath);
 
