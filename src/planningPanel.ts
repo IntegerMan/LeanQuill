@@ -9,6 +9,7 @@ export class PlanningPanelProvider {
   private _panel: VSCode.WebviewPanel | undefined;
   private _activeTab = "outline";
   private _debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  private _pendingIndex: OutlineIndex | undefined;
 
   constructor(
     private readonly vscodeApi: typeof VSCode,
@@ -36,11 +37,15 @@ export class PlanningPanelProvider {
       },
     );
 
-    this._panel.onDidDispose(() => {
+    this._panel.onDidDispose(async () => {
       this._panel = undefined;
       if (this._debounceTimer) {
         clearTimeout(this._debounceTimer);
         this._debounceTimer = undefined;
+      }
+      if (this._pendingIndex) {
+        await writeOutlineIndex(this.rootPath, this._pendingIndex, this.safeFs);
+        this._pendingIndex = undefined;
       }
     });
 
@@ -53,10 +58,14 @@ export class PlanningPanelProvider {
     await this._renderPanel();
   }
 
-  public dispose(): void {
+  public async dispose(): Promise<void> {
     if (this._debounceTimer) {
       clearTimeout(this._debounceTimer);
       this._debounceTimer = undefined;
+    }
+    if (this._pendingIndex) {
+      await writeOutlineIndex(this.rootPath, this._pendingIndex, this.safeFs);
+      this._pendingIndex = undefined;
     }
     if (this._panel) {
       this._panel.dispose();
@@ -106,8 +115,10 @@ export class PlanningPanelProvider {
   }
 
   private async _updateNodeField(nodeId: string, field: string, value: string): Promise<void> {
-    const index = await readOutlineIndex(this.rootPath);
-    const found = findNodeById(index.nodes, nodeId);
+    if (!this._pendingIndex) {
+      this._pendingIndex = await readOutlineIndex(this.rootPath);
+    }
+    const found = findNodeById(this._pendingIndex.nodes, nodeId);
     if (!found) {
       return;
     }
@@ -123,8 +134,10 @@ export class PlanningPanelProvider {
     if (this._debounceTimer) {
       clearTimeout(this._debounceTimer);
     }
+    const indexToWrite = this._pendingIndex;
     this._debounceTimer = setTimeout(async () => {
-      await writeOutlineIndex(this.rootPath, index, this.safeFs);
+      await writeOutlineIndex(this.rootPath, indexToWrite, this.safeFs);
+      this._pendingIndex = undefined;
     }, 300);
   }
 
