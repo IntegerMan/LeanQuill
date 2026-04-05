@@ -16,43 +16,75 @@ function truncate(text: string, maxLen: number): string {
   return text.slice(0, maxLen) + "…";
 }
 
-function renderNodeCard(node: OutlineNode): string {
+function renderCorkboardCard(node: OutlineNode): string {
   const inactiveClass = node.active ? "" : " card--inactive";
-  const firstLine = truncate(node.description.split("\n")[0] || "", 80);
-  const badge = node.active
-    ? '<span class="badge badge--active">Active</span>'
-    : '<span class="badge badge--inactive">Inactive</span>';
+  const synopsis = node.description.split("\n")[0] || "";
+  const displaySynopsis = truncate(synopsis, 120);
+  const statusText = escapeHtml(STATUS_LABELS[node.status] || node.status);
 
-  const customFieldsHtml = Object.entries(node.customFields)
-    .map(
-      ([key, val]) => `
-      <div class="field-row">
-        <label class="field-label">${escapeHtml(key)}</label>
-        <input type="text" class="field-input" data-node-id="${escapeHtml(node.id)}" data-field="custom:${escapeHtml(key)}" value="${escapeHtml(val)}" />
-      </div>`,
-    )
-    .join("");
+  return `<div class="cork-card${inactiveClass}" data-node-id="${escapeHtml(node.id)}">
+  <div class="cork-card-header">
+    <span class="cork-card-title">${escapeHtml(node.title || "(untitled)")}</span>
+    <span class="cork-card-status">${statusText}</span>
+  </div>
+  <div class="cork-card-body cork-card-synopsis" data-node-id="${escapeHtml(node.id)}" data-value="${escapeHtml(synopsis)}">${escapeHtml(displaySynopsis) || '<span class="cork-card-placeholder">Click to add synopsis…</span>'}</div>
+</div>`;
+}
 
-  return `
-    <div class="card${inactiveClass}" data-node-id="${escapeHtml(node.id)}">
-      <div class="card-header" data-action="toggle-expand" data-node-id="${escapeHtml(node.id)}">
-        <span class="card-title">${escapeHtml(node.title || "(untitled)")}</span>
-        ${badge}
-      </div>
-      <p class="card-excerpt">${escapeHtml(firstLine)}</p>
-      <div class="card-details" data-details-for="${escapeHtml(node.id)}" style="display:none;">
-        <div class="field-row">
-          <label class="field-label">Title</label>
-          <input type="text" class="field-input" data-node-id="${escapeHtml(node.id)}" data-field="title" value="${escapeHtml(node.title)}" />
-        </div>
-        ${customFieldsHtml}
-        <div class="card-actions">
-          <button class="btn btn--secondary" data-action="add-field" data-node-id="${escapeHtml(node.id)}">Add Field</button>
-          <button class="btn btn--secondary" data-action="toggle-active" data-node-id="${escapeHtml(node.id)}">${node.active ? "Deactivate" : "Activate"}</button>
-          <button class="btn btn--primary" data-action="open-in-editor" data-node-id="${escapeHtml(node.id)}">Open in Editor</button>
-        </div>
-      </div>
-    </div>`;
+function isContainer(node: OutlineNode): boolean {
+  return node.children.length > 0 || node.traits.includes("part");
+}
+
+function renderChildrenBatched(children: OutlineNode[], depth: number): string {
+  const chunks: string[] = [];
+  let leafBatch: string[] = [];
+
+  function flushLeaves() {
+    if (leafBatch.length > 0) {
+      chunks.push(`<div class="card-grid">${leafBatch.join("")}</div>`);
+      leafBatch = [];
+    }
+  }
+
+  for (const child of children) {
+    if (isContainer(child)) {
+      flushLeaves();
+      chunks.push(renderCardNode(child, depth));
+    } else {
+      leafBatch.push(renderCorkboardCard(child));
+    }
+  }
+  flushLeaves();
+
+  return chunks.join("");
+}
+
+function renderCardNode(node: OutlineNode, depth: number): string {
+  if (!isContainer(node)) {
+    return renderCorkboardCard(node);
+  }
+
+  const childContent = renderChildrenBatched(node.children, depth + 1);
+  const inactiveClass = node.active ? "" : " card-group--inactive";
+  const icon = node.traits.includes("part") ? "symbol-namespace" : "symbol-class";
+  const depthClass = depth === 0 ? " card-group--root" : "";
+
+  return `<div class="card-group${inactiveClass}${depthClass}" data-group-id="${escapeHtml(node.id)}" data-depth="${depth}">
+  <div class="card-group-header" data-group-id="${escapeHtml(node.id)}">
+    <span class="card-group-toggle"><span class="codicon codicon-chevron-down"></span></span>
+    <span class="codicon codicon-${escapeHtml(icon)} card-group-icon"></span>
+    <span class="card-group-title">${escapeHtml(node.title || "(untitled)")}</span>
+  </div>
+  <div class="card-group-body" data-group-children="${escapeHtml(node.id)}">${childContent}</div>
+</div>`;
+}
+
+function renderCardGrid(index: OutlineIndex): string {
+  if (index.nodes.length === 0) {
+    return '<div class="empty-state"><p>No outline yet. Use the sidebar tree or command palette to create one.</p></div>';
+  }
+
+  return `<div class="card-board">${renderChildrenBatched(index.nodes, 0)}</div>`;
 }
 
 // --- Scrivener-style outliner rendering ---
@@ -119,13 +151,22 @@ function renderOutlineTab(index: OutlineIndex): string {
 </div>`;
 }
 
+function renderCardsTab(index: OutlineIndex): string {
+  if (index.nodes.length === 0) {
+    return '<div class="empty-state"><p>No outline yet. Use the sidebar tree or command palette to create one.</p></div>';
+  }
+
+  return renderCardGrid(index);
+}
+
 function renderStubTab(name: string): string {
   return `<div class="stub-tab"><p>The <strong>${escapeHtml(name)}</strong> feature is coming in a future update.</p></div>`;
 }
 
-const TAB_IDS = ["outline", "characters", "places", "threads"] as const;
+const TAB_IDS = ["outline", "cards", "characters", "places", "threads"] as const;
 const TAB_LABELS: Record<string, string> = {
   outline: "Outline",
+  cards: "Cards",
   characters: "Characters",
   places: "Places",
   threads: "Threads",
@@ -143,10 +184,14 @@ export function renderPlanningHtml(
   ).join("");
 
   const tabPanels = TAB_IDS.map((id) => {
-    const content =
-      id === "outline"
-        ? renderOutlineTab(index)
-        : renderStubTab(TAB_LABELS[id]);
+    let content: string;
+    if (id === "outline") {
+      content = renderOutlineTab(index);
+    } else if (id === "cards") {
+      content = renderCardsTab(index);
+    } else {
+      content = renderStubTab(TAB_LABELS[id]);
+    }
     return `<div class="tab-panel${id === activeTab ? " tab-panel--active" : ""}" data-panel-id="${id}">${content}</div>`;
   }).join("");
 
@@ -357,6 +402,100 @@ export function renderPlanningHtml(
     .card-title { font-weight: 600; font-size: 14px; }
     .card-excerpt { margin: 4px 0 0; font-size: 12px; opacity: 0.75; }
     .card-details { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+    /* --- Corkboard card grid --- */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      padding: 12px;
+    }
+    .cork-card {
+      background: var(--vscode-editorWidget-background);
+      border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border));
+      border-radius: 6px;
+      display: flex; flex-direction: column;
+      min-height: 140px;
+      cursor: pointer;
+      transition: border-color 0.12s;
+    }
+    .cork-card:hover { border-color: var(--vscode-focusBorder); }
+    .cork-card--inactive { opacity: 0.55; }
+    .cork-card--inactive .cork-card-title { text-decoration: line-through; }
+    .cork-card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 10px 6px;
+      border-bottom: 1px solid var(--vscode-panel-border, transparent);
+      gap: 6px;
+    }
+    .cork-card-title {
+      font-weight: 600; font-size: 13px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      min-width: 0; flex: 1;
+    }
+    .cork-card-status {
+      font-size: 10px; opacity: 0.6;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .cork-card-body {
+      flex: 1; padding: 8px 10px;
+      font-size: 12px; line-height: 1.4;
+      color: var(--vscode-editor-foreground);
+      opacity: 0.8;
+      cursor: text;
+      border-radius: 0 0 6px 6px;
+    }
+    .cork-card-body:hover { opacity: 1; background: var(--vscode-list-hoverBackground); }
+    .cork-card-placeholder { opacity: 0.4; font-style: italic; }
+    .cork-synopsis-input {
+      width: 100%; height: 100%; min-height: 60px;
+      padding: 0; margin: 0;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-focusBorder);
+      border-radius: 4px;
+      font-family: var(--vscode-font-family);
+      font-size: 12px; line-height: 1.4;
+      outline: none; resize: none;
+      box-sizing: border-box;
+      padding: 4px 6px;
+    }
+
+    /* --- Card groups (container nodes) --- */
+    .card-board { padding: 4px 0; }
+    .card-group {
+      margin: 0 0 0 12px;
+      border-left: 2px solid var(--vscode-panel-border, #444);
+    }
+    .card-group--root {
+      margin-left: 0;
+      border-left: none;
+      border-bottom: 2px solid var(--vscode-panel-border, #444);
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+    }
+    .card-group--root:last-child { border-bottom: none; margin-bottom: 0; }
+    .card-group--inactive { opacity: 0.55; }
+    .card-group.collapsed > .card-group-body { display: none; }
+    .card-group.collapsed > .card-group-header .card-group-toggle .codicon { transform: rotate(-90deg); }
+    .card-group-header {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 12px;
+      font-weight: 600; font-size: 13px;
+      cursor: pointer;
+      background: var(--vscode-editorGroupHeader-tabsBackground);
+    }
+    .card-group--root > .card-group-header {
+      font-size: 14px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--vscode-panel-border, transparent);
+    }
+    .card-group-header:hover { background: var(--vscode-list-hoverBackground); }
+    .card-group-toggle { width: 18px; text-align: center; flex-shrink: 0; }
+    .card-group-toggle .codicon { font-size: 12px; transition: transform 0.12s; }
+    .card-group-icon { font-size: 14px; opacity: 0.7; flex-shrink: 0; }
+    .card-group-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-group-body { }
   </style>
 </head>
 <body>
@@ -365,7 +504,7 @@ export function renderPlanningHtml(
   <script nonce="${nonce}">
     (function() {
       const vscode = acquireVsCodeApi();
-      const state = vscode.getState() || { collapsedIds: [], activeTab: null };
+      const state = vscode.getState() || { collapsedIds: [], activeTab: null, viewMode: null, collapsedGroups: [] };
       const debounceTimers = {};
 
       // Restore collapsed state
@@ -497,6 +636,75 @@ export function renderPlanningHtml(
           if (name && name.trim()) {
             vscode.postMessage({ type: 'node:addCustomField', nodeId: nodeId, fieldName: name.trim() });
           }
+        });
+      });
+
+
+      // --- Card group collapse/expand ---
+      (state.collapsedGroups || []).forEach(id => {
+        const group = document.querySelector('.card-group[data-group-id="' + id + '"]');
+        if (group) group.classList.add('collapsed');
+      });
+
+      function saveCollapsedGroups() {
+        state.collapsedGroups = Array.from(document.querySelectorAll('.card-group.collapsed'))
+          .map(g => g.getAttribute('data-group-id'));
+        vscode.setState(state);
+      }
+
+      document.querySelectorAll('.card-group-header').forEach(header => {
+        header.addEventListener('click', () => {
+          const group = header.closest('.card-group');
+          if (group) {
+            group.classList.toggle('collapsed');
+            saveCollapsedGroups();
+          }
+        });
+      });
+
+      // --- Card synopsis inline editing ---
+      document.querySelectorAll('.cork-card-synopsis').forEach(cell => {
+        cell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cell.querySelector('textarea')) return;
+          const nodeId = cell.getAttribute('data-node-id');
+          const currentValue = cell.getAttribute('data-value') || '';
+          const textarea = document.createElement('textarea');
+          textarea.value = currentValue;
+          textarea.className = 'cork-synopsis-input';
+          cell.textContent = '';
+          cell.appendChild(textarea);
+          textarea.focus();
+          textarea.select();
+          let saved = false;
+          function save() {
+            if (saved) return;
+            saved = true;
+            const newValue = textarea.value;
+            cell.setAttribute('data-value', newValue);
+            const display = newValue.length > 120 ? newValue.slice(0, 120) + '\u2026' : newValue;
+            cell.textContent = display || '';
+            if (!display) cell.innerHTML = '<span class="cork-card-placeholder">Click to add synopsis\u2026</span>';
+            vscode.postMessage({ type: 'node:updateField', nodeId, field: 'description', value: newValue });
+          }
+          textarea.addEventListener('blur', save);
+          textarea.addEventListener('keydown', (ke) => {
+            if (ke.key === 'Escape') {
+              saved = true;
+              const display = currentValue.length > 120 ? currentValue.slice(0, 120) + '\u2026' : currentValue;
+              cell.textContent = display || '';
+              if (!display) cell.innerHTML = '<span class="cork-card-placeholder">Click to add synopsis\u2026</span>';
+            }
+          });
+        });
+      });
+
+      // --- Card double-click to open in editor ---
+      document.querySelectorAll('.cork-card').forEach(card => {
+        card.addEventListener('dblclick', (e) => {
+          if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.closest('.cork-card-synopsis'))) return;
+          const nodeId = card.getAttribute('data-node-id');
+          if (nodeId) vscode.postMessage({ type: 'node:openInEditor', nodeId: nodeId });
         });
       });
 
