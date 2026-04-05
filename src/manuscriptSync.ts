@@ -34,12 +34,13 @@ export function generateNodeFileName(title: string, existingSlugs: Set<string>):
 
 /**
  * Recursively collect all fileNames currently assigned in the node tree.
+ * Returns slugs without the `manuscript/` prefix for comparison with generateNodeFileName.
  */
 export function collectExistingSlugs(nodes: OutlineNode[]): Set<string> {
   const slugs = new Set<string>();
   for (const node of nodes) {
     if (node.fileName) {
-      slugs.add(node.fileName);
+      slugs.add(node.fileName.replace(/^manuscript\//, ""));
     }
     for (const s of collectExistingSlugs(node.children)) {
       slugs.add(s);
@@ -51,9 +52,10 @@ export function collectExistingSlugs(nodes: OutlineNode[]): Set<string> {
 /**
  * Write a node's content to its manuscript file.
  * Creates the directory if needed.
+ * Note: fileName is expected to include the `manuscript/` prefix.
  */
 export async function writeNodeFile(rootPath: string, fileName: string, content: string): Promise<void> {
-  const filePath = path.join(rootPath, "manuscript", fileName);
+  const filePath = path.join(rootPath, fileName);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, content, "utf8");
 }
@@ -61,10 +63,11 @@ export async function writeNodeFile(rootPath: string, fileName: string, content:
 /**
  * Read a node's content from its manuscript file.
  * Returns empty string if the file does not exist.
+ * Note: fileName is expected to include the `manuscript/` prefix.
  */
 export async function readNodeFile(rootPath: string, fileName: string): Promise<string> {
   try {
-    return await fs.readFile(path.join(rootPath, "manuscript", fileName), "utf8");
+    return await fs.readFile(path.join(rootPath, fileName), "utf8");
   } catch {
     return "";
   }
@@ -72,10 +75,11 @@ export async function readNodeFile(rootPath: string, fileName: string): Promise<
 
 /**
  * Delete a node's manuscript file. Silently ignores missing files.
+ * Note: fileName is expected to include the `manuscript/` prefix.
  */
 export async function deleteNodeFile(rootPath: string, fileName: string): Promise<void> {
   try {
-    await fs.unlink(path.join(rootPath, "manuscript", fileName));
+    await fs.unlink(path.join(rootPath, fileName));
   } catch {
     // File may not exist — that's fine
   }

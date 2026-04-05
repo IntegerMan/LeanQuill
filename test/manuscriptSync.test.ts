@@ -78,15 +78,16 @@ describe("generateNodeFileName", () => {
 });
 
 describe("collectExistingSlugs", () => {
-  it("collects fileNames recursively from all nodes", () => {
+  it("collects fileNames recursively from all nodes and strips manuscript/ prefix", () => {
     const nodes: OutlineNode[] = [
       makeNode({
         id: "p1", traits: ["part"],
         children: [
           makeNode({
-            id: "c1", fileName: "ch1.md",
+            // fileName includes manuscript/ prefix as stored in outline
+            id: "c1", fileName: "manuscript/ch1.md",
             children: [
-              makeNode({ id: "b1", fileName: "scene-a.md" }),
+              makeNode({ id: "b1", fileName: "manuscript/scene-a.md" }),
             ],
           }),
         ],
@@ -95,9 +96,9 @@ describe("collectExistingSlugs", () => {
         id: "p2", traits: ["part"],
         children: [
           makeNode({
-            id: "c2", fileName: "ch2.md",
+            id: "c2", fileName: "manuscript/ch2.md",
             children: [
-              makeNode({ id: "b2", fileName: "scene-b.md" }),
+              makeNode({ id: "b2", fileName: "manuscript/scene-b.md" }),
               makeNode({ id: "b3", fileName: "" }),
             ],
           }),
@@ -105,6 +106,7 @@ describe("collectExistingSlugs", () => {
       }),
     ];
     const slugs = collectExistingSlugs(nodes);
+    // Returns slugs without the manuscript/ prefix for comparison with generateNodeFileName
     assert.equal(slugs.size, 4);
     assert.ok(slugs.has("ch1.md"));
     assert.ok(slugs.has("ch2.md"));
@@ -116,7 +118,8 @@ describe("collectExistingSlugs", () => {
 describe("node file operations", () => {
   it("writeNodeFile creates file and directories", async () => {
     await withTempDir(async (dir) => {
-      await writeNodeFile(dir, "test-file.md", "Hello world");
+      // fileName now includes the manuscript/ prefix
+      await writeNodeFile(dir, "manuscript/test-file.md", "Hello world");
       const content = await fs.readFile(path.join(dir, "manuscript", "test-file.md"), "utf8");
       assert.equal(content, "Hello world");
     });
@@ -124,23 +127,25 @@ describe("node file operations", () => {
 
   it("readNodeFile reads existing file", async () => {
     await withTempDir(async (dir) => {
-      await writeNodeFile(dir, "test.md", "Some content");
-      const content = await readNodeFile(dir, "test.md");
+      // fileName now includes the manuscript/ prefix
+      await writeNodeFile(dir, "manuscript/test.md", "Some content");
+      const content = await readNodeFile(dir, "manuscript/test.md");
       assert.equal(content, "Some content");
     });
   });
 
   it("readNodeFile returns empty string for missing file", async () => {
     await withTempDir(async (dir) => {
-      const content = await readNodeFile(dir, "nope.md");
+      const content = await readNodeFile(dir, "manuscript/nope.md");
       assert.equal(content, "");
     });
   });
 
   it("deleteNodeFile removes file", async () => {
     await withTempDir(async (dir) => {
-      await writeNodeFile(dir, "del.md", "bye");
-      await deleteNodeFile(dir, "del.md");
+      // fileName now includes the manuscript/ prefix
+      await writeNodeFile(dir, "manuscript/del.md", "bye");
+      await deleteNodeFile(dir, "manuscript/del.md");
       const exists = await fs.stat(path.join(dir, "manuscript", "del.md")).then(() => true).catch(() => false);
       assert.equal(exists, false);
     });
@@ -148,15 +153,16 @@ describe("node file operations", () => {
 
   it("deleteNodeFile ignores missing file", async () => {
     await withTempDir(async (dir) => {
-      await deleteNodeFile(dir, "nope.md"); // should not throw
+      await deleteNodeFile(dir, "manuscript/nope.md"); // should not throw
     });
   });
 
   it("renameNodeFile moves content to new file", async () => {
     await withTempDir(async (dir) => {
-      await writeNodeFile(dir, "old.md", "original");
-      await renameNodeFile(dir, "old.md", "new.md", "original");
-      const newContent = await readNodeFile(dir, "new.md");
+      // fileName now includes the manuscript/ prefix
+      await writeNodeFile(dir, "manuscript/old.md", "original");
+      await renameNodeFile(dir, "manuscript/old.md", "manuscript/new.md", "original");
+      const newContent = await readNodeFile(dir, "manuscript/new.md");
       assert.equal(newContent, "original");
       const oldExists = await fs.stat(path.join(dir, "manuscript", "old.md")).then(() => true).catch(() => false);
       assert.equal(oldExists, false);
