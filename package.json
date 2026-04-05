@@ -28,7 +28,8 @@
       {
         "command": "leanquill.updateNodeStatus",
         "title": "Update Status",
-        "category": "LeanQuill"
+        "category": "LeanQuill",
+        "icon": "$(symbol-event)"
       },
       {
         "command": "leanquill.addOrphanToOutline",
@@ -166,6 +167,11 @@
           "command": "leanquill.updateNodeStatus",
           "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode:(branch|leaf)/",
           "group": "leanquill@2"
+        },
+        {
+          "command": "leanquill.updateNodeStatus",
+          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode:(branch|leaf)/",
+          "group": "inline@1"
         },
         {
           "command": "leanquill.openBookTxt",

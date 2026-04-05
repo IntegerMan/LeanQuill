@@ -3,7 +3,7 @@ import type * as VSCode from "vscode";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml } from "./planningPanelHtml";
 import { SafeFileSystem } from "./safeFileSystem";
-import { OutlineNode, OutlineIndex } from "./types";
+import { OutlineNode, OutlineIndex, ChapterStatus } from "./types";
 
 export class PlanningPanelProvider {
   private _panel: VSCode.WebviewPanel | undefined;
@@ -98,6 +98,10 @@ export class PlanningPanelProvider {
       case "node:addCustomField":
         await this._addCustomField(msg.nodeId as string, msg.fieldName as string);
         break;
+
+      case "node:updateStatus":
+        await this._updateNodeStatus(msg.nodeId as string, msg.status as string);
+        break;
     }
   }
 
@@ -146,5 +150,23 @@ export class PlanningPanelProvider {
     found.node.customFields[fieldName] = "";
     await writeOutlineIndex(this.rootPath, index, this.safeFs);
     await this._renderPanel();
+  }
+
+  private async _updateNodeStatus(nodeId: string, status: string): Promise<void> {
+    const validStatuses: ChapterStatus[] = [
+      "planning", "not-started", "drafting", "draft-complete", "editing", "review-pending", "final",
+    ];
+    if (!validStatuses.includes(status as ChapterStatus)) {
+      return;
+    }
+
+    const index = await readOutlineIndex(this.rootPath);
+    const found = findNodeById(index.nodes, nodeId);
+    if (!found) {
+      return;
+    }
+
+    found.node.status = status as ChapterStatus;
+    await writeOutlineIndex(this.rootPath, index, this.safeFs);
   }
 }

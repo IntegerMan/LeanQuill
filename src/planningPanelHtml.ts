@@ -25,7 +25,7 @@ function renderCorkboardCard(node: OutlineNode): string {
   return `<div class="cork-card${inactiveClass}" data-node-id="${escapeHtml(node.id)}">
   <div class="cork-card-header">
     <span class="cork-card-title">${escapeHtml(node.title || "(untitled)")}</span>
-    <span class="cork-card-status">${statusText}</span>
+    ${renderStatusSelect(node.id, node.status, "status-select status-select--card")}
   </div>
   <div class="cork-card-body cork-card-synopsis" data-node-id="${escapeHtml(node.id)}" data-value="${escapeHtml(synopsis)}">${escapeHtml(displaySynopsis) || '<span class="cork-card-placeholder">Click to add synopsis…</span>'}</div>
 </div>`;
@@ -99,12 +99,21 @@ const STATUS_LABELS: Record<string, string> = {
   final: "Final",
 };
 
+const STATUS_KEYS = Object.keys(STATUS_LABELS);
+
+function renderStatusSelect(nodeId: string, currentStatus: string, cssClass: string): string {
+  const options = STATUS_KEYS.map((key) => {
+    const selected = key === currentStatus ? " selected" : "";
+    return `<option value="${escapeHtml(key)}"${selected}>${escapeHtml(STATUS_LABELS[key])}</option>`;
+  }).join("");
+  return `<select class="${cssClass}" data-node-id="${escapeHtml(nodeId)}" data-action="update-status">${options}</select>`;
+}
+
 function renderOutlinerRow(node: OutlineNode, depth: number): string {
   const hasChildren = node.children.length > 0;
   const inactiveClass = node.active ? "" : " outliner-row--inactive";
   const hasPart = node.traits.includes("part");
   const icon = hasPart ? "symbol-namespace" : hasChildren ? "symbol-class" : "file";
-  const statusText = hasPart ? "" : escapeHtml(STATUS_LABELS[node.status] || node.status);
   const synopsis = truncate(node.description.split("\n")[0] || "", 60);
   const toggleIcon = hasChildren ? "chevron-down" : "";
   const activeBadge = node.active
@@ -123,7 +132,7 @@ function renderOutlinerRow(node: OutlineNode, depth: number): string {
       <span class="outliner-title">${escapeHtml(node.title || "(untitled)")}</span>
       ${activeBadge}
     </span>
-    <span class="outliner-status">${statusText}</span>
+    <span class="outliner-status">${hasPart ? "" : renderStatusSelect(node.id, node.status, "status-select status-select--outline")}</span>
     <span class="outliner-synopsis" data-node-id="${escapeHtml(node.id)}" data-value="${escapeHtml(node.description.split("\n")[0] || "")}">${escapeHtml(synopsis)}</span>
     <span class="outliner-actions">
       <button class="outliner-btn" data-action="open-in-editor" data-node-id="${escapeHtml(node.id)}" title="Open in Editor"><span class="codicon codicon-edit"></span></button>
@@ -343,6 +352,40 @@ export function renderPlanningHtml(
 
     .outliner-children { }
 
+    /* --- Status select dropdown --- */
+    .status-select {
+      background: transparent;
+      color: var(--vscode-editor-foreground);
+      border: 1px solid transparent;
+      border-radius: 3px;
+      font-family: var(--vscode-font-family);
+      cursor: pointer;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      padding-right: 14px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23888'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 3px center;
+    }
+    .status-select:hover, .status-select:focus {
+      border-color: var(--vscode-focusBorder);
+      background-color: var(--vscode-input-background);
+    }
+    .status-select--outline {
+      font-size: 11px;
+      padding: 1px 16px 1px 4px;
+      opacity: 0.7;
+    }
+    .status-select--outline:hover, .status-select--outline:focus { opacity: 1; }
+    .status-select--card {
+      font-size: 10px;
+      padding: 0 14px 0 3px;
+      flex-shrink: 0;
+      opacity: 0.6;
+    }
+    .status-select--card:hover, .status-select--card:focus { opacity: 1; }
+
     /* --- Detail panel (shown when a row is selected) --- */
     .detail-panel {
       display: none;
@@ -432,10 +475,6 @@ export function renderPlanningHtml(
       font-weight: 600; font-size: 13px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       min-width: 0; flex: 1;
-    }
-    .cork-card-status {
-      font-size: 10px; opacity: 0.6;
-      white-space: nowrap; flex-shrink: 0;
     }
     .cork-card-body {
       flex: 1; padding: 8px 10px;
@@ -601,6 +640,17 @@ export function renderPlanningHtml(
           const nodeId = el.getAttribute('data-node-id');
           if (nodeId) vscode.postMessage({ type: 'node:openInEditor', nodeId: nodeId });
         });
+      });
+
+      // Status select dropdown
+      document.querySelectorAll('[data-action="update-status"]').forEach(el => {
+        el.addEventListener('change', (e) => {
+          e.stopPropagation();
+          const nodeId = el.getAttribute('data-node-id');
+          const value = el.value;
+          if (nodeId) vscode.postMessage({ type: 'node:updateStatus', nodeId: nodeId, status: value });
+        });
+        el.addEventListener('click', (e) => { e.stopPropagation(); });
       });
 
       // Field edits with debounce (300ms)
