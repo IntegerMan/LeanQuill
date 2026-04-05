@@ -43,11 +43,18 @@ export async function syncNodeFromFile(
   filePath: string,
   safeFs: SafeFileSystem,
 ): Promise<boolean> {
-  const fsModule = await import("node:fs/promises");
-  const content = await fsModule.readFile(filePath, "utf8");
-
   // Determine fileName from the file path (relative to rootPath, including manuscript/ prefix)
   const relative = path.relative(rootPath, filePath).replace(/\\/g, "/");
+
+  // Skip syncing for full manuscript chapter files (directly under manuscript/).
+  // Only sync beat files (e.g., files in .leanquill/beats/) to avoid bloating
+  // outline-index.json with entire chapter contents.
+  if (relative.startsWith("manuscript/") && !relative.includes("/", "manuscript/".length)) {
+    return false;
+  }
+
+  const fsModule = await import("node:fs/promises");
+  const content = await fsModule.readFile(filePath, "utf8");
 
   const index = await readOutlineIndex(rootPath);
 
