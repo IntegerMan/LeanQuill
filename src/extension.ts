@@ -10,7 +10,7 @@ import { resolveChapterOrder } from "./chapterOrder";
 import { OutlineContextPaneProvider, buildBookContext, buildNodeContext } from "./outlineContextPane";
 import { runInitializeFlow, shouldPromptInitialize } from "./initialize";
 import { readOutlineIndex, writeOutlineIndex, bootstrapOutline, findNodeById, removeNodeById } from "./outlineStore";
-import { OutlineTreeProvider, OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTree";
+import { OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTree";
 import { OutlineWebviewProvider } from "./outlineWebviewPanel";
 import { PlanningPanelProvider } from "./planningPanel";
 import { SafeFileSystem } from "./safeFileSystem";
@@ -95,17 +95,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const setupViewProvider = new LeanQuillActionsProvider();
   const outlineContextProvider = new OutlineContextPaneProvider(vscode);
 
-  // --- Outline Tree & Planning Panel ---
-  const outlineTreeProvider = new OutlineTreeProvider(vscode, rootPath, safeFileSystem);
-
-  // Webview-based sidebar outline (replaces tree for DnD)
+  // Webview-based sidebar outline
   const outlineWebviewProvider = new OutlineWebviewProvider(
     vscode,
     context.extensionUri,
     rootPath,
     safeFileSystem,
     () => {
-      void outlineTreeProvider.reloadIndex();
       planningPanel.refresh();
       void syncBookTxt();
     },
@@ -113,15 +109,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const planningPanel = new PlanningPanelProvider(vscode, context.extensionUri, rootPath, safeFileSystem);
 
-  // Flag to prevent Book.txt write-loop
+  // Flag to prevent Book.txt write-loop (reset after delay to allow watcher to fire)
   let _selfEditingBookTxt = false;
+  let _selfEditResetTimer: ReturnType<typeof setTimeout> | undefined;
+  const SELF_EDIT_RESET_DELAY_MS = 1500;
   const syncBookTxt = async (): Promise<void> => {
     try {
       const index = await readOutlineIndex(rootPath);
       const content = generateBookTxt(index);
+      if (_selfEditResetTimer) {
+        clearTimeout(_selfEditResetTimer);
+      }
       _selfEditingBookTxt = true;
       await writeBookTxt(rootPath, content);
-      _selfEditingBookTxt = false;
+      _selfEditResetTimer = setTimeout(() => {
+        _selfEditingBookTxt = false;
+      }, SELF_EDIT_RESET_DELAY_MS);
     } catch {
       _selfEditingBookTxt = false;
     }
@@ -159,7 +162,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       found.node.status = newStatus;
     }
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineTreeProvider.reloadIndex();
     await outlineWebviewProvider.refresh();
   };
 
@@ -240,7 +242,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
 
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineTreeProvider.reloadIndex();
     await outlineWebviewProvider.refresh();
     await syncBookTxt();
   });
@@ -254,7 +255,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const chapterOrder = await readChapterOrderState(rootPath);
     const index = bootstrapOutline(chapterOrder.chapterPaths);
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineTreeProvider.reloadIndex();
     await outlineWebviewProvider.refresh();
     await syncBookTxt();
     log.info("Outline created from chapter order");
@@ -323,7 +323,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
 
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineTreeProvider.reloadIndex();
     await outlineWebviewProvider.refresh();
     await syncBookTxt();
   });
@@ -363,7 +362,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
 
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineTreeProvider.reloadIndex();
     await outlineWebviewProvider.refresh();
     await syncBookTxt();
   });
@@ -407,7 +405,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
 
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineTreeProvider.reloadIndex();
     await outlineWebviewProvider.refresh();
     await syncBookTxt();
   });
@@ -423,7 +420,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       found.node.active = !found.node.active;
     }
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineTreeProvider.reloadIndex();
     await outlineWebviewProvider.refresh();
     await syncBookTxt();
   });
@@ -456,7 +452,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       found.node.fileName = newFileName;
     }
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineTreeProvider.reloadIndex();
     await outlineWebviewProvider.refresh();
     await syncBookTxt();
   });
@@ -474,7 +469,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const siblings = found.siblings;
     [siblings[found.index - 1], siblings[found.index]] = [siblings[found.index], siblings[found.index - 1]];
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineTreeProvider.reloadIndex();
     await outlineWebviewProvider.refresh();
     await syncBookTxt();
   });
@@ -492,7 +486,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const siblings = found.siblings;
     [siblings[found.index], siblings[found.index + 1]] = [siblings[found.index + 1], siblings[found.index]];
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineTreeProvider.reloadIndex();
     await outlineWebviewProvider.refresh();
     await syncBookTxt();
   });
@@ -524,10 +517,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const manuscriptFileWatcher = vscode.workspace.createFileSystemWatcher("**/manuscript/**/*.md");
   const bookTxtWatcher = vscode.workspace.createFileSystemWatcher("**/manuscript/Book.txt");
 
-  // Manuscript file changes trigger outline tree refresh (for Not Included group)
-  // and description sync for nodes with matching fileName
+  // Manuscript file changes trigger outline webview refresh (for Not Included group)
+  // and description sync for beat files with matching fileName
   const triggerOutlineRefresh = () => {
-    void outlineTreeProvider.reloadIndex();
     void outlineWebviewProvider.refresh();
   };
   manuscriptFileWatcher.onDidCreate(triggerOutlineRefresh);
@@ -535,9 +527,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   manuscriptFileWatcher.onDidChange((uri) => {
     void syncNodeFromFile(rootPath, uri.fsPath, safeFileSystem);
   });
-  // Outline index watcher — reload tree + panel + sync Book.txt
+  // Outline index watcher — reload webview + panel + sync Book.txt
   const onOutlineChanged = () => {
-    void outlineTreeProvider.reloadIndex();
     void outlineWebviewProvider.refresh();
     planningPanel.refresh();
     void syncBookTxt();
@@ -545,7 +536,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   outlineWatcher.onDidCreate(onOutlineChanged);
   outlineWatcher.onDidChange(onOutlineChanged);
   outlineWatcher.onDidDelete(() => {
-    void outlineTreeProvider.reloadIndex();
     void outlineWebviewProvider.refresh();
     planningPanel.refresh();
   });
@@ -607,7 +597,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         if (chapterOrder.chapterPaths.length > 0) {
           const index = bootstrapOutline(chapterOrder.chapterPaths);
           await writeOutlineIndex(rootPath, index, safeFileSystem);
-          await outlineTreeProvider.reloadIndex();
           await outlineWebviewProvider.refresh();
           await syncBookTxt();
           log.info("Auto-bootstrapped outline from Book.txt");
