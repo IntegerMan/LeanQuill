@@ -55,37 +55,50 @@ function renderNodeCard(node: OutlineNode): string {
     </div>`;
 }
 
-function renderGroupHeader(breadcrumb: string): string {
-  return `<div class="group-header">${breadcrumb}</div>`;
-}
+// --- Scrivener-style outliner rendering ---
 
-function renderNodeSections(nodes: OutlineNode[], breadcrumb: string, sections: string[]): void {
-  for (const node of nodes) {
-    const currentCrumb = breadcrumb
-      ? `${breadcrumb} › <span class="group-chapter">${escapeHtml(node.title)}</span>`
-      : `<span class="group-part">${escapeHtml(node.title)}</span>`;
+const STATUS_LABELS: Record<string, string> = {
+  planning: "Planning",
+  "not-started": "Not Started",
+  drafting: "Drafting",
+  "draft-complete": "Draft Complete",
+  editing: "Editing",
+  "review-pending": "Review Pending",
+  final: "Final",
+};
 
-    // Render cards for leaf nodes or nodes with content
-    if (node.children.length === 0 || node.description || node.fileName) {
-      const childCards = node.children.map((child) => renderNodeCard(child)).join("");
-      const selfCard = node.description || node.fileName ? renderNodeCard(node) : "";
-      const allCards = selfCard + childCards;
+function renderOutlinerRow(node: OutlineNode, depth: number): string {
+  const hasChildren = node.children.length > 0;
+  const inactiveClass = node.active ? "" : " outliner-row--inactive";
+  const hasPart = node.traits.includes("part");
+  const icon = hasPart ? "symbol-namespace" : hasChildren ? "symbol-class" : "file";
+  const statusText = hasPart ? "" : escapeHtml(STATUS_LABELS[node.status] || node.status);
+  const synopsis = truncate(node.description.split("\n")[0] || "", 60);
+  const toggleIcon = hasChildren ? "chevron-down" : "";
+  const activeBadge = node.active
+    ? ""
+    : '<span class="outliner-badge outliner-badge--inactive">Inactive</span>';
 
-      if (allCards) {
-        sections.push(`
-          <section class="card-group" data-node-id="${escapeHtml(node.id)}">
-            ${renderGroupHeader(currentCrumb)}
-            <div class="card-grid">${allCards}</div>
-          </section>`);
-      }
-    }
+  const childRows = hasChildren
+    ? node.children.map((c) => renderOutlinerRow(c, depth + 1)).join("")
+    : "";
 
-    // Recurse children that themselves have children (branch nodes)
-    const branchChildren = node.children.filter((c) => c.children.length > 0);
-    if (branchChildren.length > 0) {
-      renderNodeSections(branchChildren, currentCrumb, sections);
-    }
-  }
+  return `<div class="outliner-node" data-id="${escapeHtml(node.id)}" data-depth="${depth}">
+  <div class="outliner-row${inactiveClass}" data-id="${escapeHtml(node.id)}">
+    <span class="outliner-title-cell" style="padding-left: ${depth * 24 + 8}px">
+      <span class="outliner-toggle${hasChildren ? " has-children" : ""}" data-id="${escapeHtml(node.id)}">${toggleIcon ? `<span class="codicon codicon-${toggleIcon}"></span>` : ""}</span>
+      <span class="outliner-icon codicon codicon-${escapeHtml(icon)}"></span>
+      <span class="outliner-title">${escapeHtml(node.title || "(untitled)")}</span>
+      ${activeBadge}
+    </span>
+    <span class="outliner-status">${statusText}</span>
+    <span class="outliner-synopsis" data-node-id="${escapeHtml(node.id)}" data-value="${escapeHtml(node.description.split("\n")[0] || "")}">${escapeHtml(synopsis)}</span>
+    <span class="outliner-actions">
+      <button class="outliner-btn" data-action="open-in-editor" data-node-id="${escapeHtml(node.id)}" title="Open in Editor"><span class="codicon codicon-edit"></span></button>
+    </span>
+  </div>
+  <div class="outliner-children" data-parent="${escapeHtml(node.id)}">${childRows}</div>
+</div>`;
 }
 
 function renderOutlineTab(index: OutlineIndex): string {
@@ -93,12 +106,17 @@ function renderOutlineTab(index: OutlineIndex): string {
     return '<div class="empty-state"><p>No outline yet. Use the sidebar tree or command palette to create one.</p></div>';
   }
 
-  const sections: string[] = [];
-  renderNodeSections(index.nodes, "", sections);
+  const rows = index.nodes.map((n) => renderOutlinerRow(n, 0)).join("");
 
-  return sections.length > 0
-    ? sections.join("")
-    : '<div class="empty-state"><p>Outline exists but has no content nodes yet.</p></div>';
+  return `<div class="outliner">
+  <div class="outliner-header">
+    <span class="outliner-col-title">Title</span>
+    <span class="outliner-col-status">Status</span>
+    <span class="outliner-col-synopsis">Synopsis</span>
+    <span class="outliner-col-actions"></span>
+  </div>
+  <div class="outliner-body">${rows}</div>
+</div>`;
 }
 
 function renderStubTab(name: string): string {
@@ -167,60 +185,131 @@ export function renderPlanningHtml(
     }
 
     /* Tab panels */
-    .tab-panel { display: none; padding: 16px; }
+    .tab-panel { display: none; padding: 0; }
     .tab-panel--active { display: block; }
 
-    /* Filter bar */
-    .filter-bar {
-      display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
-    }
-    .filter-bar select {
-      padding: 4px 8px;
-      background: var(--vscode-dropdown-background);
-      color: var(--vscode-dropdown-foreground);
-      border: 1px solid var(--vscode-dropdown-border);
-      border-radius: 4px;
-    }
-
-    /* Group headers */
-    .group-header {
-      font-size: 14px; font-weight: 600; padding: 8px 0 4px;
-      border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-editorGroup-border));
-      margin-bottom: 8px;
-    }
-    .group-part { opacity: 0.7; }
-
-    /* Card grid */
-    .card-grid {
+    /* --- Outliner (Scrivener-style) --- */
+    .outliner { width: 100%; }
+    .outliner-header {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 12px; margin-bottom: 24px;
+      grid-template-columns: minmax(0, 3fr) 140px minmax(0, 2fr) 36px;
+      align-items: center;
+      padding: 6px 8px 6px 0;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.6;
+      border-bottom: 1px solid var(--vscode-panel-border);
+      background: var(--vscode-editorGroupHeader-tabsBackground);
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
+    .outliner-col-title { padding-left: 8px; }
+    .outliner-col-status { text-align: center; }
+    .outliner-col-synopsis { }
+    .outliner-col-actions { width: 36px; }
 
-    /* Cards */
-    .card {
+    .outliner-body { overflow-y: auto; }
+
+    .outliner-node {}
+    .outliner-node.collapsed > .outliner-children { display: none; }
+    .outliner-node.collapsed > .outliner-row .outliner-toggle .codicon { transform: rotate(-90deg); }
+
+    .outliner-row {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) 140px minmax(0, 2fr) 36px;
+      align-items: center;
+      min-height: 30px;
+      padding-right: 8px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--vscode-panel-border, transparent);
+    }
+    .outliner-row:hover { background: var(--vscode-list-hoverBackground); }
+    .outliner-row.selected { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+    .outliner-row--inactive { opacity: 0.5; }
+
+    .outliner-title-cell {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .outliner-toggle {
+      width: 18px;
+      text-align: center;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .outliner-toggle .codicon { font-size: 12px; transition: transform 0.12s; }
+    .outliner-icon { font-size: 14px; flex-shrink: 0; opacity: 0.7; }
+    .outliner-title { flex: 1; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .outliner-status {
+      text-align: center;
+      font-size: 11px;
+      opacity: 0.7;
+      white-space: nowrap;
+      padding: 0 4px;
+    }
+    .outliner-synopsis {
+      font-size: 12px;
+      opacity: 0.6;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      cursor: text;
+      border-radius: 2px;
+      padding: 1px 3px;
+    }
+    .outliner-synopsis:hover {
+      opacity: 1;
+      outline: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+    }
+    .synopsis-input {
+      width: 100%;
+      padding: 1px 3px;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-focusBorder);
+      border-radius: 2px;
+      font-family: var(--vscode-font-family);
+      font-size: 12px;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .outliner-actions { width: 36px; flex-shrink: 0; text-align: center; }
+    .outliner-btn {
+      background: none;
+      border: none;
+      color: var(--vscode-editor-foreground);
+      cursor: pointer;
+      padding: 2px 4px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .outliner-row:hover .outliner-btn { opacity: 0.6; }
+    .outliner-btn:hover { opacity: 1 !important; }
+
+    .outliner-badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }
+    .outliner-badge--inactive { background: var(--vscode-editorWidget-border, #555); color: #fff; }
+
+    .outliner-children { }
+
+    /* --- Detail panel (shown when a row is selected) --- */
+    .detail-panel {
+      display: none;
+      border-top: 2px solid var(--vscode-focusBorder);
+      padding: 16px;
       background: var(--vscode-editorWidget-background);
-      border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border));
-      border-radius: 6px; padding: 12px; cursor: pointer;
     }
-    .card:hover { border-color: var(--vscode-focusBorder); }
-    .card--inactive {
-      opacity: 0.55;
-    }
-    .card--inactive .card-title { text-decoration: line-through; }
-
-    .card-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .card-title { font-weight: 600; font-size: 14px; }
-    .card-excerpt { margin: 4px 0 0; font-size: 12px; opacity: 0.75; }
-
-    /* Badge */
-    .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
-    .badge--active { background: var(--vscode-testing-iconPassed, #28a745); color: #fff; }
-    .badge--inactive { background: var(--vscode-editorWidget-border, #555); color: #fff; }
+    .detail-panel.visible { display: block; }
+    .detail-panel .detail-title { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
 
     /* Inline editing fields */
-    .card-details { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-    .field-row { display: flex; flex-direction: column; gap: 2px; }
+    .field-row { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
     .field-label { font-size: 11px; font-weight: 600; opacity: 0.8; }
     .field-input, .field-textarea {
       padding: 4px 8px; border-radius: 4px;
@@ -229,7 +318,7 @@ export function renderPlanningHtml(
       border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
       font-family: var(--vscode-font-family); font-size: 13px;
     }
-    .field-textarea { resize: vertical; }
+    .field-textarea { resize: vertical; min-height: 60px; }
 
     /* Buttons */
     .card-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
@@ -245,13 +334,29 @@ export function renderPlanningHtml(
     }
     .btn--secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
 
+    /* Badge */
+    .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+    .badge--active { background: var(--vscode-testing-iconPassed, #28a745); color: #fff; }
+    .badge--inactive { background: var(--vscode-editorWidget-border, #555); color: #fff; }
+
     /* Empty & stub states */
     .empty-state, .stub-tab {
       padding: 32px; text-align: center; opacity: 0.7;
     }
 
-    .card-group { /* filterable group */ }
-    .card-group--hidden { display: none; }
+    /* Cards (used in detail view) */
+    .card {
+      background: var(--vscode-editorWidget-background);
+      border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border));
+      border-radius: 6px; padding: 12px; cursor: pointer;
+    }
+    .card:hover { border-color: var(--vscode-focusBorder); }
+    .card--inactive { opacity: 0.55; }
+    .card--inactive .card-title { text-decoration: line-through; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .card-title { font-weight: 600; font-size: 14px; }
+    .card-excerpt { margin: 4px 0 0; font-size: 12px; opacity: 0.75; }
+    .card-details { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
   </style>
 </head>
 <body>
@@ -260,10 +365,22 @@ export function renderPlanningHtml(
   <script nonce="${nonce}">
     (function() {
       const vscode = acquireVsCodeApi();
-      const state = vscode.getState() || {};
+      const state = vscode.getState() || { collapsedIds: [], activeTab: null };
       const debounceTimers = {};
 
-      // Tab switching (D-10: click-only)
+      // Restore collapsed state
+      (state.collapsedIds || []).forEach(id => {
+        const node = document.querySelector('.outliner-node[data-id="' + id + '"]');
+        if (node) node.classList.add('collapsed');
+      });
+
+      function saveCollapsed() {
+        state.collapsedIds = Array.from(document.querySelectorAll('.outliner-node.collapsed'))
+          .map(n => n.getAttribute('data-id'));
+        vscode.setState(state);
+      }
+
+      // Tab switching
       document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
           document.querySelectorAll('.tab').forEach(t => t.classList.remove('tab--active'));
@@ -278,18 +395,76 @@ export function renderPlanningHtml(
         });
       });
 
-      // Card expand/collapse
-      document.querySelectorAll('[data-action="toggle-expand"]').forEach(el => {
-        el.addEventListener('click', () => {
-          const nodeId = el.getAttribute('data-node-id');
-          const details = document.querySelector('[data-details-for="' + nodeId + '"');
-          if (details) {
-            details.style.display = details.style.display === 'none' ? 'flex' : 'none';
+      // Outliner expand/collapse
+      document.querySelectorAll('.outliner-toggle.has-children').forEach(toggle => {
+        toggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = toggle.getAttribute('data-id');
+          const node = toggle.closest('.outliner-node');
+          if (node) {
+            node.classList.toggle('collapsed');
+            saveCollapsed();
           }
         });
       });
 
-      // Field edits with debounce (D-28: 300ms)
+      // Row selection / double-click to open
+      document.querySelectorAll('.outliner-row').forEach(row => {
+        row.addEventListener('click', () => {
+          document.querySelectorAll('.outliner-row.selected').forEach(r => r.classList.remove('selected'));
+          row.classList.add('selected');
+        });
+        row.addEventListener('dblclick', () => {
+          const nodeId = row.getAttribute('data-id');
+          if (nodeId) vscode.postMessage({ type: 'node:openInEditor', nodeId: nodeId });
+        });
+      });
+
+      // Synopsis inline editing
+      document.querySelectorAll('.outliner-synopsis').forEach(cell => {
+        cell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (cell.querySelector('input')) return;
+          const nodeId = cell.getAttribute('data-node-id');
+          const currentValue = cell.getAttribute('data-value') || '';
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = currentValue;
+          input.className = 'synopsis-input';
+          cell.textContent = '';
+          cell.appendChild(input);
+          input.focus();
+          input.select();
+          let saved = false;
+          function save() {
+            if (saved) return;
+            saved = true;
+            const newValue = input.value;
+            cell.setAttribute('data-value', newValue);
+            cell.textContent = newValue.length > 60 ? newValue.slice(0, 60) + '\u2026' : newValue;
+            vscode.postMessage({ type: 'node:updateField', nodeId, field: 'description', value: newValue });
+          }
+          input.addEventListener('blur', save);
+          input.addEventListener('keydown', (ke) => {
+            if (ke.key === 'Enter') { input.blur(); }
+            if (ke.key === 'Escape') {
+              saved = true;
+              cell.textContent = currentValue.length > 60 ? currentValue.slice(0, 60) + '\u2026' : currentValue;
+            }
+          });
+        });
+      });
+
+      // Open in Editor button
+      document.querySelectorAll('[data-action="open-in-editor"]').forEach(el => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const nodeId = el.getAttribute('data-node-id');
+          if (nodeId) vscode.postMessage({ type: 'node:openInEditor', nodeId: nodeId });
+        });
+      });
+
+      // Field edits with debounce (300ms)
       function onFieldChange(e) {
         const el = e.target;
         const nodeId = el.getAttribute('data-node-id');
@@ -306,7 +481,7 @@ export function renderPlanningHtml(
         el.addEventListener('input', onFieldChange);
       });
 
-      // Toggle active (D-16)
+      // Toggle active
       document.querySelectorAll('[data-action="toggle-active"]').forEach(el => {
         el.addEventListener('click', () => {
           const nodeId = el.getAttribute('data-node-id');
@@ -314,15 +489,7 @@ export function renderPlanningHtml(
         });
       });
 
-      // Open in Editor (D-17)
-      document.querySelectorAll('[data-action="open-in-editor"]').forEach(el => {
-        el.addEventListener('click', () => {
-          const nodeId = el.getAttribute('data-node-id');
-          vscode.postMessage({ type: 'node:openInEditor', nodeId: nodeId });
-        });
-      });
-
-      // Add custom field (D-15)
+      // Add custom field
       document.querySelectorAll('[data-action="add-field"]').forEach(el => {
         el.addEventListener('click', () => {
           const nodeId = el.getAttribute('data-node-id');
@@ -333,14 +500,11 @@ export function renderPlanningHtml(
         });
       });
 
-
-
       // Incoming messages from extension host
       window.addEventListener('message', event => {
         const msg = event.data;
         if (msg.type === 'outline:update') {
-          // Full re-render is handled by extension setting html
-          // This message can be used for incremental updates in future
+          // Full re-render handled by extension setting html
         }
       });
     })();

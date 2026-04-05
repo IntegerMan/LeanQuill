@@ -1,0 +1,31 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Run LeanQuill Extension (F5)",
+      "runtimeExecutable": "code",
+      "runtimeArgs": ["--extensionDevelopmentPath=${workspaceFolder}"],
+      "port": null,
+      "notes": "Builds first (npm run build), then launches VS Code Extension Development Host. Use F5 in VS Code to trigger via .vscode/launch.json."
+    },
+    {
+      "name": "watch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "watch"],
+      "port": null,
+      "notes": "esbuild in watch mode — recompiles on save. Useful to run alongside F5 for iterative development."
+    },
+    {
+      "name": "build",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "build"],
+      "port": null
+    },
+    {
+      "name": "test",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "test"],
+      "port": null
+    }
+  ]
+}

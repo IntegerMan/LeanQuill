@@ -44,11 +44,7 @@ function renderNodeTree(nodes: OutlineNode[], depth: number): string {
       const childrenHtml = hasChildren
         ? `<div class="children" data-parent-id="${escapeHtml(node.id)}">${renderNodeTree(node.children, depth + 1)}</div>`
         : "";
-      const expandClass = hasChildren
-        ? hasPart
-          ? " expanded"
-          : " collapsed"
-        : "";
+      const expandClass = hasChildren ? " expanded" : "";
 
       return `<div class="node-item${expandClass}${inactiveClass}" data-id="${escapeHtml(node.id)}" data-depth="${depth}" draggable="true">
   <div class="node-row" data-id="${escapeHtml(node.id)}">
@@ -232,6 +228,31 @@ export function renderOutlineWebviewHtml(
     let selectedId = null;
     let dragSourceId = null;
 
+    // --- Collapse state persistence ---
+    const savedState = vscode.getState() || { collapsed: [] };
+
+    function applyCollapsedState() {
+      const collapsed = savedState.collapsed || [];
+      collapsed.forEach(id => {
+        const item = document.querySelector('.node-item[data-id="' + id + '"]');
+        if (item && item.classList.contains('expanded')) {
+          item.classList.remove('expanded');
+          item.classList.add('collapsed');
+        }
+      });
+    }
+
+    function saveCollapsedState() {
+      const collapsed = [];
+      document.querySelectorAll('.node-item.collapsed').forEach(el => {
+        collapsed.push(el.dataset.id);
+      });
+      savedState.collapsed = collapsed;
+      vscode.setState(savedState);
+    }
+
+    applyCollapsedState();
+
     // --- Selection ---
     function selectNode(id) {
       document.querySelectorAll('.node-row.selected').forEach(el => el.classList.remove('selected'));
@@ -252,6 +273,7 @@ export function renderOutlineWebviewHtml(
         if (item) {
           item.classList.toggle('collapsed');
           item.classList.toggle('expanded');
+          saveCollapsedState();
           e.stopPropagation();
           return;
         }
@@ -431,6 +453,13 @@ export function renderOutlineWebviewHtml(
       }
 
       const { action, targetId } = currentDropTarget;
+
+      // Ensure target expands to show the dropped item
+      if (action === 'nest') {
+        savedState.collapsed = (savedState.collapsed || []).filter(id => id !== targetId);
+        vscode.setState(savedState);
+      }
+
       vscode.postMessage({
         type: 'drop',
         sourceId: dragSourceId,
