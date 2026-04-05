@@ -15,7 +15,7 @@
     "onCommand:leanquill.openPlanningWorkspace",
     "onCommand:leanquill.createOutline",
     "onView:leanquill.outlineTree",
-    "workspaceContains:Book.txt",
+    "workspaceContains:manuscript/Book.txt",
     "workspaceContains:manuscript"
   ],
   "main": "./dist/extension.js",
