@@ -1,14 +1,6 @@
 import type * as VSCode from "vscode";
+import { escapeHtml } from "./htmlUtils";
 import { ChapterStatus, OutlineNode, OutlineIndex } from "./types";
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
 
 // --- Context models ---
 

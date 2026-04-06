@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { LeanQuillActionsProvider } from "./actionsView";
-import { openNodeInEditor, syncNodeFromFile } from "./nodeEditor";
+import { openNodeInEditor } from "./nodeEditor";
 import { generateBookTxt, writeBookTxt, detectExternalBookTxtEdit } from "./bookTxtSync";
 import { resolveChapterOrder } from "./chapterOrder";
 import { OutlineContextPaneProvider, buildNodeContext } from "./outlineContextPane";
@@ -101,8 +101,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     rootPath,
     safeFileSystem,
     () => {
-      void planningPanel.refresh();
-      void syncBookTxt();
+      // No-op: the outline file watcher handles refresh and Book.txt sync
     },
   );
 
@@ -161,7 +160,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       found.node.status = newStatus;
     }
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineWebviewProvider.refresh();
   };
 
   let lastOpened: { chapterPath: string; openedAt: number } | undefined;
@@ -241,8 +239,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
 
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineWebviewProvider.refresh();
-    await syncBookTxt();
   });
 
   // --- Outline Commands ---
@@ -254,8 +250,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const chapterOrder = await readChapterOrderState(rootPath);
     const index = bootstrapOutline(chapterOrder.chapterPaths);
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineWebviewProvider.refresh();
-    await syncBookTxt();
     log.info("Outline created from chapter order");
   });
 
@@ -322,8 +316,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
 
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineWebviewProvider.refresh();
-    await syncBookTxt();
   });
 
   const addSiblingNodeCommand = vscode.commands.registerCommand("leanquill.addSiblingNode", async (arg?: OutlineTreeNode | string) => {
@@ -361,8 +353,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
 
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineWebviewProvider.refresh();
-    await syncBookTxt();
   });
 
   const removeOutlineNodeCommand = vscode.commands.registerCommand("leanquill.removeOutlineNode", async (arg?: OutlineTreeNode | string) => {
@@ -389,8 +379,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
 
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineWebviewProvider.refresh();
-    await syncBookTxt();
   });
 
   const toggleOutlineActiveCommand = vscode.commands.registerCommand("leanquill.toggleOutlineActive", async (arg?: OutlineTreeNode | string) => {
@@ -404,8 +392,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       found.node.active = !found.node.active;
     }
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineWebviewProvider.refresh();
-    await syncBookTxt();
   });
 
   const renameOutlineNodeCommand = vscode.commands.registerCommand("leanquill.renameOutlineNode", async (arg?: OutlineTreeNode | string) => {
@@ -427,8 +413,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // The manuscript file is not renamed — only the outline title changes.
     // Users can rename the physical file manually if desired.
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineWebviewProvider.refresh();
-    await syncBookTxt();
   });
 
   const moveNodeUpCommand = vscode.commands.registerCommand("leanquill.moveNodeUp", async (arg?: OutlineTreeNode | string) => {
@@ -444,8 +428,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const siblings = found.siblings;
     [siblings[found.index - 1], siblings[found.index]] = [siblings[found.index], siblings[found.index - 1]];
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineWebviewProvider.refresh();
-    await syncBookTxt();
   });
 
   const moveNodeDownCommand = vscode.commands.registerCommand("leanquill.moveNodeDown", async (arg?: OutlineTreeNode | string) => {
@@ -461,8 +443,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const siblings = found.siblings;
     [siblings[found.index], siblings[found.index + 1]] = [siblings[found.index + 1], siblings[found.index]];
     await writeOutlineIndex(rootPath, index, safeFileSystem);
-    await outlineWebviewProvider.refresh();
-    await syncBookTxt();
   });
 
   // --- Outline webview → Context pane wiring ---
@@ -493,15 +473,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const bookTxtWatcher = vscode.workspace.createFileSystemWatcher("**/manuscript/Book.txt");
 
   // Manuscript file changes trigger outline webview refresh (for Not Included group)
-  // and description sync for beat files with matching fileName
   const triggerOutlineRefresh = () => {
     void outlineWebviewProvider.refresh();
   };
   manuscriptFileWatcher.onDidCreate(triggerOutlineRefresh);
   manuscriptFileWatcher.onDidDelete(triggerOutlineRefresh);
-  manuscriptFileWatcher.onDidChange((uri) => {
-    void syncNodeFromFile(rootPath, uri.fsPath, safeFileSystem);
-  });
   // Outline index watcher — reload webview + panel + sync Book.txt
   const onOutlineChanged = () => {
     void outlineWebviewProvider.refresh();
@@ -572,8 +548,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         if (chapterOrder.chapterPaths.length > 0) {
           const index = bootstrapOutline(chapterOrder.chapterPaths);
           await writeOutlineIndex(rootPath, index, safeFileSystem);
-          await outlineWebviewProvider.refresh();
-          await syncBookTxt();
           log.info("Auto-bootstrapped outline from Book.txt");
         }
       }

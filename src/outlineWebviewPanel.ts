@@ -1,5 +1,6 @@
 import * as crypto from "node:crypto";
 import type * as VSCode from "vscode";
+import { escapeHtml } from "./htmlUtils";
 import {
   readOutlineIndex,
   writeOutlineIndex,
@@ -9,15 +10,6 @@ import {
 } from "./outlineStore";
 import { SafeFileSystem } from "./safeFileSystem";
 import { OutlineNode, OutlineIndex, ChapterStatus } from "./types";
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
 
 const STATUS_ICONS: Record<ChapterStatus, string> = {
   planning: "circle-outline",

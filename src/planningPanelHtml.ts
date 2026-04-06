@@ -1,13 +1,5 @@
+import { escapeHtml } from "./htmlUtils";
 import { OutlineNode, OutlineIndex } from "./types";
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
 
 function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) {
