@@ -21,7 +21,7 @@ function renderProjectYaml(input: InitInput): string {
   const genres = input.genre.map((item) => `  - ${quote(item)}`).join("\n");
 
   return [
-    'schema_version: "1"',
+    'schema_version: "2"',
     `project_id: ${quote(input.projectId)}`,
     `working_title: ${quote(input.workingTitle)}`,
     "genre:",
@@ -31,7 +31,7 @@ function renderProjectYaml(input: InitInput): string {
     "  characters: notes/characters/",
     "  settings: notes/settings/",
     "  timeline: notes/timeline/",
-    "  research: notes/research/",
+    "  research: research/leanquill/",
     "  tool_state: .leanquill/",
     "manuscript:",
     "  file_pattern: ch*.md",
@@ -101,6 +101,148 @@ async function ensureOverwriteIfNeeded(rootPath: string): Promise<boolean> {
   return choice === "Overwrite";
 }
 
+const RESEARCH_WORKFLOW_CONTENT = `---
+name: LeanQuill Research Workflow
+version: 1
+---
+
+# LeanQuill Research Workflow
+
+This workflow defines how the LeanQuill research agent investigates topics and produces structured research documents for your book project.
+
+## Process
+
+1. **Read project context** — Load \`.leanquill/project.yaml\`, \`.leanquill/outline-index.json\`, and any relevant manuscript chapters to understand the author's book project.
+2. **Understand the query** — Interpret the research question in the context of the author's genre, themes, and current manuscript progress.
+3. **Ask clarifying questions** — If the query is ambiguous or could mean different things for this project, ask before proceeding.
+4. **Break into sub-topics** — Divide the research into 1–5 core sub-topics that together answer the original question.
+5. **Research each sub-topic** — Use web search for each sub-topic. If web search is unavailable, warn the user and proceed with knowledge-based answers, clearly noting the limitation.
+6. **Produce one result file** — Write a single structured markdown file with the results.
+
+## Result File Format
+
+Each research result file must include:
+
+**Frontmatter:**
+\`\`\`yaml
+---
+name: <short descriptive title>
+query: <the original research question>
+created: <ISO 8601 date>
+tags: [<comma-separated relevance tags>]
+sources: [<list of URLs or references used>]
+---
+\`\`\`
+
+**Body sections:**
+- **Summary** — 2–4 sentence overview of findings
+- **Sub-topics** — One section per sub-topic (1–5 total), each with key facts and sources
+- **Sources** — Full list of references
+- **Open Questions** — What remains uncertain or worth further investigation
+- **Project Relevancy** — How this research specifically applies to the author's current manuscript
+
+**File naming:** \`{topic-slug}-{YYYY-MM-DD}.md\`
+
+**Save location:** Read \`folders.research\` from \`.leanquill/project.yaml\`. Default: \`research/leanquill/\`
+
+## Harness Setup
+
+This workflow is invoked via harness-specific entry points:
+
+- **Copilot:** \`.github/agents/researcher.agent.md\`
+- **Cursor:** \`.cursor/skills/researcher/SKILL.md\`
+- **Claude:** \`.claude/agents/researcher.md\`
+
+All three entry points read this file and execute the process above.
+`;
+
+async function writeHarnessEntryPoints(rootPath: string): Promise<void> {
+  const copilotDir = path.join(rootPath, ".github", "agents");
+  const copilotFile = path.join(copilotDir, "researcher.agent.md");
+  const copilotContent = `---
+name: researcher
+description: "Run the LeanQuill research workflow — investigates a topic with web search and produces a structured research document"
+tools: ['read', 'search', 'web']
+---
+
+You are the LeanQuill research agent. Follow the canonical workflow defined in \`.leanquill/workflows/research.md\`.
+
+Read that file first, then execute the research process it describes.
+`;
+
+  const cursorDir = path.join(rootPath, ".cursor", "skills", "researcher");
+  const cursorFile = path.join(cursorDir, "SKILL.md");
+  const cursorContent = `---
+name: researcher
+description: "Run the LeanQuill research workflow — investigates a topic with web search and produces a structured research document"
+---
+
+<cursor_skill_adapter>
+## A. Skill Invocation
+- This skill is invoked when the user mentions \`researcher\` or asks to research a topic for their book.
+- Treat all user text after the skill mention as the research query.
+
+## B. Execution
+Read the canonical workflow at \`.leanquill/workflows/research.md\` and follow its process.
+</cursor_skill_adapter>
+`;
+
+  const claudeDir = path.join(rootPath, ".claude", "agents");
+  const claudeFile = path.join(claudeDir, "researcher.md");
+  const claudeContent = `---
+name: researcher
+description: "Run the LeanQuill research workflow — investigates a topic with web search and produces a structured research document"
+tools: Read, Write, Edit, Bash, Grep, Glob
+---
+
+You are the LeanQuill research agent. Follow the canonical workflow defined in \`.leanquill/workflows/research.md\`.
+
+Read that file first, then execute the research process it describes.
+`;
+
+  const entries: Array<{ file: string; dir: string; content: string }> = [
+    { file: copilotFile, dir: copilotDir, content: copilotContent },
+    { file: cursorFile, dir: cursorDir, content: cursorContent },
+    { file: claudeFile, dir: claudeDir, content: claudeContent },
+  ];
+
+  for (const { file, dir, content } of entries) {
+    const exists = await fs.stat(file).then(() => true).catch(() => false);
+    if (!exists) {
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(file, content, "utf8");
+    }
+  }
+}
+
+export async function migrateProjectYaml(rootPath: string, safeFs: SafeFileSystem): Promise<boolean> {
+  const yamlPath = path.join(rootPath, ".leanquill", "project.yaml");
+  let content: string;
+  try {
+    content = await fs.readFile(yamlPath, "utf8");
+  } catch {
+    return false;
+  }
+
+  const isV1 = /schema_version:\s*["']?1["']?/.test(content);
+  if (!isV1) {
+    return false;
+  }
+
+  let updated = content.replace(
+    /schema_version:\s*["']?1["']?/,
+    'schema_version: "2"',
+  );
+  // Only replace the default research path — leave customized paths alone
+  updated = updated.replace(
+    /^(\s+research:\s*)notes\/research\/\s*$/m,
+    "$1research/leanquill/",
+  );
+
+  await safeFs.writeFile(yamlPath, updated);
+  return true;
+}
+
 async function initializeProject(rootPath: string, input: InitInput): Promise<{ warnings: string[]; projectYamlPath: string }> {
   const safeFs = new SafeFileSystem(rootPath);
 
@@ -112,6 +254,16 @@ async function initializeProject(rootPath: string, input: InitInput): Promise<{ 
   const projectYaml = renderProjectYaml(input);
   const projectYamlPath = path.join(rootPath, ".leanquill", "project.yaml");
   await safeFs.writeFile(projectYamlPath, projectYaml);
+
+  // Create canonical research workflow
+  await safeFs.mkdir(path.join(rootPath, ".leanquill", "workflows"));
+  await safeFs.writeFile(
+    path.join(rootPath, ".leanquill", "workflows", "research.md"),
+    RESEARCH_WORKFLOW_CONTENT,
+  );
+
+  // Generate harness entry points (outside SafeFileSystem boundary — config files)
+  await writeHarnessEntryPoints(rootPath);
 
   const chapterOrder = await resolveChapterOrder(rootPath);
   await safeFs.writeFile(
