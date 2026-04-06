@@ -17,9 +17,7 @@ function flattenNodes(nodes: OutlineNode[], emitParts: boolean, lines: string[])
 
     if (node.traits.includes("part") && emitParts) {
       lines.push(`part: ${node.title}`);
-    }
-
-    if (node.fileName) {
+    } else if (node.fileName) {
       const entry = node.fileName.replace(/^manuscript\//, "");
       lines.push(entry);
     }

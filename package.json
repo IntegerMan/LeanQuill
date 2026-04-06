@@ -178,10 +178,12 @@
     "test": "node --test dist-test/**/*.test.js",
     "build:test": "esbuild test/*.test.ts --bundle --platform=node --outdir=dist-test --format=cjs"
   },
+  "dependencies": {
+    "@vscode/codicons": "^0.0.45"
+  },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/vscode": "^1.90.0",
-    "@vscode/codicons": "^0.0.45",
     "esbuild": "^0.25.3",
     "typescript": "^5.8.3"
   }
