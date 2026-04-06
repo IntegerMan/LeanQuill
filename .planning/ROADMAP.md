@@ -19,6 +19,7 @@
 | 9 | AI Safety Rails and Persona Baseline | Project is AI-ready with explicit persona configuration and manuscript write-block protections established | PER-01 | 3 criteria |
 | 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
 | 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
+| 12 | Standardized Research Workflow and Results Repository | Author can run standardized research workflows and store research outcomes in a dedicated folder adjacent to manuscript | RES-01, RES-02, RES-03, RES-04 | 3 criteria |
 
 ## Phases
 
@@ -33,6 +34,7 @@
 - [ ] **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
 - [ ] **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
 - [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
+- [ ] **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript.
 
 ## Phase Details
 
@@ -208,8 +210,6 @@ Plans:
 
 **Notes:** Final phase by design because it depends on foundation, issue model, chapter context fidelity, and enforced write-block contracts.
 
----
-
 ### Phase 11: Make the outline and card views more usable with the ability to insert, remove, and reorder cards. The outline should also support changing hierarchy structures like we can in the sidebar.
 
 **Goal:** [To be planned]
@@ -219,6 +219,27 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 11 to break down)
+
+---
+
+### Phase 12: Standardized Research Workflow and Results Repository
+
+**Goal:** Author can run standardized research workflows via AI chat and store structured research outcomes in a dedicated folder, browsable from the VS Code sidebar.
+**UI hint:** yes
+**Depends on:** Phase 1
+**Requirements:** RES-01, RES-02, RES-03, RES-04
+**Plans:** 2 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — Config foundation, schema v2 migration, SafeFileSystem extension for research folder.
+- [ ] 12-02-PLAN.md — Research sidebar TreeView, quick-start button, extension wiring.
+
+**Success criteria:**
+1. Extension manages a research folder at configurable path (default research/leanquill/) with automatic schema migration from v1 to v2.
+2. Sidebar Research section lists detected research markdown files with name and creation date; clicking opens them in the editor.
+3. Plus button on Research section opens AI chat pre-populated with the appropriate research invocation command for the active harness.
+
+**Notes:** Research execution happens in AI chat via harness-specific agent files, not as extension commands. The extension provides storage, browsing, and quick-start. Canonical workflow definition generated in .leanquill/workflows/ during init.
 
 ## Progress Table
 
@@ -235,3 +256,4 @@ Plans:
 | 9. AI Safety Rails and Persona Baseline | 0/0 | Not started | - |
 | 10. AI Review and Advisory Workflows | 0/0 | Not started | - |
 | 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
+| 12. Standardized Research Workflow and Results Repository | 0/2 | Not started | - |
