@@ -256,4 +256,4 @@ Plans:
 | 9. AI Safety Rails and Persona Baseline | 0/0 | Not started | - |
 | 10. AI Review and Advisory Workflows | 0/0 | Not started | - |
 | 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
-| 12. Standardized Research Workflow and Results Repository | 0/2 | Not started | - |
+| 12. Standardized Research Workflow and Results Repository | 2/2 | Completed | 2026-04-05 |
