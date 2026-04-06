@@ -2,7 +2,7 @@ import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { SafeFileSystem } from "./safeFileSystem";
-import { OutlineNode } from "./types";
+import { OutlineNode, OutlineIndex } from "./types";
 
 export async function openNodeInEditor(
   vscodeApi: typeof VSCode,

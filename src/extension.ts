@@ -374,7 +374,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const preFound = findNodeById(preIndex.nodes, nodeId);
     const label = preFound?.node.title || "(untitled)";
     const confirm = await vscode.window.showWarningMessage(
-      `Permanently remove "${label}"? This cannot be undone (use git to recover).`,
+      `Remove "${label}" from outline? The manuscript file will not be deleted.`,
       { modal: true },
       "Remove",
     );

@@ -15,6 +15,7 @@
     "onCommand:leanquill.openPlanningWorkspace",
     "onCommand:leanquill.createOutline",
     "onView:leanquill.outlineTree",
+    "onView:leanquill.chapterContext",
     "workspaceContains:manuscript/Book.txt",
     "workspaceContains:manuscript"
   ],

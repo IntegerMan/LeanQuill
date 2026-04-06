@@ -27,7 +27,7 @@ function renderCorkboardCard(node: OutlineNode): string {
     <span class="cork-card-title">${escapeHtml(node.title || "(untitled)")}</span>
     ${renderStatusSelect(node.id, node.status, "status-select status-select--card")}
   </div>
-  <div class="cork-card-body cork-card-synopsis" data-node-id="${escapeHtml(node.id)}" data-value="${escapeHtml(synopsis)}">${escapeHtml(displaySynopsis) || '<span class="cork-card-placeholder">Click to add synopsis…</span>'}</div>
+  <div class="cork-card-body cork-card-synopsis" data-node-id="${escapeHtml(node.id)}" data-value="${escapeHtml(node.description)}">${escapeHtml(displaySynopsis) || '<span class="cork-card-placeholder">Click to add synopsis…</span>'}</div>
 </div>`;
 }
 
@@ -133,7 +133,7 @@ function renderOutlinerRow(node: OutlineNode, depth: number): string {
       ${activeBadge}
     </span>
     <span class="outliner-status">${hasPart ? "" : renderStatusSelect(node.id, node.status, "status-select status-select--outline")}</span>
-    <span class="outliner-synopsis" data-node-id="${escapeHtml(node.id)}" data-value="${escapeHtml(node.description.split("\n")[0] || "")}">${escapeHtml(synopsis)}</span>
+    <span class="outliner-synopsis" data-node-id="${escapeHtml(node.id)}" data-value="${escapeHtml(node.description)}">${escapeHtml(synopsis)}</span>
     <span class="outliner-actions">
       <button class="outliner-btn" data-action="open-in-editor" data-node-id="${escapeHtml(node.id)}" title="Open in Editor"><span class="codicon codicon-edit"></span></button>
     </span>
