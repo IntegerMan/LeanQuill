@@ -19,7 +19,7 @@
 | 9 | AI Safety Rails and Persona Baseline | Project is AI-ready with explicit persona configuration and manuscript write-block protections established | PER-01 | 3 criteria |
 | 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
 | 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
-| 12 | Standardized Research Workflow and Results Repository | 1/2 | In Progress|  |
+| 12 | Standardized Research Workflow and Results Repository | 2/2 | Complete   | 2026-04-06 |
 
 ## Phases
 
@@ -34,7 +34,7 @@
 - [ ] **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
 - [ ] **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
 - [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
-- [ ] **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript.
+- [x] **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
 
 ## Phase Details
 
@@ -228,11 +228,11 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 1
 **Requirements:** RES-01, RES-02, RES-03, RES-04
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 12-01-PLAN.md — Config foundation, schema v2 migration, SafeFileSystem extension for research folder.
-- [ ] 12-02-PLAN.md — Research sidebar TreeView, quick-start button, extension wiring.
+- [x] 12-02-PLAN.md — Research sidebar TreeView, quick-start button, extension wiring.
 
 **Success criteria:**
 1. Extension manages a research folder at configurable path (default research/leanquill/) with automatic schema migration from v1 to v2.
