@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 03
 status: executing
-stopped_at: Phase 3 context gathered
-last_updated: "2026-04-06T02:06:34.824Z"
+stopped_at: Phase 12 context gathered
+last_updated: "2026-04-06T02:20:45.820Z"
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 2
   total_plans: 9
   completed_plans: 8
@@ -81,6 +81,7 @@ Plan: 1 of 4
 ### Roadmap Evolution
 
 - Phase 11 added: Make the outline and card views more usable with the ability to insert, remove, and reorder cards. The outline should also support changing hierarchy structures like we can in the sidebar.
+- Phase 12 added: add the ability to run research in standardized ways and collect research results in a dedicated research folder next to the manuscript.
 
 ## Session Continuity
 
@@ -88,6 +89,6 @@ Plan: 1 of 4
 - Resume command target: /gsd-plan-phase 3
 - Next checkpoint: finalize detailed plans for Phase 3 and verify plan quality.
 
-Last session: 2026-03-30T20:12:04.931Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-outline-and-beat-planning/03-CONTEXT.md
+Last session: 2026-04-06T02:20:45.804Z
+Stopped at: Phase 12 context gathered
+Resume file: .planning/phases/12-add-the-ability-to-run-research-in-standardized-ways-and-collect-research-results-in-a-dedicated-research-folder-next-to-the-manuscript/12-CONTEXT.md
