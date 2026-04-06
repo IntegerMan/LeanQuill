@@ -6,7 +6,7 @@ import { LeanQuillActionsProvider } from "./actionsView";
 import { openNodeInEditor, syncNodeFromFile } from "./nodeEditor";
 import { generateBookTxt, writeBookTxt, detectExternalBookTxtEdit } from "./bookTxtSync";
 import { resolveChapterOrder } from "./chapterOrder";
-import { OutlineContextPaneProvider, buildBookContext, buildNodeContext } from "./outlineContextPane";
+import { OutlineContextPaneProvider, buildNodeContext } from "./outlineContextPane";
 import { runInitializeFlow, shouldPromptInitialize } from "./initialize";
 import { readOutlineIndex, writeOutlineIndex, bootstrapOutline, findNodeById, removeNodeById } from "./outlineStore";
 import { OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTree";
@@ -101,7 +101,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     rootPath,
     safeFileSystem,
     () => {
-      planningPanel.refresh();
+      void planningPanel.refresh();
       void syncBookTxt();
     },
   );
@@ -505,14 +505,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Outline index watcher — reload webview + panel + sync Book.txt
   const onOutlineChanged = () => {
     void outlineWebviewProvider.refresh();
-    planningPanel.refresh();
+    void planningPanel.refresh();
     void syncBookTxt();
   };
   outlineWatcher.onDidCreate(onOutlineChanged);
   outlineWatcher.onDidChange(onOutlineChanged);
   outlineWatcher.onDidDelete(() => {
     void outlineWebviewProvider.refresh();
-    planningPanel.refresh();
+    void planningPanel.refresh();
   });
 
   // Book.txt watcher — detect external edits
