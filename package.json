@@ -15,8 +15,7 @@
     "onCommand:leanquill.openPlanningWorkspace",
     "onCommand:leanquill.createOutline",
     "onView:leanquill.outlineTree",
-    "onView:leanquill.chapterContext",
-    "workspaceContains:manuscript/Book.txt",
+    "onView:leanquill.chapterContext",      "onView:leanquill.research",    "workspaceContains:manuscript/Book.txt",
     "workspaceContains:manuscript"
   ],
   "main": "./dist/extension.js",
@@ -100,6 +99,12 @@
         "title": "Move Down",
         "category": "LeanQuill",
         "icon": "$(arrow-down)"
+      },
+      {
+        "command": "leanquill.startResearch",
+        "title": "New Research",
+        "category": "LeanQuill",
+        "icon": "$(add)"
       }
     ],
     "viewsContainers": {
@@ -127,6 +132,11 @@
           "name": "Context",
           "type": "webview",
           "when": "leanquill.isInitialized"
+        },
+        {
+          "id": "leanquill.research",
+          "name": "Research",
+          "when": "leanquill.isInitialized"
         }
       ]
     },
@@ -141,6 +151,11 @@
           "command": "leanquill.addChildNode",
           "when": "view == leanquill.outlineTree && leanquill.isInitialized",
           "group": "navigation@2"
+        },
+        {
+          "command": "leanquill.startResearch",
+          "when": "view == leanquill.research",
+          "group": "navigation"
         }
       ]
     },
@@ -168,6 +183,11 @@
       {
         "view": "leanquill.outlineTree",
         "contents": "No outline yet. Create one from your existing chapters.\n\n[Create Outline](command:leanquill.createOutline)",
+        "when": "leanquill.isInitialized"
+      },
+      {
+        "view": "leanquill.research",
+        "contents": "No research documents yet.\n\nUse the + button above to start your first research query, or ask your AI assistant to run the LeanQuill research workflow.",
         "when": "leanquill.isInitialized"
       }
     ]

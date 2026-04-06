@@ -13,6 +13,9 @@ import { OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTr
 import { OutlineWebviewProvider } from "./outlineWebviewPanel";
 import { PlanningPanelProvider } from "./planningPanel";
 import { SafeFileSystem } from "./safeFileSystem";
+import { readProjectConfig } from "./projectConfig";
+import { migrateProjectYaml } from "./initialize";
+import { ResearchTreeProvider } from "./researchTree";
 import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
 
 async function setWorkspaceContext(rootPath: string): Promise<void> {
@@ -91,6 +94,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   const safeFileSystem = new SafeFileSystem(rootPath);
+
+  // Load project config and configure research folder access
+  const config = await readProjectConfig(rootPath);
+  if (config) {
+    if (config.schemaVersion === "1") {
+      const migrated = await migrateProjectYaml(rootPath, safeFileSystem);
+      if (migrated) {
+        log.info("Migrated project.yaml from schema v1 to v2");
+      }
+    }
+    const researchFolderClean = config.folders.research.replace(/\/+$/, "");
+    safeFileSystem.allowPath(researchFolderClean, ".md");
+  }
+
+  const researchFolder = (config?.folders.research ?? "research/leanquill").replace(/\/+$/, "");
+  const researchDir = path.join(rootPath, ...researchFolder.split("/"));
+  const researchTreeProvider = new ResearchTreeProvider(vscode, researchDir);
+
   const setupViewProvider = new LeanQuillActionsProvider();
   const outlineContextProvider = new OutlineContextPaneProvider(vscode);
 
@@ -128,6 +149,38 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   };
 
+  const researchWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(rootPath, `${researchFolder}/**/*.md`),
+  );
+  researchWatcher.onDidCreate(() => researchTreeProvider.refresh());
+  researchWatcher.onDidChange(() => researchTreeProvider.refresh());
+  researchWatcher.onDidDelete(() => researchTreeProvider.refresh());
+
+  const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
+    const placeholder = "Replace with your research question";
+    const appName = vscode.env.appName ?? "";
+    const isCursor = appName.toLowerCase().includes("cursor");
+    const hasCopilot = vscode.extensions.getExtension("github.copilot-chat") !== undefined;
+
+    let query: string;
+    if (isCursor) {
+      query = `@researcher ${placeholder}`;
+    } else if (hasCopilot) {
+      query = `@researcher ${placeholder}`;
+    } else {
+      query = `Research: ${placeholder}`;
+    }
+
+    try {
+      await vscode.commands.executeCommand("workbench.action.chat.open", { query });
+    } catch {
+      await vscode.window.showInformationMessage(
+        "Open your AI chat and invoke the LeanQuill research workflow with your question. " +
+        "For Claude, use: /agent:researcher <your question>",
+      );
+    }
+  });
+
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("leanquill.actions", setupViewProvider),
     vscode.window.registerWebviewViewProvider("leanquill.outlineTree", outlineWebviewProvider, {
@@ -136,6 +189,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerWebviewViewProvider("leanquill.chapterContext", outlineContextProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
+    vscode.window.registerTreeDataProvider("leanquill.research", researchTreeProvider),
+    researchWatcher,
+    startResearchCommand,
   );
 
   const updateNodeStatus = async (nodeId: string): Promise<void> => {
@@ -550,6 +606,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           await writeOutlineIndex(rootPath, index, safeFileSystem);
           log.info("Auto-bootstrapped outline from Book.txt");
         }
+      }
+      // Ensure research folder exists on activation
+      try {
+        await safeFileSystem.mkdir(researchDir);
+      } catch {
+        // Non-critical — folder may already exist or safeFs may block it if not configured
       }
     }
   } catch {
