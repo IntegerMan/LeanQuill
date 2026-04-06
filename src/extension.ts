@@ -4,7 +4,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { LeanQuillActionsProvider } from "./actionsView";
 import { openNodeInEditor, syncNodeFromFile } from "./nodeEditor";
-import { generateNodeFileName, collectExistingSlugs, writeNodeFile, deleteNodeFile, renameNodeFile, readNodeFile } from "./manuscriptSync";
+import { generateNodeFileName, collectExistingSlugs } from "./manuscriptSync";
 import { generateBookTxt, writeBookTxt, detectExternalBookTxtEdit } from "./bookTxtSync";
 import { resolveChapterOrder } from "./chapterOrder";
 import { OutlineContextPaneProvider, buildBookContext, buildNodeContext } from "./outlineContextPane";
@@ -375,7 +375,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const preFound = findNodeById(preIndex.nodes, nodeId);
     const label = preFound?.node.title || "(untitled)";
     const confirm = await vscode.window.showWarningMessage(
-      `Permanently remove "${label}"? This cannot be undone (use git to recover).`,
+      `Remove "${label}" from outline? The manuscript file will not be deleted.`,
       { modal: true },
       "Remove",
     );
@@ -384,24 +384,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
     const index = await readOutlineIndex(rootPath);
 
-    // Collect all fileNames from the node and its descendants for deletion
-    function collectFiles(n: OutlineNode, files: string[]): void {
-      if (n.fileName) {
-        files.push(n.fileName);
-      }
-      for (const child of n.children) {
-        collectFiles(child, files);
-      }
-    }
-
     const found = findNodeById(index.nodes, nodeId);
     if (found) {
-      const filesToDelete: string[] = [];
-      collectFiles(found.node, filesToDelete);
       removeNodeById(index.nodes, nodeId);
-      for (const f of filesToDelete) {
-        await deleteNodeFile(rootPath, f);
-      }
     }
 
     await writeOutlineIndex(rootPath, index, safeFileSystem);
@@ -440,17 +425,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return;
     }
     found.node.title = newName;
-    // Rename the manuscript file to match new slug if it has one
-    if (found.node.fileName) {
-      const existingSlugs = collectExistingSlugs(index.nodes);
-      const oldSlug = found.node.fileName.replace(/^manuscript\//, "");
-      existingSlugs.delete(oldSlug);
-      const newSlug = generateNodeFileName(newName, existingSlugs);
-      const newFileName = `manuscript/${newSlug}`;
-      const content = await readNodeFile(rootPath, found.node.fileName);
-      await renameNodeFile(rootPath, found.node.fileName, newFileName, content);
-      found.node.fileName = newFileName;
-    }
     await writeOutlineIndex(rootPath, index, safeFileSystem);
     await outlineWebviewProvider.refresh();
     await syncBookTxt();

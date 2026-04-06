@@ -1,5 +1,3 @@
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import { OutlineNode } from "./types";
 
 /**
@@ -49,54 +47,3 @@ export function collectExistingSlugs(nodes: OutlineNode[]): Set<string> {
   return slugs;
 }
 
-/**
- * Write a node's content to its manuscript file.
- * Creates the directory if needed.
- * Note: fileName is expected to include the `manuscript/` prefix.
- */
-export async function writeNodeFile(rootPath: string, fileName: string, content: string): Promise<void> {
-  const filePath = path.join(rootPath, fileName);
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, content, "utf8");
-}
-
-/**
- * Read a node's content from its manuscript file.
- * Returns empty string if the file does not exist.
- * Note: fileName is expected to include the `manuscript/` prefix.
- */
-export async function readNodeFile(rootPath: string, fileName: string): Promise<string> {
-  try {
-    return await fs.readFile(path.join(rootPath, fileName), "utf8");
-  } catch {
-    return "";
-  }
-}
-
-/**
- * Delete a node's manuscript file. Silently ignores missing files.
- * Note: fileName is expected to include the `manuscript/` prefix.
- */
-export async function deleteNodeFile(rootPath: string, fileName: string): Promise<void> {
-  try {
-    await fs.unlink(path.join(rootPath, fileName));
-  } catch {
-    // File may not exist — that's fine
-  }
-}
-
-/**
- * Rename a node's manuscript file. Writes content to the new path and
- * deletes the old one. If the old file doesn't exist, just writes the new one.
- */
-export async function renameNodeFile(
-  rootPath: string,
-  oldFileName: string,
-  newFileName: string,
-  content: string,
-): Promise<void> {
-  await writeNodeFile(rootPath, newFileName, content);
-  if (oldFileName && oldFileName !== newFileName) {
-    await deleteNodeFile(rootPath, oldFileName);
-  }
-}
