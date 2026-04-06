@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { SafeFileSystem } from "./safeFileSystem";
 import { OutlineIndex, OutlineNode } from "./types";
 
 /**
@@ -48,11 +49,12 @@ export function generateBookTxt(index: OutlineIndex): string {
 }
 
 /**
- * Write Book.txt inside the manuscript directory.
+ * Write Book.txt inside the manuscript directory via the safe filesystem.
  * LeanPub expects manuscript/Book.txt with paths relative to manuscript/.
+ * This is the only permitted write outside .leanquill/.
  */
-export async function writeBookTxt(rootPath: string, content: string): Promise<void> {
-  await fs.writeFile(path.join(rootPath, "manuscript", "Book.txt"), content, "utf8");
+export async function writeBookTxt(rootPath: string, content: string, safeFs: SafeFileSystem): Promise<void> {
+  await safeFs.writeFile(path.join(rootPath, "manuscript", "Book.txt"), content);
 }
 
 /**

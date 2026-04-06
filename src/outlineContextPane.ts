@@ -20,6 +20,7 @@ export interface BookContextModel {
 
 export interface NodeContextModel {
   kind: "node";
+  id: string;
   title: string;
   fileName: string;
   active: boolean;
@@ -74,6 +75,7 @@ export function buildBookContext(index: OutlineIndex): BookContextModel {
 export function buildNodeContext(node: OutlineNode, depth: number): NodeContextModel {
   return {
     kind: "node",
+    id: node.id,
     title: node.title,
     fileName: node.fileName,
     active: node.active,
@@ -170,6 +172,8 @@ function renderNodeHtml(model: NodeContextModel): string {
     </section>`
     : "";
 
+  const updateStatusUri = `command:leanquill.updateNodeStatus?${encodeURIComponent(JSON.stringify([model.id]))}`;
+
   return wrapHtml(`
   <main class="stack">
     <section class="card">
@@ -178,7 +182,7 @@ function renderNodeHtml(model: NodeContextModel): string {
       ${traitsHtml ? `<div class="meta"><span class="label">Traits</span><span>${traitsHtml}</span></div>` : ""}
       ${model.childCount > 0 ? `<div class="meta"><span class="label">Children</span><span class="value">${model.childCount}</span></div>` : ""}
       ${descSection}
-      <a class="action" href="command:leanquill.updateNodeStatus">Update Status</a>
+      <a class="action" href="${updateStatusUri}">Update Status</a>
     </section>
     ${fieldsSection}
     <section class="card">

@@ -104,29 +104,33 @@ export function reorderOutline(
     return index;
   }
 
-  const src = sourceIds[0];
-
-  // Self-drop: no-op
-  if (src.id === targetId) {
-    return index;
-  }
-
   const result: OutlineIndex = JSON.parse(JSON.stringify(index));
+  const movedNodes: OutlineNode[] = [];
 
-  // Cycle detection: if target is a descendant of source, reject
-  if (targetId && isAncestorOf(result.nodes, src.id, targetId)) {
-    return index;
+  for (const src of sourceIds) {
+    // Self-drop: skip this node
+    if (src.id === targetId) {
+      continue;
+    }
+
+    // Cycle detection: if target is a descendant of source, skip
+    if (targetId && isAncestorOf(result.nodes, src.id, targetId)) {
+      continue;
+    }
+
+    const [, removed] = removeNodeById(result.nodes, src.id);
+    if (removed) {
+      movedNodes.push(removed);
+    }
   }
 
-  // Remove source from its current location
-  const [, removed] = removeNodeById(result.nodes, src.id);
-  if (!removed) {
+  if (movedNodes.length === 0) {
     return index;
   }
 
   if (!targetId) {
-    // No target — append to top level
-    result.nodes.push(removed);
+    // No target — append all to top level
+    result.nodes.push(...movedNodes);
     return result;
   }
 
@@ -134,15 +138,15 @@ export function reorderOutline(
     // Find target node
     const targetResult = findNodeById(result.nodes, targetId);
     if (!targetResult) {
-      result.nodes.push(removed);
+      result.nodes.push(...movedNodes);
       return result;
     }
 
-    // Drop on a node = nest as child of that node
-    targetResult.node.children.push(removed);
+    // Drop on a node = nest as children of that node
+    targetResult.node.children.push(...movedNodes);
   } else {
     // Drop on non-node (orphan group etc.) — append to top level
-    result.nodes.push(removed);
+    result.nodes.push(...movedNodes);
   }
 
   return result;

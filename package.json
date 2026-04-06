@@ -141,94 +141,22 @@
           "when": "view == leanquill.outlineTree && leanquill.isInitialized",
           "group": "navigation@2"
         }
-      ],
-      "view/item/context": [
-        {
-          "command": "leanquill.addChildNode",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode/",
-          "group": "leanquill@1"
-        },
-        {
-          "command": "leanquill.addSiblingNode",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode/",
-          "group": "leanquill@1"
-        },
-        {
-          "command": "leanquill.openNodeInEditor",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode:(branch|leaf)/",
-          "group": "leanquill@2"
-        },
-        {
-          "command": "leanquill.openChapterFromOutline",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode:(branch|leaf)/",
-          "group": "leanquill@2"
-        },
-        {
-          "command": "leanquill.updateNodeStatus",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode:(branch|leaf)/",
-          "group": "leanquill@2"
-        },
-        {
-          "command": "leanquill.updateNodeStatus",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode:(branch|leaf)/",
-          "group": "inline@1"
-        },
-        {
-          "command": "leanquill.openBookTxt",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode:part/",
-          "group": "leanquill@2"
-        },
-        {
-          "command": "leanquill.openPlanningWorkspace",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode:part/",
-          "group": "leanquill@2"
-        },
-        {
-          "command": "leanquill.renameOutlineNode",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode/",
-          "group": "leanquill@3"
-        },
-        {
-          "command": "leanquill.toggleOutlineActive",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode/",
-          "group": "leanquill@3"
-        },
-        {
-          "command": "leanquill.removeOutlineNode",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode/",
-          "group": "leanquill@4"
-        },
-        {
-          "command": "leanquill.moveNodeUp",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode/",
-          "group": "leanquill@5"
-        },
-        {
-          "command": "leanquill.moveNodeDown",
-          "when": "view == leanquill.outlineTree && viewItem =~ /outlineNode/",
-          "group": "leanquill@5"
-        },
-        {
-          "command": "leanquill.addOrphanToOutline",
-          "when": "view == leanquill.outlineTree && viewItem == outlineOrphan",
-          "group": "leanquill@1"
-        }
       ]
     },
     "viewsWelcome": [
       {
         "view": "leanquill.actions",
-        "contents": "Welcome to LeanQuill — your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\n[Initialize Repository](command:leanquill.initialize)\n\nOpen a workspace containing your manuscript folder or Book.txt to get started.",
+        "contents": "Welcome to LeanQuill \u2014 your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\n[Initialize Repository](command:leanquill.initialize)\n\nOpen a workspace containing your manuscript folder or Book.txt to get started.",
         "when": "!leanquill.hasManuscriptMarkers && !leanquill.isInitialized"
       },
       {
         "view": "leanquill.actions",
-        "contents": "Welcome to LeanQuill — your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\n[Initialize Repository](command:leanquill.initialize)\n\nManuscript markers detected — initialize to start managing your project with LeanQuill.",
+        "contents": "Welcome to LeanQuill \u2014 your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\n[Initialize Repository](command:leanquill.initialize)\n\nManuscript markers detected \u2014 initialize to start managing your project with LeanQuill.",
         "when": "leanquill.hasManuscriptMarkers && !leanquill.isInitialized"
       },
       {
         "view": "leanquill.actions",
-        "contents": "Welcome to LeanQuill — your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\nThis project is initialized and ready to use.\n\n[Re-initialize](command:leanquill.initialize)",
+        "contents": "Welcome to LeanQuill \u2014 your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\nThis project is initialized and ready to use.\n\n[Re-initialize](command:leanquill.initialize)",
         "when": "leanquill.isInitialized"
       },
       {

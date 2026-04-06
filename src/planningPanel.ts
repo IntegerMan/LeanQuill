@@ -135,9 +135,10 @@ export class PlanningPanelProvider {
       clearTimeout(this._debounceTimer);
     }
     const indexToWrite = this._pendingIndex;
-    this._debounceTimer = setTimeout(async () => {
-      await writeOutlineIndex(this.rootPath, indexToWrite, this.safeFs);
-      this._pendingIndex = undefined;
+    this._debounceTimer = setTimeout(() => {
+      writeOutlineIndex(this.rootPath, indexToWrite, this.safeFs)
+        .then(() => { this._pendingIndex = undefined; })
+        .catch((error: unknown) => { console.error("Failed to write outline index", error); });
     }, 300);
   }
 

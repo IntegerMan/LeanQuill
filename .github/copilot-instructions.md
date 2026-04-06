@@ -25,7 +25,7 @@ Key types in `types.ts`: `OutlineNode` (recursive tree with id, title, fileName,
 
 ## Safety Boundary (Critical)
 
-**The extension never writes to `manuscript/`.** All state lives in `.leanquill/`. This is enforced by `SafeFileSystem.canWrite()` — any write outside `.leanquill/` throws. Always use `SafeFileSystem` for file operations; never bypass it with raw `fs` calls from extension code.
+**The extension writes to `manuscript/` only for `manuscript/Book.txt`.** All other state lives in `.leanquill/`. This is enforced by `SafeFileSystem.canWrite()` — writes to `manuscript/` are blocked except for the explicit allowlist entry `manuscript/Book.txt`. Always use `SafeFileSystem` for all file operations; never bypass it with raw `fs` calls from extension code. In particular, the extension does **not** create, delete, or rename other manuscript files — users manage those directly.
 
 See `Imported/v1-scope.md` for the 5 non-negotiable design principles.
 

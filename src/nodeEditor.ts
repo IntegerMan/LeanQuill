@@ -2,8 +2,7 @@ import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { SafeFileSystem } from "./safeFileSystem";
-import { OutlineNode, OutlineIndex } from "./types";
-import { readNodeFile, writeNodeFile } from "./manuscriptSync";
+import { OutlineNode } from "./types";
 
 export async function openNodeInEditor(
   vscodeApi: typeof VSCode,
@@ -25,12 +24,6 @@ export async function openNodeInEditor(
   }
 
   const filePath = path.join(rootPath, node.fileName);
-
-  // Ensure the file exists (create with description if somehow missing)
-  const content = await readNodeFile(rootPath, node.fileName);
-  if (content === "") {
-    await writeNodeFile(rootPath, node.fileName, node.description);
-  }
 
   await vscodeApi.window.showTextDocument(vscodeApi.Uri.file(filePath), {
     viewColumn: vscodeApi.ViewColumn.Beside,
