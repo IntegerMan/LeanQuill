@@ -29,6 +29,15 @@ test("allows writes in .leanquill and project.yaml", async () => {
   });
 });
 
+test("allows writing manuscript/Book.txt", async () => {
+  await withTempDir(async (dir) => {
+    const safeFs = new SafeFileSystem(dir);
+    await safeFs.writeFile(path.join(dir, "manuscript", "Book.txt"), "ch1.md\n");
+    const content = await fs.readFile(path.join(dir, "manuscript", "Book.txt"), "utf8");
+    assert.equal(content, "ch1.md\n");
+  });
+});
+
 test("blocks writes to manuscript paths", async () => {
   await withTempDir(async (dir) => {
     const safeFs = new SafeFileSystem(dir);

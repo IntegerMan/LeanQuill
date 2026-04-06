@@ -21,6 +21,11 @@ An author working in a LeanPub markdown repo can see the status of every chapter
 - [ ] **CHAP-01**: Author can view all chapters in project-defined order with per-chapter status and open issue count
 - [ ] **CHAP-02**: Author can change chapter status from the chapter tree or context pane
 - [ ] **CHAP-03**: Opening a chapter file auto-populates a context pane with that chapter's status, open issues, and last session notes
+- [ ] **PLAN-01**: Author can access a Scrivener-style outline view with hierarchical Parts → Chapters → Beats and drag-and-drop rearranging
+- [ ] **PLAN-02**: Each story beat supports per-beat fields (what/who/where/why) plus candidate/committed status
+- [ ] **CHAR-01**: Author can manage character profiles in the planning workspace Characters tab with visibility into chapter/beat associations
+- [ ] **PLACE-01**: Author can manage place/setting profiles in the planning workspace Places tab linked to scenes
+- [ ] **THREAD-01**: Author can manage narrative threads and themes in the planning workspace Threads tab across the story structure
 - [ ] **KNOW-01**: Author can view a read-only global knowledge pane (characters, settings, timeline, research) parsed from configured notes folders
 - [ ] **KNOW-02**: Known entity names (characters, locations) are hyperlinked in the knowledge pane for quick navigation
 - [ ] **ISSUE-01**: Author can manually create issues attached to a chapter or project-wide

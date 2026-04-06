@@ -11,7 +11,16 @@ export class SafeFileSystem {
       return false;
     }
 
-    return rel === ".leanquill" || rel.startsWith(`.leanquill${path.sep}`);
+    if (rel === ".leanquill" || rel.startsWith(`.leanquill${path.sep}`)) {
+      return true;
+    }
+
+    // Book.txt is the only permitted write outside .leanquill/
+    if (rel === `manuscript${path.sep}Book.txt`) {
+      return true;
+    }
+
+    return false;
   }
 
   public async writeFile(targetPath: string, content: string): Promise<void> {
