@@ -25,7 +25,7 @@
 
 - [x] **Phase 1: Foundation and Safe Init** - Scaffold LeanQuill files, chapter ordering detection, and safe IO boundaries.
 - [x] **Phase 2: Core Chapter Workflow** - Deliver chapter tree navigation and chapter context basics.
-- [ ] **Phase 3: Outline and Beat Planning** - Deliver standalone Scrivener-style planning webview.
+- [x] **Phase 3: Outline and Beat Planning** - Deliver standalone Scrivener-style planning webview.
 - [ ] **Phase 4: Character Reference** - Populate Characters tab with character profile management.
 - [ ] **Phase 5: Place and Setting Reference** - Populate Places tab with location/setting management.
 - [ ] **Phase 6: Threads and Themes** - Populate Threads tab with narrative thread and thematic arc tracking.
@@ -84,20 +84,20 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 2
 **Requirements:** PLAN-01, PLAN-02
-**Plans:** 4 plans
+**Plans:** 3 plans (1 descoped)
 
 Plans:
 - [x] 03-01-PLAN.md — Types, data store, and Book.txt sync foundation.
 - [x] 03-02-PLAN.md — Sidebar outline tree with drag-and-drop reordering.
 - [x] 03-03-PLAN.md — Planning webview panel with tabs and beat card grid.
-- [ ] 03-04-PLAN.md — Beat editor, extension wiring, and end-to-end integration.
+- [~] 03-04-PLAN.md — ~~Beat editor~~ (descoped — beats removed from scope). Extension wiring absorbed into plans 01-03.
 
 **Success criteria:**
-1. Author can open a Scrivener-style outline webview with hierarchical Parts -> Chapters -> Beats.
+1. Author can open a Scrivener-style outline webview with hierarchical Parts -> Chapters.
 2. Author can drag and drop outline nodes and switch between outline and notecard views while preserving order/state.
-3. For each beat, author can set what/who/where/why fields and toggle candidate vs committed status.
+3. ~~For each beat, author can set what/who/where/why fields and toggle candidate vs committed status.~~ (descoped)
 
-**Notes:** PLAN-01 complexity isolated in its own phase by design decision.
+**Notes:** PLAN-01 complexity isolated in its own phase by design decision. Beat editor (03-04) descoped — beats removed from v1.0 scope.
 
 ---
 
@@ -247,7 +247,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Foundation and Safe Init | 0/0 | Completed | 2026-03-29 |
 | 2. Core Chapter Workflow | 4/4 | Completed | 2026-03-30 |
-| 3. Outline and Beat Planning | 0/0 | Not started | - |
+| 3. Outline and Beat Planning | 3/3 | Completed | 2026-04-05 |
 | 4. Character Reference | 0/0 | Not started | - |
 | 5. Place and Setting Reference | 0/0 | Not started | - |
 | 6. Threads and Themes | 0/0 | Not started | - |
