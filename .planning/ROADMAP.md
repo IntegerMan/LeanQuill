@@ -19,7 +19,7 @@
 | 9 | AI Safety Rails and Persona Baseline | Project is AI-ready with explicit persona configuration and manuscript write-block protections established | PER-01 | 3 criteria |
 | 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
 | 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
-| 12 | Standardized Research Workflow and Results Repository | Author can run standardized research workflows and store research outcomes in a dedicated folder adjacent to manuscript | RES-01, RES-02, RES-03, RES-04 | 3 criteria |
+| 12 | Standardized Research Workflow and Results Repository | 1/2 | In Progress|  |
 
 ## Phases
 
@@ -228,10 +228,10 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 1
 **Requirements:** RES-01, RES-02, RES-03, RES-04
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 12-01-PLAN.md — Config foundation, schema v2 migration, SafeFileSystem extension for research folder.
+- [x] 12-01-PLAN.md — Config foundation, schema v2 migration, SafeFileSystem extension for research folder.
 - [ ] 12-02-PLAN.md — Research sidebar TreeView, quick-start button, extension wiring.
 
 **Success criteria:**
