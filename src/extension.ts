@@ -1,17 +1,22 @@
+import * as crypto from "node:crypto";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { LeanQuillActionsProvider } from "./actionsView";
-import { getChapterStatusEntry, readChapterStatusIndex, writeChapterStatusEntry } from "./chapterStatus";
-import { ChapterContextPaneProvider } from "./chapterContextPane";
+import { openNodeInEditor, syncNodeFromFile } from "./nodeEditor";
+import { generateBookTxt, writeBookTxt, detectExternalBookTxtEdit } from "./bookTxtSync";
 import { resolveChapterOrder } from "./chapterOrder";
-import { ChapterTreeProvider, resolveStatusTarget } from "./chapterTree";
+import { OutlineContextPaneProvider, buildBookContext, buildNodeContext } from "./outlineContextPane";
 import { runInitializeFlow, shouldPromptInitialize } from "./initialize";
+import { readOutlineIndex, writeOutlineIndex, bootstrapOutline, findNodeById, removeNodeById } from "./outlineStore";
+import { OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTree";
+import { OutlineWebviewProvider } from "./outlineWebviewPanel";
+import { PlanningPanelProvider } from "./planningPanel";
 import { SafeFileSystem } from "./safeFileSystem";
-import { ChapterOrderResult, ChapterStatus } from "./types";
+import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
 
 async function setWorkspaceContext(rootPath: string): Promise<void> {
-  const hasBookTxt = await fs.stat(path.join(rootPath, "Book.txt")).then(() => true).catch(() => false);
+  const hasBookTxt = await fs.stat(path.join(rootPath, "manuscript", "Book.txt")).then(() => true).catch(() => false);
   const hasManuscript = await fs.stat(path.join(rootPath, "manuscript")).then(() => true).catch(() => false);
   const hasLeanquill = await fs.stat(path.join(rootPath, ".leanquill", "project.yaml")).then(() => true).catch(() => false);
 
@@ -56,25 +61,6 @@ async function readChapterOrderState(rootPath: string): Promise<ChapterOrderResu
   return resolveChapterOrder(rootPath);
 }
 
-async function listManuscriptPaths(rootPath: string): Promise<string[]> {
-  const files = await vscode.workspace.findFiles("manuscript/**/*.md");
-  const rootWithSlash = normalizePath(rootPath).replace(/\/+$/, "") + "/";
-
-  return files
-    .map((file) => normalizePath(file.fsPath))
-    .filter((absolutePath) => absolutePath.startsWith(rootWithSlash))
-    .map((absolutePath) => absolutePath.slice(rootWithSlash.length));
-}
-
-function getRelativeChapterPath(rootPath: string, absoluteFilePath: string): string | undefined {
-  const relativePath = normalizePath(path.relative(rootPath, absoluteFilePath));
-  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
-    return undefined;
-  }
-
-  return relativePath;
-}
-
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   log.info("Extension activating...");
   log.show(true);
@@ -106,53 +92,61 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const safeFileSystem = new SafeFileSystem(rootPath);
   const setupViewProvider = new LeanQuillActionsProvider();
-  const chapterTreeProvider = new ChapterTreeProvider(vscode, rootPath);
-  const chapterContextProvider = new ChapterContextPaneProvider(vscode);
-  let knownChapterPaths = new Set<string>();
-  let statusIndex = await readChapterStatusIndex(rootPath, (warning) => log.warn(warning));
+  const outlineContextProvider = new OutlineContextPaneProvider(vscode);
 
-  const chaptersView = vscode.window.createTreeView("leanquill.chapters", {
-    treeDataProvider: chapterTreeProvider,
-  });
+  // Webview-based sidebar outline
+  const outlineWebviewProvider = new OutlineWebviewProvider(
+    vscode,
+    context.extensionUri,
+    rootPath,
+    safeFileSystem,
+    () => {
+      planningPanel.refresh();
+      void syncBookTxt();
+    },
+  );
+
+  const planningPanel = new PlanningPanelProvider(vscode, context.extensionUri, rootPath, safeFileSystem);
+
+  // Flag to prevent Book.txt write-loop (reset after delay to allow watcher to fire)
+  let _selfEditingBookTxt = false;
+  let _selfEditResetTimer: ReturnType<typeof setTimeout> | undefined;
+  const SELF_EDIT_RESET_DELAY_MS = 1500;
+  const syncBookTxt = async (): Promise<void> => {
+    try {
+      const index = await readOutlineIndex(rootPath);
+      const content = generateBookTxt(index);
+      if (_selfEditResetTimer) {
+        clearTimeout(_selfEditResetTimer);
+      }
+      _selfEditingBookTxt = true;
+      await writeBookTxt(rootPath, content, safeFileSystem);
+      _selfEditResetTimer = setTimeout(() => {
+        _selfEditingBookTxt = false;
+      }, SELF_EDIT_RESET_DELAY_MS);
+    } catch {
+      _selfEditingBookTxt = false;
+    }
+  };
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("leanquill.actions", setupViewProvider),
-    chaptersView,
-    vscode.window.registerWebviewViewProvider("leanquill.chapterContext", chapterContextProvider, {
+    vscode.window.registerWebviewViewProvider("leanquill.outlineTree", outlineWebviewProvider, {
+      webviewOptions: { retainContextWhenHidden: true },
+    }),
+    vscode.window.registerWebviewViewProvider("leanquill.chapterContext", outlineContextProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
   );
 
-  const refreshChapterViews = async (): Promise<void> => {
-    const chapterOrder = await readChapterOrderState(rootPath);
-    statusIndex = await readChapterStatusIndex(rootPath, (warning) => log.warn(warning));
-    const manuscriptPaths = await listManuscriptPaths(rootPath);
-
-    chapterTreeProvider.setData(chapterOrder.chapterPaths, manuscriptPaths, statusIndex);
-    knownChapterPaths = chapterTreeProvider.getKnownChapterPaths();
-
-    const activeEditor = vscode.window.activeTextEditor;
-    if (!activeEditor) {
-      return;
-    }
-
-    const chapterPath = getRelativeChapterPath(rootPath, activeEditor.document.uri.fsPath);
-    if (chapterPath && knownChapterPaths.has(chapterPath)) {
-      chapterContextProvider.setActiveChapter(chapterPath, getChapterStatusEntry(statusIndex, chapterPath));
-      return;
-    }
-
-    chapterContextProvider.retainLastKnownContext();
-  };
-
-  const updateChapterStatus = async (chapterPath: string): Promise<void> => {
+  const updateNodeStatus = async (nodeId: string): Promise<void> => {
     const selected = await vscode.window.showQuickPick(
       STATUS_CHOICES.map(({ status, icon }) => ({
         label: `$(${icon}) ${status}`,
         description: status,
       })),
       {
-        placeHolder: "Select chapter status",
+        placeHolder: "Select status",
       },
     );
 
@@ -160,20 +154,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return;
     }
 
-    statusIndex = await writeChapterStatusEntry(safeFileSystem, rootPath, chapterPath, selected.description as ChapterStatus);
-    await refreshChapterViews();
-    chapterContextProvider.refreshAfterStatusUpdate(getChapterStatusEntry(statusIndex, chapterPath));
+    const newStatus = selected.description as ChapterStatus;
+    const index = await readOutlineIndex(rootPath);
+    const found = findNodeById(index.nodes, nodeId);
+    if (found) {
+      found.node.status = newStatus;
+    }
+    await writeOutlineIndex(rootPath, index, safeFileSystem);
+    await outlineWebviewProvider.refresh();
   };
 
   let lastOpened: { chapterPath: string; openedAt: number } | undefined;
   const openChapter = async (chapterPath: string): Promise<void> => {
-    if (chapterPath === "Book.txt") {
-      const bookPath = path.join(rootPath, "Book.txt");
+    if (chapterPath === "manuscript/Book.txt") {
+      const bookPath = path.join(rootPath, "manuscript", "Book.txt");
       const exists = await fs.stat(bookPath).then(() => true).catch(() => false);
       if (!exists) {
         const chapterOrder = await readChapterOrderState(rootPath);
-        const content = chapterOrder.chapterPaths.join("\n");
-        await fs.writeFile(bookPath, content.length > 0 ? `${content}\n` : "", "utf8");
+        const content = chapterOrder.chapterPaths.map(p => p.replace(/^manuscript\//, "")).join("\n");
+        await safeFileSystem.writeFile(bookPath, content.length > 0 ? `${content}\n` : "");
       }
     }
 
@@ -192,99 +191,397 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   };
 
-  const updateChapterStatusCommand = vscode.commands.registerCommand("leanquill.updateChapterStatus", async (item?: unknown) => {
-    const target = resolveStatusTarget(item);
-    const chapterPath = target && !target.missing
-      ? target.chapterPath
-      : chapterContextProvider.getCurrentChapterPath();
-
-    if (!chapterPath) {
-      await vscode.window.showInformationMessage("Open an item first, then run Update Status.");
-      return;
+  // Helper: resolve node ID from command argument (tree node, string, or selection)
+  const resolveNodeId = (arg?: OutlineTreeNode | string): string | undefined => {
+    if (typeof arg === "string") {
+      return arg;
     }
-
-    await updateChapterStatus(chapterPath);
-  });
-
-  const openChapterCommand = vscode.commands.registerCommand("leanquill.openChapter", async (chapterPath: string) => {
-    await openChapter(chapterPath);
-  });
-
-  const chapterSelectionSubscription = chaptersView.onDidChangeSelection(async (event) => {
-    const selected = resolveStatusTarget(event.selection[0]);
-    if (!selected || selected.missing) {
-      return;
+    if (arg && typeof arg === "object" && "kind" in arg && arg.kind === "node") {
+      return arg.data.id;
     }
-
-    chapterContextProvider.setActiveChapter(selected.chapterPath, getChapterStatusEntry(statusIndex, selected.chapterPath));
-    if (selected.kind === "book") {
-      await openChapter(selected.chapterPath);
-    }
-  });
-
-  const bookElementInteraction = async (element: unknown): Promise<void> => {
-    const target = resolveStatusTarget(element);
-    if (!target || target.kind !== "book" || target.missing) {
-      return;
-    }
-
-    chapterContextProvider.setActiveChapter(target.chapterPath, getChapterStatusEntry(statusIndex, target.chapterPath));
-    await openChapter(target.chapterPath);
+    return undefined;
   };
 
-  const chapterExpandSubscription = chaptersView.onDidExpandElement(async (event) => {
-    await bookElementInteraction(event.element);
-  });
-
-  const chapterCollapseSubscription = chaptersView.onDidCollapseElement(async (event) => {
-    await bookElementInteraction(event.element);
-  });
-
-  const activeEditorSubscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
-    if (!editor) {
+  // --- Outline Status Command ---
+  const updateNodeStatusCommand = vscode.commands.registerCommand("leanquill.updateNodeStatus", async (arg?: OutlineTreeNode | string) => {
+    const nodeId = resolveNodeId(arg);
+    if (!nodeId) {
+      await vscode.window.showInformationMessage("Select a node in the Outline first.");
       return;
     }
 
-    const chapterPath = getRelativeChapterPath(rootPath, editor.document.uri.fsPath);
-    if (chapterPath && knownChapterPaths.has(chapterPath)) {
-      chapterContextProvider.setActiveChapter(chapterPath, getChapterStatusEntry(statusIndex, chapterPath));
+    await updateNodeStatus(nodeId);
+  });
+
+  const addOrphanToOutlineCommand = vscode.commands.registerCommand("leanquill.addOrphanToOutline", async (node?: OutlineTreeNode) => {
+    if (!node || node.kind !== "orphan") {
+      return;
+    }
+    const fileName = (node as OutlineOrphanNode).data.fileName;
+    const baseName = path.basename(fileName, path.extname(fileName));
+    const title = baseName.replaceAll(/[-_]+/g, " ").trim().replaceAll(/\b\w/g, (c) => c.toUpperCase()) || baseName;
+
+    const index = await readOutlineIndex(rootPath);
+    const targetNode = index.nodes[0];
+    if (!targetNode) {
+      await vscode.window.showWarningMessage("Create an outline first before adding items.");
       return;
     }
 
-    chapterContextProvider.retainLastKnownContext();
+    targetNode.children.push({
+      id: crypto.randomUUID(),
+      title,
+      fileName,
+      active: true,
+      status: "not-started",
+      description: "",
+      customFields: {},
+      traits: [],
+      children: [],
+    });
+
+    await writeOutlineIndex(rootPath, index, safeFileSystem);
+    await outlineWebviewProvider.refresh();
+    await syncBookTxt();
   });
 
-  const chapterOrderWatcher = vscode.workspace.createFileSystemWatcher("**/.leanquill/chapter-order.json");
-  const chapterStatusWatcher = vscode.workspace.createFileSystemWatcher("**/.leanquill/chapter-status-index.json");
-  const manuscriptWatcher = vscode.workspace.createFileSystemWatcher("**/manuscript/**/*.md");
-  const triggerRefresh = () => {
-    void refreshChapterViews();
+  // --- Outline Commands ---
+  const openPlanningWorkspaceCommand = vscode.commands.registerCommand("leanquill.openPlanningWorkspace", async () => {
+    await planningPanel.show();
+  });
+
+  const createOutlineCommand = vscode.commands.registerCommand("leanquill.createOutline", async () => {
+    const chapterOrder = await readChapterOrderState(rootPath);
+    const index = bootstrapOutline(chapterOrder.chapterPaths);
+    await writeOutlineIndex(rootPath, index, safeFileSystem);
+    await outlineWebviewProvider.refresh();
+    await syncBookTxt();
+    log.info("Outline created from chapter order");
+  });
+
+  const openNodeInEditorCommand = vscode.commands.registerCommand("leanquill.openNodeInEditor", async (arg?: OutlineTreeNode | string) => {
+    const nodeId = typeof arg === "string" ? arg : (arg && arg.kind === "node" ? arg.data.id : undefined);
+    if (!nodeId) {
+      return;
+    }
+    await openNodeInEditor(vscode, rootPath, nodeId, safeFileSystem);
+  });
+
+  const openBookTxtCommand = vscode.commands.registerCommand("leanquill.openBookTxt", async () => {
+    await openChapter("manuscript/Book.txt");
+  });
+
+  const openChapterFromOutlineCommand = vscode.commands.registerCommand("leanquill.openChapterFromOutline", async (arg?: OutlineTreeNode | string) => {
+    let fileName: string | undefined;
+    if (typeof arg === "string") {
+      const index = await readOutlineIndex(rootPath);
+      const found = findNodeById(index.nodes, arg);
+      fileName = found?.node.fileName;
+    } else if (arg && arg.kind === "node" && arg.data.fileName) {
+      fileName = arg.data.fileName;
+    }
+    if (!fileName) {
+      return;
+    }
+    const absolutePath = path.join(rootPath, fileName);
+    await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), {
+      preview: false,
+      preserveFocus: false,
+    });
+  });
+
+  const addChildNodeCommand = vscode.commands.registerCommand("leanquill.addChildNode", async (arg?: OutlineTreeNode | string) => {
+    const title = await vscode.window.showInputBox({ prompt: "Title", placeHolder: "New item" });
+    if (!title) {
+      return;
+    }
+    const index = await readOutlineIndex(rootPath);
+    const parentId = resolveNodeId(arg);
+
+    const newNode: OutlineNode = {
+      id: crypto.randomUUID(),
+      title,
+      fileName: "",
+      active: true,
+      status: "not-started",
+      description: "",
+      customFields: {},
+      traits: [],
+      children: [],
+    };
+
+    if (parentId) {
+      const found = findNodeById(index.nodes, parentId);
+      if (found) {
+        found.node.children.push(newNode);
+      }
+    } else {
+      // No selection — add as top-level node with "part" trait
+      newNode.traits = ["part"];
+      index.nodes.push(newNode);
+    }
+
+    await writeOutlineIndex(rootPath, index, safeFileSystem);
+    await outlineWebviewProvider.refresh();
+    await syncBookTxt();
+  });
+
+  const addSiblingNodeCommand = vscode.commands.registerCommand("leanquill.addSiblingNode", async (arg?: OutlineTreeNode | string) => {
+    const nodeId = resolveNodeId(arg);
+    if (!nodeId) {
+      return;
+    }
+    const title = await vscode.window.showInputBox({ prompt: "Title", placeHolder: "New item" });
+    if (!title) {
+      return;
+    }
+    const index = await readOutlineIndex(rootPath);
+
+    const newNode: OutlineNode = {
+      id: crypto.randomUUID(),
+      title,
+      fileName: "",
+      active: true,
+      status: "not-started",
+      description: "",
+      customFields: {},
+      traits: [],
+      children: [],
+    };
+
+    const found = findNodeById(index.nodes, nodeId);
+    if (found) {
+      // Copy traits from sibling's level (if sibling is a part, new one is too)
+      if (found.node.traits.includes("part")) {
+        newNode.traits = ["part"];
+      }
+      found.siblings.splice(found.index + 1, 0, newNode);
+    } else {
+      index.nodes.push(newNode);
+    }
+
+    await writeOutlineIndex(rootPath, index, safeFileSystem);
+    await outlineWebviewProvider.refresh();
+    await syncBookTxt();
+  });
+
+  const removeOutlineNodeCommand = vscode.commands.registerCommand("leanquill.removeOutlineNode", async (arg?: OutlineTreeNode | string) => {
+    const nodeId = resolveNodeId(arg);
+    if (!nodeId) {
+      return;
+    }
+    const preIndex = await readOutlineIndex(rootPath);
+    const preFound = findNodeById(preIndex.nodes, nodeId);
+    const label = preFound?.node.title || "(untitled)";
+    const confirm = await vscode.window.showWarningMessage(
+      `Remove "${label}" from outline? The manuscript file will not be deleted.`,
+      { modal: true },
+      "Remove",
+    );
+    if (confirm !== "Remove") {
+      return;
+    }
+    const index = await readOutlineIndex(rootPath);
+
+    const found = findNodeById(index.nodes, nodeId);
+    if (found) {
+      removeNodeById(index.nodes, nodeId);
+    }
+
+    await writeOutlineIndex(rootPath, index, safeFileSystem);
+    await outlineWebviewProvider.refresh();
+    await syncBookTxt();
+  });
+
+  const toggleOutlineActiveCommand = vscode.commands.registerCommand("leanquill.toggleOutlineActive", async (arg?: OutlineTreeNode | string) => {
+    const nodeId = resolveNodeId(arg);
+    if (!nodeId) {
+      return;
+    }
+    const index = await readOutlineIndex(rootPath);
+    const found = findNodeById(index.nodes, nodeId);
+    if (found) {
+      found.node.active = !found.node.active;
+    }
+    await writeOutlineIndex(rootPath, index, safeFileSystem);
+    await outlineWebviewProvider.refresh();
+    await syncBookTxt();
+  });
+
+  const renameOutlineNodeCommand = vscode.commands.registerCommand("leanquill.renameOutlineNode", async (arg?: OutlineTreeNode | string) => {
+    const nodeId = resolveNodeId(arg);
+    if (!nodeId) {
+      return;
+    }
+    const index = await readOutlineIndex(rootPath);
+    const found = findNodeById(index.nodes, nodeId);
+    if (!found) {
+      return;
+    }
+    const currentName = found.node.title;
+    const newName = await vscode.window.showInputBox({ prompt: "New name", value: currentName });
+    if (!newName) {
+      return;
+    }
+    found.node.title = newName;
+    // The manuscript file is not renamed — only the outline title changes.
+    // Users can rename the physical file manually if desired.
+    await writeOutlineIndex(rootPath, index, safeFileSystem);
+    await outlineWebviewProvider.refresh();
+    await syncBookTxt();
+  });
+
+  const moveNodeUpCommand = vscode.commands.registerCommand("leanquill.moveNodeUp", async (arg?: OutlineTreeNode | string) => {
+    const nodeId = resolveNodeId(arg);
+    if (!nodeId) {
+      return;
+    }
+    const index = await readOutlineIndex(rootPath);
+    const found = findNodeById(index.nodes, nodeId);
+    if (!found || found.index === 0) {
+      return;
+    }
+    const siblings = found.siblings;
+    [siblings[found.index - 1], siblings[found.index]] = [siblings[found.index], siblings[found.index - 1]];
+    await writeOutlineIndex(rootPath, index, safeFileSystem);
+    await outlineWebviewProvider.refresh();
+    await syncBookTxt();
+  });
+
+  const moveNodeDownCommand = vscode.commands.registerCommand("leanquill.moveNodeDown", async (arg?: OutlineTreeNode | string) => {
+    const nodeId = resolveNodeId(arg);
+    if (!nodeId) {
+      return;
+    }
+    const index = await readOutlineIndex(rootPath);
+    const found = findNodeById(index.nodes, nodeId);
+    if (!found || found.index >= found.siblings.length - 1) {
+      return;
+    }
+    const siblings = found.siblings;
+    [siblings[found.index], siblings[found.index + 1]] = [siblings[found.index + 1], siblings[found.index]];
+    await writeOutlineIndex(rootPath, index, safeFileSystem);
+    await outlineWebviewProvider.refresh();
+    await syncBookTxt();
+  });
+
+  // --- Outline webview → Context pane wiring ---
+  const outlineWebviewSelectionSub = outlineWebviewProvider.onDidSelect(async (nodeId) => {
+    const index = await readOutlineIndex(rootPath);
+    const found = findNodeById(index.nodes, nodeId);
+    if (found) {
+      // Calculate depth
+      let depth = 0;
+      const calcDepth = (nodes: OutlineNode[], target: string, d: number): number | undefined => {
+        for (const n of nodes) {
+          if (n.id === target) return d;
+          const found = calcDepth(n.children, target, d + 1);
+          if (found !== undefined) return found;
+        }
+        return undefined;
+      };
+      depth = calcDepth(index.nodes, nodeId, 0) ?? 0;
+      outlineContextProvider.setContext(buildNodeContext(found.node, depth));
+    } else {
+      outlineContextProvider.clearContext();
+    }
+  });
+
+  // --- File Watchers ---
+  const outlineWatcher = vscode.workspace.createFileSystemWatcher("**/.leanquill/outline-index.json");
+  const manuscriptFileWatcher = vscode.workspace.createFileSystemWatcher("**/manuscript/**/*.md");
+  const bookTxtWatcher = vscode.workspace.createFileSystemWatcher("**/manuscript/Book.txt");
+
+  // Manuscript file changes trigger outline webview refresh (for Not Included group)
+  // and description sync for beat files with matching fileName
+  const triggerOutlineRefresh = () => {
+    void outlineWebviewProvider.refresh();
   };
+  manuscriptFileWatcher.onDidCreate(triggerOutlineRefresh);
+  manuscriptFileWatcher.onDidDelete(triggerOutlineRefresh);
+  manuscriptFileWatcher.onDidChange((uri) => {
+    void syncNodeFromFile(rootPath, uri.fsPath, safeFileSystem);
+  });
+  // Outline index watcher — reload webview + panel + sync Book.txt
+  const onOutlineChanged = () => {
+    void outlineWebviewProvider.refresh();
+    planningPanel.refresh();
+    void syncBookTxt();
+  };
+  outlineWatcher.onDidCreate(onOutlineChanged);
+  outlineWatcher.onDidChange(onOutlineChanged);
+  outlineWatcher.onDidDelete(() => {
+    void outlineWebviewProvider.refresh();
+    planningPanel.refresh();
+  });
 
-  chapterOrderWatcher.onDidCreate(triggerRefresh);
-  chapterOrderWatcher.onDidChange(triggerRefresh);
-  chapterOrderWatcher.onDidDelete(triggerRefresh);
-  chapterStatusWatcher.onDidCreate(triggerRefresh);
-  chapterStatusWatcher.onDidChange(triggerRefresh);
-  chapterStatusWatcher.onDidDelete(triggerRefresh);
-  manuscriptWatcher.onDidCreate(triggerRefresh);
-  manuscriptWatcher.onDidChange(triggerRefresh);
-  manuscriptWatcher.onDidDelete(triggerRefresh);
+  // Book.txt watcher — detect external edits
+  bookTxtWatcher.onDidChange(async () => {
+    if (_selfEditingBookTxt) {
+      return;
+    }
+    try {
+      const index = await readOutlineIndex(rootPath);
+      const expected = generateBookTxt(index);
+      const isExternal = await detectExternalBookTxtEdit(rootPath, expected);
+      if (isExternal) {
+        const choice = await vscode.window.showWarningMessage(
+          "Book.txt was modified outside LeanQuill. The outline may be out of sync.",
+          "Use Outline Order",
+          "Dismiss",
+        );
+        if (choice === "Use Outline Order") {
+          await syncBookTxt();
+        }
+      }
+    } catch {
+      // Ignore if outline doesn't exist yet
+    }
+  });
 
   context.subscriptions.push(
-    openChapterCommand,
-    updateChapterStatusCommand,
-    chapterSelectionSubscription,
-    chapterExpandSubscription,
-    chapterCollapseSubscription,
-    activeEditorSubscription,
-    chapterOrderWatcher,
-    chapterStatusWatcher,
-    manuscriptWatcher,
+    updateNodeStatusCommand,
+    addOrphanToOutlineCommand,
+    openPlanningWorkspaceCommand,
+    createOutlineCommand,
+    openNodeInEditorCommand,
+    openBookTxtCommand,
+    openChapterFromOutlineCommand,
+    addChildNodeCommand,
+    addSiblingNodeCommand,
+    removeOutlineNodeCommand,
+    toggleOutlineActiveCommand,
+    renameOutlineNodeCommand,
+    moveNodeUpCommand,
+    moveNodeDownCommand,
+    outlineWebviewSelectionSub,
+    outlineWatcher,
+    manuscriptFileWatcher,
+    bookTxtWatcher,
   );
 
   await setWorkspaceContext(rootPath);
-  await refreshChapterViews();
+
+  // Auto-bootstrap outline from Book.txt when project is initialized but outline is empty
+  try {
+    const hasProject = await fs.stat(path.join(rootPath, ".leanquill", "project.yaml")).then(() => true).catch(() => false);
+    if (hasProject) {
+      const existingIndex = await readOutlineIndex(rootPath);
+      if (existingIndex.nodes.length === 0) {
+        const chapterOrder = await readChapterOrderState(rootPath);
+        if (chapterOrder.chapterPaths.length > 0) {
+          const index = bootstrapOutline(chapterOrder.chapterPaths);
+          await writeOutlineIndex(rootPath, index, safeFileSystem);
+          await outlineWebviewProvider.refresh();
+          await syncBookTxt();
+          log.info("Auto-bootstrapped outline from Book.txt");
+        }
+      }
+    }
+  } catch {
+    // Non-critical — user can still manually Create Outline
+  }
+
   log.info("Activation complete — command ready");
 
   // Proactive init prompt (non-blocking — don't hold up activation)
@@ -316,8 +613,4 @@ async function scheduleInitPrompt(context: vscode.ExtensionContext, rootPath: st
   if (choice === "Dismiss") {
     await context.workspaceState.update("leanquill.initPromptDismissed", true);
   }
-}
-
-export function deactivate(): void {
-  // No-op
 }

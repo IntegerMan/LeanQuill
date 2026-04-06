@@ -19,19 +19,21 @@ test("uses Book.txt strictly and warns for missing/duplicates", async () => {
     await fs.mkdir(path.join(dir, "manuscript"), { recursive: true });
     await fs.writeFile(path.join(dir, "manuscript", "ch1.md"), "one");
     await fs.writeFile(path.join(dir, "manuscript", "ch2.md"), "two");
+    // Book.txt now lives inside manuscript/ with paths relative to manuscript/
     await fs.writeFile(
-      path.join(dir, "Book.txt"),
+      path.join(dir, "manuscript", "Book.txt"),
       [
-        "manuscript/ch2.md",
-        "manuscript/ch2.md",
-        "manuscript/ch1.md",
-        "manuscript/missing.md",
+        "ch2.md",
+        "ch2.md",
+        "ch1.md",
+        "missing.md",
       ].join("\n"),
     );
 
     const result = await resolveChapterOrder(dir);
 
     assert.equal(result.source, "book-txt");
+    // Internal paths still have manuscript/ prefix
     assert.deepEqual(result.chapterPaths, ["manuscript/ch2.md", "manuscript/ch1.md"]);
     assert.equal(result.warnings.length, 2);
   });

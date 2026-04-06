@@ -31,3 +31,22 @@ export interface ChapterStatusIndex {
   schemaVersion: "1";
   chapters: Record<string, ChapterStatusEntry>;
 }
+
+// --- Outline types (recursive node model) ---
+
+export interface OutlineNode {
+  id: string;
+  title: string;
+  fileName: string;
+  active: boolean;
+  status: ChapterStatus;
+  description: string;
+  customFields: Record<string, string>;
+  traits: string[];
+  children: OutlineNode[];
+}
+
+export interface OutlineIndex {
+  schemaVersion: number;
+  nodes: OutlineNode[];
+}
