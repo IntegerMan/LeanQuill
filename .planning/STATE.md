@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: 03
 status: executing
 stopped_at: Phase 3 context gathered
-last_updated: "2026-03-30T20:58:48.027Z"
+last_updated: "2026-04-06T02:06:34.824Z"
 progress:
-  total_phases: 10
+  total_phases: 11
   completed_phases: 2
   total_plans: 9
-  completed_plans: 5
+  completed_plans: 8
 ---
 
 # Project State: LeanQuill
@@ -77,6 +77,10 @@ Plan: 1 of 4
 - Chapter workflow is scheduled before knowledge pane to de-risk data dependencies.
 - Issue tracking and gutter decorations are grouped to keep triage and editor feedback coherent.
 - AI phases are sequenced after write-block and tool-contract safety baseline.
+
+### Roadmap Evolution
+
+- Phase 11 added: Make the outline and card views more usable with the ability to insert, remove, and reorder cards. The outline should also support changing hierarchy structures like we can in the sidebar.
 
 ## Session Continuity
 

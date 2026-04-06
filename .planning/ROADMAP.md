@@ -18,6 +18,7 @@
 | 8 | Issue Capture, Triage, and Editor Signals | Author can capture, triage, and spatially resolve editorial/research issues from one workflow | ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03 | 5 criteria |
 | 9 | AI Safety Rails and Persona Baseline | Project is AI-ready with explicit persona configuration and manuscript write-block protections established | PER-01 | 3 criteria |
 | 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
+| 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
 
 ## Phases
 
@@ -31,6 +32,7 @@
 - [ ] **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators.
 - [ ] **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
 - [ ] **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
+- [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
 
 ## Phase Details
 
@@ -190,8 +192,6 @@ Plans:
 
 **Notes:** Mandatory safety gate before any AI feature phase, satisfying write-block-first architecture policy.
 
----
-
 ### Phase 10: AI Review and Advisory Workflows
 
 **Goal:** Author can invoke AI as an auditable advisory layer for review, issue discussion, and story intelligence without any manuscript-authoring behavior.
@@ -208,6 +208,18 @@ Plans:
 
 **Notes:** Final phase by design because it depends on foundation, issue model, chapter context fidelity, and enforced write-block contracts.
 
+---
+
+### Phase 11: Make the outline and card views more usable with the ability to insert, remove, and reorder cards. The outline should also support changing hierarchy structures like we can in the sidebar.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 10
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 11 to break down)
+
 ## Progress Table
 
 | Phase | Plans Complete | Status | Completed |
@@ -222,3 +234,4 @@ Plans:
 | 8. Issue Capture, Triage, and Editor Signals | 0/0 | Not started | - |
 | 9. AI Safety Rails and Persona Baseline | 0/0 | Not started | - |
 | 10. AI Review and Advisory Workflows | 0/0 | Not started | - |
+| 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
