@@ -14,7 +14,7 @@ import { OutlineWebviewProvider } from "./outlineWebviewPanel";
 import { PlanningPanelProvider } from "./planningPanel";
 import { SafeFileSystem } from "./safeFileSystem";
 import { readProjectConfig } from "./projectConfig";
-import { migrateProjectYaml } from "./initialize";
+import { migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
 import { ResearchTreeProvider } from "./researchTree";
 import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
 
@@ -106,6 +106,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
     const researchFolderClean = config.folders.research.replace(/\/+$/, "");
     safeFileSystem.allowPath(researchFolderClean, ".md");
+    // Ensure harness entry points exist for projects initialized before phase 12
+    // (writeHarnessEntryPoints is idempotent — skips existing files)
+    void writeHarnessEntryPoints(rootPath).catch(() => { /* non-critical */ });
   }
 
   const researchFolder = (config?.folders.research ?? "research/leanquill").replace(/\/+$/, "");

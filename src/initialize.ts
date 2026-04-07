@@ -156,7 +156,7 @@ This workflow is invoked via harness-specific entry points:
 All three entry points read this file and execute the process above.
 `;
 
-async function writeHarnessEntryPoints(rootPath: string): Promise<void> {
+export async function writeHarnessEntryPoints(rootPath: string): Promise<void> {
   const copilotDir = path.join(rootPath, ".github", "agents");
   const copilotFile = path.join(copilotDir, "researcher.agent.md");
   const copilotContent = `---
