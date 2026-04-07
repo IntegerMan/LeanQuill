@@ -172,7 +172,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
 
     try {
-      await vscode.commands.executeCommand("workbench.action.chat.open", { query });
+      await vscode.commands.executeCommand("workbench.action.chat.open", { query, isPartialQuery: true });
     } catch {
       await vscode.window.showInformationMessage(
         "Open your AI chat and invoke the LeanQuill research workflow with your question. " +
