@@ -160,18 +160,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   researchWatcher.onDidDelete(() => researchTreeProvider.refresh());
 
   const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
-    const placeholder = "Replace with your research question";
     const appName = vscode.env.appName ?? "";
     const isCursor = appName.toLowerCase().includes("cursor");
     const hasCopilot = vscode.extensions.getExtension("github.copilot-chat") !== undefined;
 
+    try {
+      await vscode.commands.executeCommand("workbench.action.chat.newChat");
+    } catch {
+      // newChat not available on this version — fall through to open
+    }
+
     let query: string;
-    if (isCursor) {
-      query = `@researcher ${placeholder}`;
-    } else if (hasCopilot) {
-      query = `@researcher ${placeholder}`;
+    if (isCursor || hasCopilot) {
+      query = "@researcher ";
     } else {
-      query = `Research: ${placeholder}`;
+      query = "Research: ";
     }
 
     try {
