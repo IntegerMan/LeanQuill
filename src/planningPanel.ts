@@ -3,13 +3,18 @@ import type * as VSCode from "vscode";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml } from "./planningPanelHtml";
 import { SafeFileSystem } from "./safeFileSystem";
-import { OutlineNode, OutlineIndex, ChapterStatus } from "./types";
+import { OutlineNode, OutlineIndex, ChapterStatus, CharacterProfile } from "./types";
+import { readProjectConfig } from "./projectConfig";
+import { listCharacters, createCharacter, saveCharacter, deleteCharacter } from "./characterStore";
 
 export class PlanningPanelProvider {
   private _panel: VSCode.WebviewPanel | undefined;
   private _activeTab = "outline";
   private _debounceTimer: ReturnType<typeof setTimeout> | undefined;
   private _pendingIndex: OutlineIndex | undefined;
+  private _selectedCharacterFileName: string | undefined;
+  private _pendingCharacter: CharacterProfile | undefined;
+  private _charDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly vscodeApi: typeof VSCode,
@@ -37,16 +42,32 @@ export class PlanningPanelProvider {
       },
     );
 
-    this._panel.onDidDispose(async () => {
+    this._panel.onDidDispose(() => {
       this._panel = undefined;
-      if (this._debounceTimer) {
-        clearTimeout(this._debounceTimer);
-        this._debounceTimer = undefined;
-      }
-      if (this._pendingIndex) {
-        await writeOutlineIndex(this.rootPath, this._pendingIndex, this.safeFs);
-        this._pendingIndex = undefined;
-      }
+      (async () => {
+        if (this._debounceTimer) {
+          clearTimeout(this._debounceTimer);
+          this._debounceTimer = undefined;
+        }
+        if (this._pendingIndex) {
+          await writeOutlineIndex(this.rootPath, this._pendingIndex, this.safeFs);
+          this._pendingIndex = undefined;
+        }
+        if (this._charDebounceTimer) {
+          clearTimeout(this._charDebounceTimer);
+          this._charDebounceTimer = undefined;
+        }
+        if (this._pendingCharacter) {
+          const config = await readProjectConfig(this.rootPath) ?? {
+            schemaVersion: '1',
+            folders: { research: 'research/leanquill/', characters: 'notes/characters/' },
+          };
+          await saveCharacter(this._pendingCharacter, this.rootPath, config, this.safeFs);
+          this._pendingCharacter = undefined;
+        }
+      })().catch((err: unknown) => {
+        console.error('[LeanQuill] Failed to flush pending state on dispose', err);
+      });
     });
 
     this._panel.webview.onDidReceiveMessage((msg) => this._handleMessage(msg));
@@ -79,9 +100,23 @@ export class PlanningPanelProvider {
     }
 
     const index = await readOutlineIndex(this.rootPath);
+    const config = await readProjectConfig(this.rootPath) ?? {
+      schemaVersion: "1",
+      folders: { research: "research/leanquill/", characters: "notes/characters/" },
+    };
+    const characters = await listCharacters(this.rootPath, config);
+    // Reset selection if selected character was deleted
+    if (
+      this._selectedCharacterFileName &&
+      !characters.find((c) => c.fileName === this._selectedCharacterFileName)
+    ) {
+      this._selectedCharacterFileName = undefined;
+    }
     const nonce = crypto.randomBytes(16).toString("hex");
     const cspSource = this._panel.webview.cspSource;
-    this._panel.webview.html = renderPlanningHtml(index, nonce, cspSource, this._activeTab);
+    this._panel.webview.html = renderPlanningHtml(
+      index, characters, this._selectedCharacterFileName, nonce, cspSource, this._activeTab,
+    );
   }
 
   private async _handleMessage(msg: Record<string, unknown>): Promise<void> {
@@ -110,6 +145,31 @@ export class PlanningPanelProvider {
 
       case "node:updateStatus":
         await this._updateNodeStatus(msg.nodeId as string, msg.status as string);
+        break;
+
+      case "character:select":
+        this._selectedCharacterFileName = msg.fileName as string;
+        await this._renderPanel();
+        break;
+
+      case "character:create":
+        await this._createCharacter();
+        break;
+
+      case "character:updateField":
+        await this._updateCharacterField(
+          msg.fileName as string,
+          msg.field as string,
+          msg.value as string,
+        );
+        break;
+
+      case "character:addCustomField":
+        await this._addCharacterCustomField(msg.fileName as string, msg.fieldName as string);
+        break;
+
+      case "character:delete":
+        await this._deleteCharacter(msg.fileName as string);
         break;
     }
   }
@@ -183,4 +243,88 @@ export class PlanningPanelProvider {
     found.node.status = status as ChapterStatus;
     await writeOutlineIndex(this.rootPath, index, this.safeFs);
   }
+
+  private async _createCharacter(): Promise<void> {
+    const name = await this.vscodeApi.window.showInputBox({
+      prompt: "Character name",
+      placeHolder: "e.g. Jane Doe",
+    });
+    if (!name?.trim()) { return; }
+    const config = await readProjectConfig(this.rootPath) ?? {
+      schemaVersion: "1",
+      folders: { research: "research/leanquill/", characters: "notes/characters/" },
+    };
+    const profile = await createCharacter(name.trim(), this.rootPath, config, this.safeFs);
+    this._selectedCharacterFileName = profile.fileName;
+    await this._renderPanel();
+  }
+
+  private async _updateCharacterField(
+    fileName: string,
+    field: string,
+    value: string,
+  ): Promise<void> {
+    if (!this._pendingCharacter || this._pendingCharacter.fileName !== fileName) {
+      const config = await readProjectConfig(this.rootPath) ?? {
+        schemaVersion: "1",
+        folders: { research: "research/leanquill/", characters: "notes/characters/" },
+      };
+      const profiles = await listCharacters(this.rootPath, config);
+      const found = profiles.find((p) => p.fileName === fileName);
+      if (!found) { return; }
+      this._pendingCharacter = { ...found };
+    }
+    if (field === "aliases") {
+      this._pendingCharacter.aliases = value.split(",").map((s) => s.trim()).filter(Boolean);
+    } else if (field.startsWith("custom:")) {
+      const customKey = field.slice(7);
+      this._pendingCharacter.customFields[customKey] = value;
+    } else if (
+      field === "name" || field === "role" || field === "description" || field === "body"
+    ) {
+      (this._pendingCharacter as Record<string, unknown>)[field] = value;
+    }
+
+    if (this._charDebounceTimer) { clearTimeout(this._charDebounceTimer); }
+    const profileToWrite = this._pendingCharacter;
+    this._charDebounceTimer = setTimeout(() => {
+      const doSave = async () => {
+        const config = await readProjectConfig(this.rootPath) ?? {
+          schemaVersion: "1",
+          folders: { research: "research/leanquill/", characters: "notes/characters/" },
+        };
+        await saveCharacter(profileToWrite, this.rootPath, config, this.safeFs);
+        this._pendingCharacter = undefined;
+      };
+      doSave().catch((err: unknown) => {
+        console.error("[LeanQuill] Failed to save character", err);
+      });
+    }, 300);
+  }
+
+  private async _addCharacterCustomField(fileName: string, fieldName: string): Promise<void> {
+    const config = await readProjectConfig(this.rootPath) ?? {
+      schemaVersion: "1",
+      folders: { research: "research/leanquill/", characters: "notes/characters/" },
+    };
+    const profiles = await listCharacters(this.rootPath, config);
+    const found = profiles.find((p) => p.fileName === fileName);
+    if (!found) { return; }
+    found.customFields[fieldName] = "";
+    await saveCharacter(found, this.rootPath, config, this.safeFs);
+    await this._renderPanel();
+  }
+
+  private async _deleteCharacter(fileName: string): Promise<void> {
+    const config = await readProjectConfig(this.rootPath) ?? {
+      schemaVersion: "1",
+      folders: { research: "research/leanquill/", characters: "notes/characters/" },
+    };
+    await deleteCharacter(fileName, this.rootPath, config, this.safeFs);
+    if (this._selectedCharacterFileName === fileName) {
+      this._selectedCharacterFileName = undefined;
+    }
+    await this._renderPanel();
+  }
+
 }
