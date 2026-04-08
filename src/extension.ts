@@ -183,7 +183,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   researchWatcher.onDidChange(() => researchTreeProvider.refresh());
   researchWatcher.onDidDelete(() => researchTreeProvider.refresh());
 
-  // Characters folder watcher — refresh tree when character files change
+  // Characters folder watcher â€” refresh tree when character files change
   const charsFolder = (config?.folders.characters ?? "notes/characters").replace(/\/+$/g, "");
   const charsDir = path.join(rootPath, ...charsFolder.split("/"));
   const charactersWatcher = vscode.workspace.createFileSystemWatcher(
@@ -641,7 +641,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
-  // Manuscript scan listeners — update character references when manuscript files are saved/opened
+  // Manuscript scan listeners â€” update character references when manuscript files are saved/opened
   const scanManuscriptFile = async (filePath: string): Promise<void> => {
     try {
       const rel = filePath.replace(/\\/g, "/").replace(rootPath.replace(/\\/g, "/") + "/", "");

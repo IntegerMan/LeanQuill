@@ -1,4 +1,5 @@
 import * as crypto from "node:crypto";
+import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml } from "./planningPanelHtml";
@@ -318,6 +319,15 @@ export class PlanningPanelProvider {
   }
 
   private async _addCharacterCustomField(fileName: string, fieldName: string): Promise<void> {
+    const RESERVED_KEYS = new Set(["name", "aliases", "role", "description", "referencedByNameIn", "body"]);
+    const safeName = fieldName.trim().replace(/[^a-zA-Z0-9_]/g, "_");
+    if (!safeName || RESERVED_KEYS.has(safeName)) {
+      const reason = !safeName
+        ? "Field names must contain at least one alphanumeric character or underscore."
+        : `"${fieldName}" is a reserved field name and cannot be used as a custom field.`;
+      await this.vscodeApi.window.showErrorMessage(reason);
+      return;
+    }
     const config = await readProjectConfig(this.rootPath) ?? {
       schemaVersion: "1",
       folders: { research: "research/leanquill/", characters: "notes/characters/" },
@@ -325,7 +335,7 @@ export class PlanningPanelProvider {
     const profiles = await listCharacters(this.rootPath, config);
     const found = profiles.find((p) => p.fileName === fileName);
     if (!found) { return; }
-    found.customFields[fieldName] = "";
+    found.customFields[safeName] = "";
     await saveCharacter(found, this.rootPath, config, this.safeFs);
     await this._renderPanel();
   }
@@ -357,7 +367,7 @@ export class PlanningPanelProvider {
       folders: { research: "research/leanquill/", characters: "notes/characters/" },
     };
     const charsDir = config.folders.characters.replace(/\/+$/, "");
-    const filePath = require("node:path").join(this.rootPath, ...charsDir.split("/"), fileName);
+    const filePath = path.join(this.rootPath, ...charsDir.split("/"), fileName);
     await this.vscodeApi.commands.executeCommand("vscode.open", this.vscodeApi.Uri.file(filePath));
   }
 

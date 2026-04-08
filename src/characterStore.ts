@@ -58,12 +58,37 @@ export function parseCharacterFile(fileName: string, content: string): Character
   const referencedByNameIn: string[] = [];
   const customFields: Record<string, string> = {};
 
-  // State machine for parsing top-level keys and list values
+  // State machine for parsing top-level keys, list values, and block scalars
   let currentKey: string | null = null;
   let currentList: string[] | null = null;
+  let currentBlockKey: string | null = null;
+  let currentBlockLines: string[] = [];
+
+  const flushBlock = () => {
+    if (currentBlockKey === null) { return; }
+    // Strip trailing newlines that YAML block scalars add implicitly
+    const blockVal = currentBlockLines.join("\n").replace(/\n+$/, "");
+    if (currentBlockKey === "description") {
+      description = blockVal;
+    } else {
+      customFields[currentBlockKey] = blockVal;
+    }
+    currentBlockKey = null;
+    currentBlockLines = [];
+  };
 
   const lines = frontmatter.split("\n");
   for (const line of lines) {
+    // Block scalar continuation (indented lines)
+    if (currentBlockKey !== null) {
+      if (line.startsWith("  ")) {
+        currentBlockLines.push(line.slice(2));
+        continue;
+      } else {
+        flushBlock();
+      }
+    }
+
     // List item under current key
     const listItemMatch = /^  - (.*)$/.exec(line);
     if (listItemMatch && currentList !== null) {
@@ -79,7 +104,16 @@ export function parseCharacterFile(fileName: string, content: string): Character
     if (!keyValMatch) { continue; }
 
     const key = keyValMatch[1];
-    const val = keyValMatch[2].trim().replace(/^["']|["']$/g, "");
+    const rawVal = keyValMatch[2].trim();
+
+    // Block scalar indicator
+    if (rawVal === "|" || rawVal === "|-") {
+      currentBlockKey = key;
+      currentBlockLines = [];
+      continue;
+    }
+
+    const val = rawVal.replace(/^["']|["']$/g, "");
 
     if (key === "name") {
       name = val;
@@ -100,6 +134,9 @@ export function parseCharacterFile(fileName: string, content: string): Character
     }
   }
 
+  // Flush any trailing block scalar
+  flushBlock();
+
   return { fileName, name, aliases, role, description, referencedByNameIn, customFields, body };
 }
 
@@ -118,7 +155,15 @@ export function serializeCharacterFile(profile: CharacterProfile): string {
   }
 
   lines.push(`role: ${profile.role}`);
-  lines.push(`description: ${profile.description}`);
+
+  if (profile.description.includes("\n")) {
+    lines.push("description: |");
+    for (const descLine of profile.description.split("\n")) {
+      lines.push(`  ${descLine}`);
+    }
+  } else {
+    lines.push(`description: ${profile.description}`);
+  }
 
   if (profile.referencedByNameIn.length === 0) {
     lines.push("referencedByNameIn: []");
@@ -131,7 +176,14 @@ export function serializeCharacterFile(profile: CharacterProfile): string {
   }
 
   for (const [key, val] of Object.entries(profile.customFields)) {
-    lines.push(`${key}: ${val}`);
+    if (val.includes("\n")) {
+      lines.push(`${key}: |`);
+      for (const valLine of val.split("\n")) {
+        lines.push(`  ${valLine}`);
+      }
+    } else {
+      lines.push(`${key}: ${val}`);
+    }
   }
 
   lines.push("---");

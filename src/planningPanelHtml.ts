@@ -233,6 +233,12 @@ function renderCharacterDetail(profile: CharacterProfile): string {
         <button class="char-btn-add-field" data-action="character:addCustomField"
           data-file="${escapeHtml(profile.fileName)}">+ Add Field</button>
       </div>
+      <div class="char-field-row">
+        <label class="char-field-label" for="char-body-notes">Notes</label>
+        <textarea id="char-body-notes" class="char-field-textarea char-field-textarea--body" data-action="character:updateField"
+          data-file="${escapeHtml(profile.fileName)}" data-field="body"
+          placeholder="Extended notes about this character...">${escapeHtml(profile.body)}</textarea>
+      </div>
       <div class="char-refs-section">
         <div class="char-refs-label">Appears in manuscript</div>
         <ul class="char-refs-list">${refs}</ul>
