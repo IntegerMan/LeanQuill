@@ -16,6 +16,7 @@ import { SafeFileSystem } from "./safeFileSystem";
 import { readProjectConfig } from "./projectConfig";
 import { migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
 import { ResearchTreeProvider } from "./researchTree";
+import { CharacterTreeProvider } from "./characterTree";
 import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
 import { createCharacter, scanManuscriptFileForCharacters } from "./characterStore";
 
@@ -136,6 +137,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const researchFolder = (config?.folders.research ?? "research/leanquill").replace(/\/+$/, "");
   const researchDir = path.join(rootPath, ...researchFolder.split("/"));
   const researchTreeProvider = new ResearchTreeProvider(vscode, researchDir);
+  const characterTreeProvider = new CharacterTreeProvider(vscode, rootPath);
 
   const setupViewProvider = new LeanQuillActionsProvider();
   const outlineContextProvider = new OutlineContextPaneProvider(vscode);
@@ -181,6 +183,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   researchWatcher.onDidChange(() => researchTreeProvider.refresh());
   researchWatcher.onDidDelete(() => researchTreeProvider.refresh());
 
+  // Characters folder watcher — refresh tree when character files change
+  const charsFolder = (config?.folders.characters ?? "notes/characters").replace(/\/+$/g, "");
+  const charsDir = path.join(rootPath, ...charsFolder.split("/"));
+  const charactersWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(charsDir, "*.md"),
+  );
+  charactersWatcher.onDidCreate(() => characterTreeProvider.refresh());
+  charactersWatcher.onDidChange(() => characterTreeProvider.refresh());
+  charactersWatcher.onDidDelete(() => characterTreeProvider.refresh());
+
   const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
     const appName = vscode.env.appName ?? "";
     const isCursor = appName.toLowerCase().includes("cursor");
@@ -221,6 +233,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     try {
       await createCharacter(name.trim(), rootPath, latestConfig, safeFileSystem);
       await planningPanel.refresh();
+      characterTreeProvider.refresh();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       vscode.window.showErrorMessage(`LeanQuill: Failed to create character: ${message}`);
@@ -236,7 +249,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       webviewOptions: { retainContextWhenHidden: true },
     }),
     vscode.window.registerTreeDataProvider("leanquill.research", researchTreeProvider),
+    vscode.window.registerTreeDataProvider("leanquill.characters", characterTreeProvider),
     researchWatcher,
+    charactersWatcher,
     startResearchCommand,
     newCharacterCommand,
   );
@@ -631,6 +646,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       };
       await scanManuscriptFileForCharacters(filePath, rootPath, latestConfig, safeFileSystem);
       await planningPanel.refresh();
+      characterTreeProvider.refresh();
     } catch {
       // Never surface errors from background scanning
     }
