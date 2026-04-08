@@ -248,6 +248,10 @@ Name the file \`{topic-slug}-{YYYY-MM-DD}.md\` and save it inside the \`folders.
   ];
 
   for (const { file, dir, content } of entries) {
+    const exists = await fs.stat(file).then(() => true).catch(() => false);
+    if (exists) {
+      continue;
+    }
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(file, content, "utf8");
   }

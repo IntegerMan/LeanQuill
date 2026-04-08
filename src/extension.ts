@@ -96,12 +96,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const safeFileSystem = new SafeFileSystem(rootPath);
 
   // Load project config and configure research folder access
-  const config = await readProjectConfig(rootPath);
+  let config = await readProjectConfig(rootPath);
   if (config) {
     if (config.schemaVersion === "1") {
       const migrated = await migrateProjectYaml(rootPath, safeFileSystem);
       if (migrated) {
         log.info("Migrated project.yaml from schema v1 to v2");
+        // Re-read config after migration to get updated v2 values
+        config = await readProjectConfig(rootPath) ?? config;
       }
     }
     const researchFolderClean = config.folders.research.replace(/\/+$/, "");
