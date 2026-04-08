@@ -162,12 +162,30 @@ export async function writeHarnessEntryPoints(rootPath: string): Promise<void> {
   const copilotContent = `---
 name: researcher
 description: "Run the LeanQuill research workflow — investigates a topic with web search and produces a structured research document"
-tools: ['read', 'search', 'web']
+tools: ['read', 'write', 'search', 'web']
 ---
 
-You are the LeanQuill research agent. Follow the canonical workflow defined in \`.leanquill/workflows/research.md\`.
+You are the LeanQuill research agent.
 
-Read that file first, then execute the research process it describes.
+## Your job
+
+Research the given topic using web search and produce a structured markdown result file saved to the project's research folder.
+
+## Step 1 — Find the research folder
+
+Read \`.leanquill/project.yaml\` and extract the \`folders.research\` value. This is the save location relative to the workspace root. Default is \`research/leanquill/\`.
+
+## Step 2 — Follow the canonical workflow
+
+Read \`.leanquill/workflows/research.md\` for the full research process and output format.
+
+## Step 3 — Save the result file
+
+Name the file \`{topic-slug}-{YYYY-MM-DD}.md\` and save it inside the \`folders.research\` path from Step 1.
+
+Example: if \`folders.research\` is \`research/leanquill/\` and the topic is "yacht classes for deep sea expedition", save to \`research/leanquill/yacht-classes-deep-sea-2026-04-07.md\`.
+
+**Do not save files to the workspace root or any other location. Always save inside the research folder.**
 `;
 
   const cursorDir = path.join(rootPath, ".cursor", "skills", "researcher");
@@ -182,8 +200,13 @@ description: "Run the LeanQuill research workflow — investigates a topic with 
 - This skill is invoked when the user mentions \`researcher\` or asks to research a topic for their book.
 - Treat all user text after the skill mention as the research query.
 
-## B. Execution
-Read the canonical workflow at \`.leanquill/workflows/research.md\` and follow its process.
+## B. Find the research folder
+Read \`.leanquill/project.yaml\` and extract \`folders.research\`. Save the result file there.
+
+## C. Execution
+Read \`.leanquill/workflows/research.md\` for the full research process and output format.
+Save the result file as \`{topic-slug}-{YYYY-MM-DD}.md\` inside the \`folders.research\` directory.
+Do not save files anywhere else \u2014 always use the research folder from project.yaml.
 </cursor_skill_adapter>
 `;
 
@@ -192,12 +215,28 @@ Read the canonical workflow at \`.leanquill/workflows/research.md\` and follow i
   const claudeContent = `---
 name: researcher
 description: "Run the LeanQuill research workflow — investigates a topic with web search and produces a structured research document"
-tools: Read, Write, Edit, Bash, Grep, Glob
+tools: Read, Write, Edit, Bash, Grep, Glob, WebSearch, WebFetch
 ---
 
-You are the LeanQuill research agent. Follow the canonical workflow defined in \`.leanquill/workflows/research.md\`.
+You are the LeanQuill research agent.
 
-Read that file first, then execute the research process it describes.
+## Your job
+
+Research the given topic and produce a structured markdown result file saved to the project's research folder.
+
+## Step 1 \u2014 Find the research folder
+
+Read \`.leanquill/project.yaml\` and extract the \`folders.research\` value. This is the save location relative to the workspace root. Default is \`research/leanquill/\`.
+
+## Step 2 \u2014 Follow the canonical workflow
+
+Read \`.leanquill/workflows/research.md\` for the full research process and output format.
+
+## Step 3 \u2014 Save the result file
+
+Name the file \`{topic-slug}-{YYYY-MM-DD}.md\` and save it inside the \`folders.research\` path from Step 1.
+
+**Do not save files to the workspace root or any other location. Always save inside the research folder.**
 `;
 
   const entries: Array<{ file: string; dir: string; content: string }> = [
@@ -207,11 +246,8 @@ Read that file first, then execute the research process it describes.
   ];
 
   for (const { file, dir, content } of entries) {
-    const exists = await fs.stat(file).then(() => true).catch(() => false);
-    if (!exists) {
-      await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(file, content, "utf8");
-    }
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(file, content, "utf8");
   }
 }
 
