@@ -245,15 +245,14 @@ Name the file \`{topic-slug}-{YYYY-MM-DD}.md\` and save it inside the \`folders.
     { file: copilotFile, dir: copilotDir, content: copilotContent },
     { file: cursorFile, dir: cursorDir, content: cursorContent },
     { file: claudeFile, dir: claudeDir, content: claudeContent },
+  const entries: Array<{ file: string; content: string }> = [
+    { file: copilotFile, content: copilotContent },
+    { file: cursorFile, content: cursorContent },
+    { file: claudeFile, content: claudeContent },
   ];
 
-  for (const { file, dir, content } of entries) {
-    const exists = await fs.stat(file).then(() => true).catch(() => false);
-    if (exists) {
-      continue;
-    }
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(file, content, "utf8");
+  for (const { file, content } of entries) {
+    await safeFs.writeFile(file, content);
   }
 }
 
