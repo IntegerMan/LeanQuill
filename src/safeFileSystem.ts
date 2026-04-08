@@ -6,6 +6,15 @@ export class SafeFileSystem {
 
   constructor(private readonly rootPath: string) {}
 
+  /**
+   * Allow writes to a path prefix that is outside the default `.leanquill/` boundary.
+   *
+   * @param prefix - Forward-slash path relative to rootPath (e.g. "research/leanquill").
+   *   Entries are not deduplicated or cleared; call this only once per path per instance.
+   *   The extension activation flow guarantees a single call per configured research folder.
+   * @param extFilter - If provided, only files whose extension matches (e.g. ".md") are
+   *   permitted. Directories (no extension) are always allowed to support mkdir operations.
+   */
   public allowPath(prefix: string, extFilter?: string): void {
     this.additionalAllowed.push({ prefix, extFilter });
   }

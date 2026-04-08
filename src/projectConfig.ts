@@ -47,10 +47,9 @@ export async function readProjectConfig(rootPath: string): Promise<ProjectConfig
   try {
     const content = await fs.readFile(yamlPath, "utf8");
     return parseProjectConfig(content);
-  } catch (err: unknown) {
-    if (err && typeof err === "object" && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT") {
-      return null;
-    }
-    throw err;
+  } catch {
+    // Return null for any I/O error (missing file, permission denied, locked file, etc.)
+    // so callers never see a raw filesystem error during extension activation.
+    return null;
   }
 }

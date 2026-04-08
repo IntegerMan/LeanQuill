@@ -10,7 +10,9 @@ export interface ResearchItem {
 }
 
 export function parseFrontmatter(content: string): { name?: string; created?: string } {
-  const match = /^---\n([\s\S]*?)\n---/.exec(content);
+  // Normalize CRLF so the regex works on Windows-authored files
+  const normalized = content.replace(/\r\n/g, "\n");
+  const match = /^---\n([\s\S]*?)\n---/.exec(normalized);
   if (!match) {
     return {};
   }
@@ -51,35 +53,37 @@ export async function buildResearchItems(researchDir: string): Promise<ResearchI
 
   const mdFiles = entries.filter((e) => e.endsWith(".md"));
 
-  const items: ResearchItem[] = [];
-  for (const file of mdFiles) {
-    const filePath = path.join(researchDir, file);
-    let content: string;
-    try {
-      content = await fs.readFile(filePath, "utf8");
-    } catch {
-      continue;
-    }
-
-    const { name: fmName, created: fmCreated } = parseFrontmatter(content);
-
-    let created = fmCreated;
-    if (!created) {
+  const settled = await Promise.all(
+    mdFiles.map(async (file): Promise<ResearchItem | null> => {
+      const filePath = path.join(researchDir, file);
+      let content: string;
       try {
-        const stat = await fs.stat(filePath);
-        created = stat.mtime.toISOString();
+        content = await fs.readFile(filePath, "utf8");
       } catch {
-        created = new Date().toISOString();
+        return null;
       }
-    }
 
-    items.push({
-      kind: "research",
-      filePath,
-      name: fmName ?? deriveNameFromFilename(file),
-      created,
-    });
-  }
+      const { name: fmName, created: fmCreated } = parseFrontmatter(content);
+
+      let created = fmCreated;
+      if (!created) {
+        try {
+          const stat = await fs.stat(filePath);
+          created = stat.mtime.toISOString();
+        } catch {
+          created = new Date().toISOString();
+        }
+      }
+
+      return {
+        kind: "research",
+        filePath,
+        name: fmName ?? deriveNameFromFilename(file),
+        created,
+      };
+    }),
+  );
+  const items = settled.filter((item): item is ResearchItem => item !== null);
 
   // Sort newest first
   items.sort((a, b) => {

@@ -51,6 +51,13 @@ test("parseFrontmatter handles partial frontmatter (only created)", () => {
   assert.equal(result.created, "2026-01-15");
 });
 
+test("parseFrontmatter handles CRLF line endings (Windows files)", () => {
+  const content = "---\r\nname: Victorian Era\r\ncreated: 2026-04-07\r\n---\r\n\r\n# Body";
+  const result = parseFrontmatter(content);
+  assert.equal(result.name, "Victorian Era");
+  assert.equal(result.created, "2026-04-07");
+});
+
 // --- buildResearchItems tests ---
 
 test("buildResearchItems returns empty array for empty directory", async () => {
