@@ -209,8 +209,7 @@ function renderCharacterDetail(profile: CharacterProfile): string {
     <div class="char-field-row">
       <label class="char-field-label">Description</label>
       <textarea class="char-field-textarea" data-action="character:updateField"
-        data-file="${escapeHtml(profile.fileName)}" data-field="description"
-        >${escapeHtml(profile.description)}</textarea>
+        data-file="${escapeHtml(profile.fileName)}" data-field="description">${escapeHtml(profile.description)}</textarea>
     </div>`;
 
   const customFieldRows = Object.entries(profile.customFields).map(([key, val]) =>
