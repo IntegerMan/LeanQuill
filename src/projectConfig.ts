@@ -5,6 +5,7 @@ export interface ProjectConfig {
   schemaVersion: string;
   folders: {
     research: string;
+    characters: string;
   };
 }
 
@@ -16,6 +17,7 @@ export function parseProjectConfig(content: string): ProjectConfig {
   const schemaVersion = schemaVersionMatch ? schemaVersionMatch[1].trim() : "1";
 
   let research = "research/leanquill/";
+  let characters = "notes/characters/";
 
   // Find the folders: block and extract research: from it
   const lines = normalized.split("\n");
@@ -34,14 +36,17 @@ export function parseProjectConfig(content: string): ProjectConfig {
       const researchMatch = /^\s+research:\s*["']?(.+?)["']?\s*$/.exec(line);
       if (researchMatch) {
         research = researchMatch[1].trim();
-        break;
+      }
+      const charactersMatch = /^\s+characters:\s*["']?(.+?)["']?\s*$/.exec(line);
+      if (charactersMatch) {
+        characters = charactersMatch[1].trim();
       }
     }
   }
 
   return {
     schemaVersion,
-    folders: { research },
+    folders: { research, characters },
   };
 }
 
