@@ -17,6 +17,7 @@ import { readProjectConfig } from "./projectConfig";
 import { migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
 import { ResearchTreeProvider } from "./researchTree";
 import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
+import { createCharacter, scanManuscriptFileForCharacters } from "./characterStore";
 
 async function setWorkspaceContext(rootPath: string): Promise<void> {
   const hasBookTxt = await fs.stat(path.join(rootPath, "manuscript", "Book.txt")).then(() => true).catch(() => false);
@@ -116,6 +117,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
     const safeResearchFolder = isMsPath ? DEFAULT_RESEARCH_FOLDER : researchFolderClean;
     safeFileSystem.allowPath(safeResearchFolder, ".md");
+
+    // Characters folder SafeFileSystem allowance (D-04: allow writes to configured characters folder)
+    const DEFAULT_CHARACTERS_FOLDER = "notes/characters";
+    const charactersFolderRaw = config.folders.characters ?? DEFAULT_CHARACTERS_FOLDER;
+    const charactersFolderClean = charactersFolderRaw.replace(/\/+$/g, "");
+    // Reject characters folder pointing into manuscript/ to preserve the safety boundary
+    const isCharsMsPath =
+      charactersFolderClean === "manuscript" ||
+      charactersFolderClean.startsWith("manuscript/");
+    const safeCharactersFolder = isCharsMsPath ? DEFAULT_CHARACTERS_FOLDER : charactersFolderClean;
+    safeFileSystem.allowPath(safeCharactersFolder, ".md");
     // Ensure harness entry points exist for projects initialized before phase 12
     // (writeHarnessEntryPoints is idempotent â€” skips existing files)
     void writeHarnessEntryPoints(rootPath).catch(() => { /* non-critical */ });
@@ -197,6 +209,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const newCharacterCommand = vscode.commands.registerCommand("leanquill.newCharacter", async () => {
+    const name = await vscode.window.showInputBox({ prompt: "Character name", placeHolder: "e.g. Jane Doe" });
+    if (!name?.trim()) {
+      return;
+    }
+    const latestConfig = await readProjectConfig(rootPath) ?? {
+      schemaVersion: "1",
+      folders: { research: "research/leanquill/", characters: "notes/characters/" },
+    };
+    try {
+      await createCharacter(name.trim(), rootPath, latestConfig, safeFileSystem);
+      await planningPanel.refresh();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(`LeanQuill: Failed to create character: ${message}`);
+    }
+  });
+
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("leanquill.actions", setupViewProvider),
     vscode.window.registerWebviewViewProvider("leanquill.outlineTree", outlineWebviewProvider, {
@@ -208,6 +238,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider("leanquill.research", researchTreeProvider),
     researchWatcher,
     startResearchCommand,
+    newCharacterCommand,
   );
 
   const updateNodeStatus = async (nodeId: string): Promise<void> => {
@@ -587,6 +618,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  // Manuscript scan listeners — update character references when manuscript files are saved/opened
+  const scanManuscriptFile = async (filePath: string): Promise<void> => {
+    try {
+      const rel = filePath.replace(/\\/g, "/").replace(rootPath.replace(/\\/g, "/") + "/", "");
+      if (!rel.startsWith("manuscript/") || !rel.endsWith(".md")) {
+        return;
+      }
+      const latestConfig = await readProjectConfig(rootPath) ?? {
+        schemaVersion: "1",
+        folders: { research: "research/leanquill/", characters: "notes/characters/" },
+      };
+      await scanManuscriptFileForCharacters(filePath, rootPath, latestConfig, safeFileSystem);
+      await planningPanel.refresh();
+    } catch {
+      // Never surface errors from background scanning
+    }
+  };
+  const onManuscriptSave = vscode.workspace.onDidSaveTextDocument((doc) =>
+    void scanManuscriptFile(doc.uri.fsPath),
+  );
+  const onManuscriptOpen = vscode.workspace.onDidOpenTextDocument((doc) =>
+    void scanManuscriptFile(doc.uri.fsPath),
+  );
+
   context.subscriptions.push(
     updateNodeStatusCommand,
     addOrphanToOutlineCommand,
@@ -606,6 +661,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outlineWatcher,
     manuscriptFileWatcher,
     bookTxtWatcher,
+    onManuscriptSave,
+    onManuscriptOpen,
   );
 
   await setWorkspaceContext(rootPath);
