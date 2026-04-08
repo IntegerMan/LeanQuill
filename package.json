@@ -105,6 +105,12 @@
         "title": "New Research",
         "category": "LeanQuill",
         "icon": "$(add)"
+      },
+      {
+        "command": "leanquill.newCharacter",
+        "title": "New Character",
+        "category": "LeanQuill",
+        "icon": "$(person-add)"
       }
     ],
     "viewsContainers": {
