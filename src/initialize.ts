@@ -141,6 +141,8 @@ sources: [<list of URLs or references used>]
 - **Open Questions** — What remains uncertain or worth further investigation
 - **Project Relevancy** — How this research specifically applies to the author's current manuscript
 
+**Length guidance:** Target 50–150 lines for a typical research result. Prioritize actionable information the author can use while writing. Avoid exhaustive academic-style breakdowns, lengthy comparison matrices, or operational planning details unless the author specifically asks for depth. Use concise prose over tables. If a query is genuinely complex, scale up — but default to concise.
+
 **File naming:** \`{topic-slug}-{YYYY-MM-DD}.md\`
 
 **Save location:** Read \`folders.research\` from \`.leanquill/project.yaml\`. Default: \`research/leanquill/\`
