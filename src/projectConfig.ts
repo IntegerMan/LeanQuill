@@ -9,13 +9,16 @@ export interface ProjectConfig {
 }
 
 export function parseProjectConfig(content: string): ProjectConfig {
-  const schemaVersionMatch = /^schema_version:\s*["']?(.+?)["']?\s*$/m.exec(content);
+  // Normalize CRLF so Windows-authored files parse correctly
+  const normalized = content.replace(/\r\n/g, "\n");
+
+  const schemaVersionMatch = /^schema_version:\s*["']?(.+?)["']?\s*$/m.exec(normalized);
   const schemaVersion = schemaVersionMatch ? schemaVersionMatch[1].trim() : "1";
 
   let research = "research/leanquill/";
 
   // Find the folders: block and extract research: from it
-  const lines = content.split("\n");
+  const lines = normalized.split("\n");
   let inFolders = false;
   for (const line of lines) {
     if (/^folders:\s*$/.test(line)) {

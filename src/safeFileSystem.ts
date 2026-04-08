@@ -19,7 +19,7 @@ export class SafeFileSystem {
     this.additionalAllowed.push({ prefix, extFilter });
   }
 
-  public canWrite(targetPath: string): boolean {
+  public canWrite(targetPath: string, isFileOperation = false): boolean {
     const normalized = path.normalize(targetPath);
     const rel = path.relative(this.rootPath, normalized);
     if (rel.startsWith("..") || path.isAbsolute(rel)) {
@@ -41,8 +41,8 @@ export class SafeFileSystem {
       if (rel === normalizedPrefix || rel.startsWith(normalizedPrefix + path.sep)) {
         if (extFilter) {
           const ext = path.extname(rel);
-          // Allow directories (no extension) and files matching the extension filter
-          if (ext === "" || ext === extFilter) {
+          // Allow directories (no extension) for mkdir; require extFilter match for file writes
+          if (ext === extFilter || (ext === "" && !isFileOperation)) {
             return true;
           }
           continue;
@@ -55,7 +55,7 @@ export class SafeFileSystem {
   }
 
   public async writeFile(targetPath: string, content: string): Promise<void> {
-    if (!this.canWrite(targetPath)) {
+    if (!this.canWrite(targetPath, true)) {
       throw new Error(`Blocked write outside LeanQuill boundary: ${targetPath}`);
     }
 

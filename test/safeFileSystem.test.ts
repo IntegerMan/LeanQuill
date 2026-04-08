@@ -128,3 +128,17 @@ test("allowPath does not affect existing .leanquill and manuscript/Book.txt rule
     assert.equal(safeFs.canWrite(path.join(dir, "other", "file.md")), false);
   });
 });
+
+test("allowPath with extFilter blocks writeFile to extensionless path (canWrite allows for mkdir only)", async () => {
+  await withTempDir(async (dir) => {
+    const safeFs = new SafeFileSystem(dir);
+    safeFs.allowPath("research/leanquill", ".md");
+    // canWrite (default) still allows extensionless (needed by mkdir)
+    assert.equal(safeFs.canWrite(path.join(dir, "research", "leanquill")), true);
+    // writeFile to an extensionless path in the research folder must be blocked
+    await assert.rejects(
+      () => safeFs.writeFile(path.join(dir, "research", "leanquill", "noext"), "data"),
+      /Blocked write outside LeanQuill boundary/,
+    );
+  });
+});

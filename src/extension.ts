@@ -107,7 +107,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     }
     const researchFolderClean = config.folders.research.replace(/\/+$/, "");
-    safeFileSystem.allowPath(researchFolderClean, ".md");
+    const DEFAULT_RESEARCH_FOLDER = "research/leanquill";
+    // Reject any research folder that points into manuscript/ to preserve the safety boundary
+    const isMsPath = researchFolderClean === "manuscript" ||
+      researchFolderClean.startsWith("manuscript/");
+    if (isMsPath) {
+      log.warn(`Research folder "${researchFolderClean}" points into manuscript/; falling back to "${DEFAULT_RESEARCH_FOLDER}"`);
+    }
+    const safeResearchFolder = isMsPath ? DEFAULT_RESEARCH_FOLDER : researchFolderClean;
+    safeFileSystem.allowPath(safeResearchFolder, ".md");
     // Ensure harness entry points exist for projects initialized before phase 12
     // (writeHarnessEntryPoints is idempotent — skips existing files)
     void writeHarnessEntryPoints(rootPath).catch(() => { /* non-critical */ });

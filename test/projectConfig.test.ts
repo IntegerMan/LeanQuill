@@ -90,3 +90,21 @@ test("readProjectConfig returns null when project.yaml does not exist", async ()
     assert.equal(result, null);
   });
 });
+
+test("parseProjectConfig handles CRLF line endings in schema_version", () => {
+  const content = 'schema_version: "2"\r\nfolders:\r\n  research: research/leanquill/\r\n';
+  const result = parseProjectConfig(content);
+  assert.equal(result.schemaVersion, "2");
+  assert.equal(result.folders.research, "research/leanquill/");
+});
+
+test("parseProjectConfig handles CRLF line endings in folders block", () => {
+  const content = [
+    'schema_version: "2"',
+    "folders:",
+    "  manuscript: manuscript/",
+    "  research: custom/research/",
+  ].join("\r\n") + "\r\n";
+  const result = parseProjectConfig(content);
+  assert.equal(result.folders.research, "custom/research/");
+});

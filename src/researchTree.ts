@@ -36,11 +36,20 @@ function deriveNameFromFilename(fileName: string): string {
 }
 
 function formatCreatedDate(created: string): string {
+  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" };
+  // For date-only values (YYYY-MM-DD), JS parses as UTC midnight which can display as the
+  // previous day in negative-offset timezones. Format explicitly in UTC to avoid off-by-one.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(created)) {
+    const date = new Date(`${created}T00:00:00Z`);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleDateString("en-US", { ...opts, timeZone: "UTC" });
+    }
+  }
   const date = new Date(created);
   if (Number.isNaN(date.getTime())) {
     return created;
   }
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return date.toLocaleDateString("en-US", opts);
 }
 
 export async function buildResearchItems(researchDir: string): Promise<ResearchItem[]> {
