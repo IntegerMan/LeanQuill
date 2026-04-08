@@ -110,7 +110,7 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — CharacterProfile types, ProjectConfig.folders.characters, and characterStore CRUD + manuscript scanning.
+- [x] 04-01-PLAN.md — CharacterProfile types, ProjectConfig.folders.characters, and characterStore CRUD + manuscript scanning.
 - [ ] 04-02-PLAN.md — Characters tab HTML with list/detail layout and PlanningPanel message handlers.
 - [ ] 04-03-PLAN.md — Extension wiring: SafeFileSystem allowance, manuscript watchers, and leanquill.newCharacter command.
 
