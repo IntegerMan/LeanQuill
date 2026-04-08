@@ -221,6 +221,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const selectCharacterInPanelCommand = vscode.commands.registerCommand(
+    "leanquill.selectCharacterInPanel",
+    async (fileName: string) => {
+      await planningPanel.showCharacter(fileName);
+    },
+  );
+
   const newCharacterCommand = vscode.commands.registerCommand("leanquill.newCharacter", async () => {
     const name = await vscode.window.showInputBox({ prompt: "Character name", placeHolder: "e.g. Jane Doe" });
     if (!name?.trim()) {
@@ -254,6 +261,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     charactersWatcher,
     startResearchCommand,
     newCharacterCommand,
+    selectCharacterInPanelCommand,
   );
 
   const updateNodeStatus = async (nodeId: string): Promise<void> => {

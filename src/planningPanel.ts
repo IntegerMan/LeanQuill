@@ -79,6 +79,17 @@ export class PlanningPanelProvider {
     await this._renderPanel();
   }
 
+  public async showCharacter(fileName: string): Promise<void> {
+    this._activeTab = "characters";
+    this._selectedCharacterFileName = fileName;
+    if (this._panel) {
+      this._panel.reveal(this.vscodeApi.ViewColumn.One);
+      await this._renderPanel();
+    } else {
+      await this.show();
+    }
+  }
+
   public async dispose(): Promise<void> {
     if (this._debounceTimer) {
       clearTimeout(this._debounceTimer);
@@ -170,6 +181,10 @@ export class PlanningPanelProvider {
 
       case "character:delete":
         await this._deleteCharacter(msg.fileName as string);
+        break;
+
+      case "character:openInEditor":
+        await this._openCharacterInEditor(msg.fileName as string);
         break;
     }
   }
@@ -320,11 +335,30 @@ export class PlanningPanelProvider {
       schemaVersion: "1",
       folders: { research: "research/leanquill/", characters: "notes/characters/" },
     };
+    const profiles = await listCharacters(this.rootPath, config);
+    const profile = profiles.find((p) => p.fileName === fileName);
+    const label = profile?.name || fileName.replace(/\.md$/, "");
+    const choice = await this.vscodeApi.window.showWarningMessage(
+      `Delete character "${label}"? This cannot be undone.`,
+      { modal: true },
+      "Delete",
+    );
+    if (choice !== "Delete") { return; }
     await deleteCharacter(fileName, this.rootPath, config, this.safeFs);
     if (this._selectedCharacterFileName === fileName) {
       this._selectedCharacterFileName = undefined;
     }
     await this._renderPanel();
+  }
+
+  private async _openCharacterInEditor(fileName: string): Promise<void> {
+    const config = await readProjectConfig(this.rootPath) ?? {
+      schemaVersion: "1",
+      folders: { research: "research/leanquill/", characters: "notes/characters/" },
+    };
+    const charsDir = config.folders.characters.replace(/\/+$/, "");
+    const filePath = require("node:path").join(this.rootPath, ...charsDir.split("/"), fileName);
+    await this.vscodeApi.commands.executeCommand("vscode.open", this.vscodeApi.Uri.file(filePath));
   }
 
 }

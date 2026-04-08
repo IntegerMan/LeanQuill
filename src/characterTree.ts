@@ -34,9 +34,9 @@ export class CharacterTreeProvider implements VSCode.TreeDataProvider<CharacterI
     treeItem.iconPath = new this.vscode.ThemeIcon("person");
     treeItem.contextValue = "character";
     treeItem.command = {
-      command: "vscode.open",
+      command: "leanquill.selectCharacterInPanel",
       title: "Open Character",
-      arguments: [this.vscode.Uri.file(item.filePath)],
+      arguments: [item.fileName],
     };
     return treeItem;
   }

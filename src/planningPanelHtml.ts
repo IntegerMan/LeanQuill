@@ -239,6 +239,8 @@ function renderCharacterDetail(profile: CharacterProfile): string {
         <ul class="char-refs-list">${refs}</ul>
       </div>
       <div class="char-detail-actions">
+        <button class="char-btn-editor" data-action="character:openInEditor"
+          data-file="${escapeHtml(profile.fileName)}">Open in Editor</button>
         <button class="char-btn-delete" data-action="character:delete"
           data-file="${escapeHtml(profile.fileName)}">Delete Character</button>
       </div>
@@ -828,6 +830,24 @@ export function renderPlanningHtml(
       padding-top: 8px;
       border-top: 1px solid var(--vscode-panel-border);
     }
+    .char-detail-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .char-btn-editor {
+      padding: 4px 10px;
+      background: none;
+      border: 1px solid var(--vscode-panel-border);
+      border-radius: 3px;
+      color: var(--vscode-foreground);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .char-btn-editor:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
     .char-btn-delete {
       padding: 4px 10px;
       background: none;
@@ -1085,9 +1105,9 @@ export function renderPlanningHtml(
               vscode.postMessage({ type: 'character:addCustomField', fileName: fileName, fieldName: fieldName.trim() });
             }
           } else if (action === 'character:delete' && fileName) {
-            if (confirm('Delete this character? This cannot be undone.')) {
-              vscode.postMessage({ type: 'character:delete', fileName: fileName });
-            }
+            vscode.postMessage({ type: 'character:delete', fileName: fileName });
+          } else if (action === 'character:openInEditor' && fileName) {
+            vscode.postMessage({ type: 'character:openInEditor', fileName: fileName });
           }
         });
         charContainer.addEventListener('input', (e) => {
