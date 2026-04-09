@@ -118,6 +118,21 @@ export class PlanningPanelProvider {
     }
   }
 
+  private async _flushPendingCharacter(): Promise<void> {
+    if (this._charDebounceTimer) {
+      clearTimeout(this._charDebounceTimer);
+      this._charDebounceTimer = undefined;
+    }
+    if (this._pendingCharacter) {
+      const config = await readProjectConfig(this.rootPath) ?? {
+        schemaVersion: "1",
+        folders: { research: "research/leanquill/", characters: "notes/characters/" },
+      };
+      await saveCharacter(this._pendingCharacter, this.rootPath, config, this.safeFs);
+      this._pendingCharacter = undefined;
+    }
+  }
+
   private async _renderPanel(): Promise<void> {
     if (!this._panel) {
       return;
@@ -331,7 +346,9 @@ export class PlanningPanelProvider {
   }
 
   private async _addCharacterCustomField(fileName: string, fieldName: string): Promise<void> {
-    if (this._charDebounceTimer) {
+    if (this._pendingCharacter && this._pendingCharacter.fileName !== fileName) {
+      await this._flushPendingCharacter();
+    } else if (this._charDebounceTimer) {
       clearTimeout(this._charDebounceTimer);
       this._charDebounceTimer = undefined;
     }
@@ -377,7 +394,9 @@ export class PlanningPanelProvider {
       "Delete",
     );
     if (choice !== "Delete") { return; }
-    if (this._charDebounceTimer) {
+    if (this._pendingCharacter && this._pendingCharacter.fileName !== fileName) {
+      await this._flushPendingCharacter();
+    } else if (this._charDebounceTimer) {
       clearTimeout(this._charDebounceTimer);
       this._charDebounceTimer = undefined;
     }

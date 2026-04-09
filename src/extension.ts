@@ -644,7 +644,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Manuscript scan listeners — update character references when manuscript files are saved/opened
   const scanManuscriptFile = async (filePath: string): Promise<void> => {
     try {
-      const rel = filePath.replace(/\\/g, "/").replace(rootPath.replace(/\\/g, "/") + "/", "");
+      const rel = path.relative(rootPath, filePath).replace(/\\/g, "/");
       if (!rel.startsWith("manuscript/") || !rel.endsWith(".md")) {
         return;
       }

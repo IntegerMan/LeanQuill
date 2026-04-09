@@ -834,12 +834,9 @@ export function renderPlanningHtml(
       margin-top: 12px;
       padding-top: 8px;
       border-top: 1px solid var(--vscode-panel-border);
-    }
-    .char-detail-actions {
       display: flex;
       gap: 6px;
       flex-wrap: wrap;
-      margin-top: 4px;
     }
     .char-btn-editor {
       padding: 4px 10px;
