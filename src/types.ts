@@ -80,7 +80,6 @@ export interface ThemesDocument {
   bookSynopsis: string;
   bookCustomFields: Record<string, string>;
   centralThemes: CentralThemeEntry[];
-  bookLinkedChapters: string[];
 }
 
 export interface ThreadProfile {

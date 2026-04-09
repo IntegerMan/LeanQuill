@@ -3,7 +3,13 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
-import { parseProjectConfig, readProjectConfig, validateProjectYamlForSetup } from "../src/projectConfig";
+import {
+  parseProjectConfig,
+  parseProjectIdentity,
+  patchProjectIdentityInYaml,
+  readProjectConfig,
+  validateProjectYamlForSetup,
+} from "../src/projectConfig";
 
 async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "leanquill-config-"));
@@ -183,4 +189,39 @@ test("validateProjectYamlForSetup not ok when schema_version missing", () => {
   const v = validateProjectYamlForSetup(content);
   assert.equal(v.ok, false);
   assert.equal(v.reason, "missing_schema_version");
+});
+
+test("parseProjectIdentity reads working_title and genre list", () => {
+  const yaml = [
+    'schema_version: "2"',
+    "project_id: my-book",
+    "working_title: 'My Novel'",
+    "genre:",
+    '  - "mystery"',
+    "  - thriller",
+    "folders:",
+    "  manuscript: manuscript/",
+  ].join("\n");
+  const id = parseProjectIdentity(yaml);
+  assert.equal(id.workingTitle, "My Novel");
+  assert.deepEqual(id.genres, ["mystery", "thriller"]);
+});
+
+test("patchProjectIdentityInYaml updates title and replaces genre block", () => {
+  const yaml = [
+    'schema_version: "2"',
+    "working_title: Old",
+    "genre:",
+    "  - fiction",
+    "folders:",
+    "  manuscript: manuscript/",
+  ].join("\n");
+  const next = patchProjectIdentityInYaml(yaml, {
+    workingTitle: "New Title",
+    genres: ["noir", "crime"],
+  });
+  assert.match(next, /working_title:.*New Title/);
+  assert.match(next, /noir/);
+  assert.match(next, /crime/);
+  assert.match(next, /manuscript: manuscript\//);
 });

@@ -13,7 +13,6 @@ export function defaultThemesDocument(): ThemesDocument {
     bookSynopsis: "",
     bookCustomFields: {},
     centralThemes: [],
-    bookLinkedChapters: [],
   };
 }
 
@@ -213,24 +212,18 @@ export function parseThemesYaml(content: string): ThemesDocument {
           }
         }
       } else if (key === "book_linked_chapters") {
+        // Legacy key — skip block (feature removed)
         if (rest === "[]") {
-          doc.bookLinkedChapters = [];
           i++;
         } else {
           i++;
-          const list: string[] = [];
           while (i < lines.length) {
             const l = lines[i];
             if (l.length > 0 && !/^\s/.test(l)) {
               break;
             }
-            const item = /^\s{2}-\s+(.+)$/.exec(l);
-            if (item) {
-              list.push(stripQuotes(item[1]).replace(/\\/g, "/"));
-            }
             i++;
           }
-          doc.bookLinkedChapters = list;
         }
       } else if (key === "central_themes") {
         if (rest === "[]") {
@@ -328,15 +321,6 @@ export function serializeThemesYaml(doc: ThemesDocument): string {
           lines.push(`      - ${p.replace(/\\/g, "/")}`);
         }
       }
-    }
-  }
-
-  if (doc.bookLinkedChapters.length === 0) {
-    lines.push("book_linked_chapters: []");
-  } else {
-    lines.push("book_linked_chapters:");
-    for (const p of doc.bookLinkedChapters) {
-      lines.push(`  - ${p.replace(/\\/g, "/")}`);
     }
   }
 

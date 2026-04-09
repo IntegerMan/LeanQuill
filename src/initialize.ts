@@ -69,19 +69,21 @@ async function gatherInitInput(log: vscode.LogOutputChannel): Promise<InitInput 
 
   const genreInput = await vscode.window.showInputBox({
     title: "LeanQuill Initialize",
-    prompt: "Genres (comma separated)",
-    value: "fiction",
+    prompt: "Genres (comma separated, optional — set anytime in Planning → Themes)",
+    placeHolder: "e.g. mystery, thriller (leave empty for fiction)",
     ignoreFocusOut: true,
-    validateInput: (value) => (value.trim() ? null : "At least one genre is required."),
   });
-  if (!genreInput) {
-    return undefined;
-  }
+  // Esc cancels this step only — default genre; full init cancel is working-title cancel above
+  const genreParts =
+    genreInput === undefined || genreInput.trim() === ""
+      ? ["fiction"]
+      : genreInput.split(",").map((value) => value.trim()).filter(Boolean);
+  const genre = genreParts.length > 0 ? genreParts : ["fiction"];
 
   return {
     projectId: toKebabCase(workingTitle),
     workingTitle: workingTitle.trim(),
-    genre: genreInput.split(",").map((value) => value.trim()).filter(Boolean),
+    genre,
   };
 }
 

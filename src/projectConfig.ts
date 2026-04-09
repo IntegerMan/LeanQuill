@@ -77,6 +77,143 @@ export async function readProjectConfigWithDefaults(rootPath: string): Promise<P
   return await readProjectConfig(rootPath) ?? DEFAULT_PROJECT_CONFIG;
 }
 
+/** Book title + genres from `project.yaml` (for Themes pane). */
+export interface ProjectIdentity {
+  workingTitle: string;
+  genres: string[];
+}
+
+function stripYamlScalarToken(raw: string): string {
+  const t = raw.trim();
+  if (
+    (t.startsWith('"') && t.endsWith('"')) ||
+    (t.startsWith("'") && t.endsWith("'"))
+  ) {
+    return t.slice(1, -1);
+  }
+  return t;
+}
+
+export async function readProjectYamlRaw(rootPath: string): Promise<string | null> {
+  const yamlPath = path.join(rootPath, ".leanquill", "project.yaml");
+  try {
+    return await fs.readFile(yamlPath, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+export function parseProjectIdentity(content: string): ProjectIdentity {
+  const normalized = content.replace(/\r\n/g, "\n");
+  const wt = /^working_title:\s*(.+)$/m.exec(normalized);
+  const workingTitle = wt ? stripYamlScalarToken(wt[1]) : "";
+
+  const genres: string[] = [];
+  const lines = normalized.split("\n");
+  const gi = lines.findIndex((l) => /^genre:\s*$/.test(l));
+  if (gi !== -1) {
+    let i = gi + 1;
+    while (i < lines.length) {
+      const l = lines[i];
+      if (l.length > 0 && !/^\s/.test(l)) {
+        break;
+      }
+      const m = /^\s*-\s+(.+)$/.exec(l);
+      if (m) {
+        genres.push(stripYamlScalarToken(m[1]));
+      }
+      i++;
+    }
+  }
+
+  return { workingTitle, genres };
+}
+
+export async function readProjectIdentity(rootPath: string): Promise<ProjectIdentity> {
+  const raw = await readProjectYamlRaw(rootPath);
+  if (!raw) {
+    return { workingTitle: "", genres: [] };
+  }
+  return parseProjectIdentity(raw);
+}
+
+function quoteProjectYamlScalar(value: string): string {
+  if (value === "") {
+    return '""';
+  }
+  if (/[\n:#'"[\]{}]/.test(value)) {
+    return JSON.stringify(value);
+  }
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+/**
+ * Update `working_title` and/or `genre:` list in existing project.yaml text.
+ * Preserves other keys and relative order where possible.
+ */
+export function patchProjectIdentityInYaml(
+  content: string,
+  patch: { workingTitle?: string; genres?: string[] },
+): string {
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+
+  const genreBlock = (genres: string[]): string[] => {
+    const g = genres.length > 0 ? genres : ["fiction"];
+    return ["genre:", ...g.map((x) => `  - ${quoteProjectYamlScalar(x)}`)];
+  };
+
+  if (patch.workingTitle !== undefined) {
+    const idx = lines.findIndex((l) => /^working_title:\s*/.test(l));
+    const nl = `working_title: ${quoteProjectYamlScalar(patch.workingTitle)}`;
+    if (idx >= 0) {
+      lines[idx] = nl;
+    } else {
+      const svi = lines.findIndex((l) => /^schema_version:\s*/.test(l));
+      if (svi >= 0) {
+        lines.splice(svi + 1, 0, nl);
+      } else {
+        lines.unshift(nl);
+      }
+    }
+  }
+
+  if (patch.genres !== undefined) {
+    const gLines = genreBlock(patch.genres);
+    const gi = lines.findIndex((l) => /^genre:\s*$/.test(l));
+    if (gi >= 0) {
+      let end = gi + 1;
+      while (end < lines.length) {
+        const l = lines[end];
+        if (/^\s*-\s+/.test(l)) {
+          end++;
+          continue;
+        }
+        if (l.trim() === "") {
+          end++;
+          continue;
+        }
+        break;
+      }
+      lines.splice(gi, end - gi, ...gLines);
+    } else {
+      const wti = lines.findIndex((l) => /^working_title:\s*/.test(l));
+      if (wti >= 0) {
+        lines.splice(wti + 1, 0, ...gLines);
+      } else {
+        const svi = lines.findIndex((l) => /^schema_version:\s*/.test(l));
+        if (svi >= 0) {
+          lines.splice(svi + 1, 0, ...gLines);
+        } else {
+          lines.unshift(...gLines);
+        }
+      }
+    }
+  }
+
+  const text = lines.join("\n");
+  return text.endsWith("\n") ? text : `${text}\n`;
+}
+
 export interface ProjectYamlSetupValidation {
   ok: boolean;
   reason?: string;

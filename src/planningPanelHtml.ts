@@ -165,7 +165,7 @@ function renderStubTab(name: string): string {
   return `<div class="stub-tab"><p>The <strong>${escapeHtml(name)}</strong> feature is coming in a future update.</p></div>`;
 }
 
-const TAB_IDS = ["outline", "cards", "themes", "characters", "places", "threads"] as const;
+const TAB_IDS = ["themes", "outline", "cards", "characters", "places", "threads"] as const;
 const TAB_LABELS: Record<string, string> = {
   outline: "Outline",
   cards: "Cards",
@@ -182,14 +182,9 @@ const TAB_LABELS: Record<string, string> = {
 function renderThemesTab(
   themes: ThemesDocument,
   chapterPickerOptions: ChapterPickerOption[],
+  bookTitle: string,
+  genresDisplay: string,
 ): string {
-  const bookChapterLines = chapterPickerOptions
-    .map((o) => {
-      const checked = themes.bookLinkedChapters.includes(o.path) ? " checked" : "";
-      return `<label class="theme-chapter-pick"><input type="checkbox" data-action="theme:toggleBookChapter" data-path="${escapeHtml(o.path)}"${checked}/><span>${escapeHtml(o.title)}</span><span class="theme-chapter-path">${escapeHtml(o.path)}</span></label>`;
-    })
-    .join("");
-
   const bookCustomRows = Object.entries(themes.bookCustomFields)
     .map(
       ([k, v]) =>
@@ -225,26 +220,30 @@ function renderThemesTab(
 
   return `<div class="theme-tab-scroll">
     <div class="theme-section">
-      <div class="theme-field-label">Central question</div>
-      <textarea class="theme-field-textarea" data-action="theme:updateBookField" data-field="centralQuestion" placeholder="What is this book really about?">${escapeHtml(themes.centralQuestion)}</textarea>
+      <div class="theme-field-label">Book title</div>
+      <input type="text" class="theme-field-input" data-action="theme:updateBookTitle" value="${escapeHtml(bookTitle)}" placeholder="Working title (saved to project.yaml)" />
+    </div>
+    <div class="theme-section">
+      <div class="theme-field-label">Genres</div>
+      <input type="text" class="theme-field-input" data-action="theme:updateGenres" value="${escapeHtml(genresDisplay)}" placeholder="Comma-separated, e.g. mystery, thriller" />
     </div>
     <div class="theme-section">
       <div class="theme-field-label">Book synopsis</div>
       <textarea class="theme-field-textarea" data-action="theme:updateBookField" data-field="bookSynopsis" placeholder="High-level synopsis">${escapeHtml(themes.bookSynopsis)}</textarea>
     </div>
     <div class="theme-section">
-      <div class="theme-field-label">Book-level custom fields</div>
-      ${bookCustomRows}
-      <button type="button" class="theme-btn-add" data-action="theme:addBookField">+ Add book field</button>
-    </div>
-    <div class="theme-section">
-      <div class="theme-field-label">Book-level linked chapters</div>
-      <div class="theme-chapter-list">${bookChapterLines || '<span class="theme-muted">No manuscript chapters in outline.</span>'}</div>
+      <div class="theme-field-label">Central question</div>
+      <textarea class="theme-field-textarea" data-action="theme:updateBookField" data-field="centralQuestion" placeholder="What is this book really about?">${escapeHtml(themes.centralQuestion)}</textarea>
     </div>
     <div class="theme-section">
       <div class="theme-field-label">Central themes</div>
       ${centralBlocks}
       <button type="button" class="theme-btn-add" data-action="theme:addTheme">+ Add central theme</button>
+    </div>
+    <div class="theme-section">
+      <div class="theme-field-label">Book-level custom fields</div>
+      ${bookCustomRows}
+      <button type="button" class="theme-btn-add" data-action="theme:addBookField">+ Add book field</button>
     </div>
   </div>`;
 }
@@ -483,6 +482,8 @@ export function renderPlanningHtml(
   threads: ThreadProfile[],
   selectedThreadFileName: string | undefined,
   chapterPickerOptions: ChapterPickerOption[],
+  projectBookTitle: string,
+  projectGenresDisplay: string,
   nonce: string,
   cspSource: string,
   activeTab: string,
@@ -499,7 +500,7 @@ export function renderPlanningHtml(
     } else if (id === "cards") {
       content = renderCardsTab(index);
     } else if (id === "themes") {
-      content = renderThemesTab(themes, chapterPickerOptions);
+      content = renderThemesTab(themes, chapterPickerOptions, projectBookTitle, projectGenresDisplay);
     } else if (id === "characters") {
       content = renderCharactersTab(characters, selectedCharacterFileName);
     } else if (id === "threads") {
@@ -1511,6 +1512,18 @@ export function renderPlanningHtml(
             themeDebounceTimers[key] = setTimeout(() => {
               vscode.postMessage({ type: 'theme:updateBookCustom', key: ck, value: t.value });
             }, 300);
+          } else if (act === 'theme:updateBookTitle') {
+            const key = 'proj:title';
+            if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
+            themeDebounceTimers[key] = setTimeout(() => {
+              vscode.postMessage({ type: 'theme:updateBookTitle', value: t.value });
+            }, 300);
+          } else if (act === 'theme:updateGenres') {
+            const key = 'proj:genres';
+            if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
+            themeDebounceTimers[key] = setTimeout(() => {
+              vscode.postMessage({ type: 'theme:updateGenres', value: t.value });
+            }, 300);
           }
         });
         themeScroll.addEventListener('change', (e) => {
@@ -1518,9 +1531,7 @@ export function renderPlanningHtml(
           if (!t || t.type !== 'checkbox') return;
           const act = t.getAttribute('data-action');
           const path = t.getAttribute('data-path');
-          if (act === 'theme:toggleBookChapter' && path) {
-            vscode.postMessage({ type: 'theme:toggleBookChapter', path: path });
-          } else if (act === 'theme:toggleThemeChapter') {
+          if (act === 'theme:toggleThemeChapter') {
             const themeId = t.getAttribute('data-theme-id');
             if (themeId && path) {
               vscode.postMessage({ type: 'theme:toggleThemeChapter', themeId: themeId, path: path });
@@ -1534,14 +1545,11 @@ export function renderPlanningHtml(
           if (act === 'theme:addTheme') {
             vscode.postMessage({ type: 'theme:addTheme' });
           } else if (act === 'theme:addBookField') {
-            const name = prompt('Book-level field name:');
-            if (name && name.trim()) {
-              vscode.postMessage({ type: 'theme:updateBookCustom', key: name.trim(), value: '' });
-            }
+            vscode.postMessage({ type: 'theme:promptAddBookField' });
           } else if (act === 'theme:removeTheme') {
             const themeId = el.getAttribute('data-theme-id');
-            if (themeId && confirm('Remove this central theme?')) {
-              vscode.postMessage({ type: 'theme:removeTheme', themeId: themeId });
+            if (themeId) {
+              vscode.postMessage({ type: 'theme:promptRemoveTheme', themeId: themeId });
             }
           }
         });

@@ -6,7 +6,12 @@ import { listCharacters, createCharacter, saveCharacter, deleteCharacter } from 
 import { buildChapterPickerOptions } from "./chapterPickerOptions";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml } from "./planningPanelHtml";
-import { readProjectConfigWithDefaults } from "./projectConfig";
+import {
+  readProjectConfigWithDefaults,
+  readProjectIdentity,
+  readProjectYamlRaw,
+  patchProjectIdentityInYaml,
+} from "./projectConfig";
 import { SafeFileSystem } from "./safeFileSystem";
 import {
   listThreads,
@@ -23,7 +28,7 @@ import { OutlineNode, OutlineIndex, ChapterStatus, CharacterProfile, ThemesDocum
 
 export class PlanningPanelProvider {
   private _panel: VSCode.WebviewPanel | undefined;
-  private _activeTab = "outline";
+  private _activeTab = "themes";
   private _debounceTimer: ReturnType<typeof setTimeout> | undefined;
   private _pendingIndex: OutlineIndex | undefined;
   private _selectedCharacterFileName: string | undefined;
@@ -33,6 +38,8 @@ export class PlanningPanelProvider {
 
   private _pendingThemes: ThemesDocument | undefined;
   private _themeDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  private _projectIdentityDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   private _selectedThreadFileName: string | undefined;
   private _pendingThread: ThreadProfile | undefined;
@@ -77,6 +84,7 @@ export class PlanningPanelProvider {
           this._pendingIndex = undefined;
         }
         await this._flushPendingTheme();
+        await this._flushPendingProjectIdentity();
         await this._flushPendingCharacter();
         await this._flushPendingThread();
       })().catch((err: unknown) => {
@@ -146,6 +154,7 @@ export class PlanningPanelProvider {
       this._pendingIndex = undefined;
     }
     await this._flushPendingTheme();
+    await this._flushPendingProjectIdentity();
     await this._flushPendingCharacter();
     await this._flushPendingThread();
     if (this._panel) {
@@ -188,6 +197,58 @@ export class PlanningPanelProvider {
     }, 300);
   }
 
+  private _projIdentityAcc: { workingTitle?: string; genresCsv?: string } = {};
+
+  private async _flushPendingProjectIdentity(): Promise<void> {
+    if (this._projectIdentityDebounceTimer) {
+      clearTimeout(this._projectIdentityDebounceTimer);
+      this._projectIdentityDebounceTimer = undefined;
+    }
+    await this._doWriteProjectIdentity();
+  }
+
+  private _scheduleProjectIdentityWrite(partial: { workingTitle?: string; genresCsv?: string }): void {
+    if (partial.workingTitle !== undefined) {
+      this._projIdentityAcc.workingTitle = partial.workingTitle;
+    }
+    if (partial.genresCsv !== undefined) {
+      this._projIdentityAcc.genresCsv = partial.genresCsv;
+    }
+    if (this._projectIdentityDebounceTimer) {
+      clearTimeout(this._projectIdentityDebounceTimer);
+    }
+    this._projectIdentityDebounceTimer = setTimeout(() => {
+      this._projectIdentityDebounceTimer = undefined;
+      void this._doWriteProjectIdentity();
+    }, 300);
+  }
+
+  private async _doWriteProjectIdentity(): Promise<void> {
+    const acc = { ...this._projIdentityAcc };
+    if (acc.workingTitle === undefined && acc.genresCsv === undefined) {
+      return;
+    }
+    this._projIdentityAcc = {};
+    const raw = await readProjectYamlRaw(this.rootPath);
+    if (!raw) {
+      return;
+    }
+    const patch: { workingTitle?: string; genres?: string[] } = {};
+    if (acc.workingTitle !== undefined) {
+      patch.workingTitle = acc.workingTitle;
+    }
+    if (acc.genresCsv !== undefined) {
+      const parts = acc.genresCsv.split(",").map((s) => s.trim()).filter(Boolean);
+      patch.genres = parts.length > 0 ? parts : ["fiction"];
+    }
+    try {
+      const next = patchProjectIdentityInYaml(raw, patch);
+      await this.safeFs.writeFile(path.join(this.rootPath, ".leanquill", "project.yaml"), next);
+    } catch (err: unknown) {
+      console.error("[LeanQuill] Failed to save project.yaml identity fields", err);
+    }
+  }
+
   private async _flushPendingCharacter(): Promise<void> {
     if (this._charDebounceTimer) {
       clearTimeout(this._charDebounceTimer);
@@ -223,6 +284,7 @@ export class PlanningPanelProvider {
     const chapterOrder = await resolveChapterOrder(this.rootPath);
     const chapterPickerOptions = buildChapterPickerOptions(index, chapterOrder);
     const themes = this._pendingThemes ?? await readThemesDocument(this.rootPath);
+    const projectIdentity = await readProjectIdentity(this.rootPath);
     const threads = await listThreads(this.rootPath, config);
     // Reset selection if selected character was deleted
     if (
@@ -247,6 +309,8 @@ export class PlanningPanelProvider {
       threads,
       this._selectedThreadFileName,
       chapterPickerOptions,
+      projectIdentity.workingTitle,
+      projectIdentity.genres.join(", "),
       nonce,
       cspSource,
       this._activeTab,
@@ -318,15 +382,11 @@ export class PlanningPanelProvider {
         break;
 
       case "theme:updateBookCustom":
-        await this._themeUpdateBookCustom(msg.key as string, msg.value as string);
+        await this._themeUpdateBookCustom(msg.key as string, String(msg.value ?? ""));
         break;
 
       case "theme:updateTheme":
         await this._themeUpdateTheme(msg as Record<string, unknown>);
-        break;
-
-      case "theme:toggleBookChapter":
-        await this._themeToggleBookChapter(msg.path as string);
         break;
 
       case "theme:toggleThemeChapter":
@@ -337,9 +397,40 @@ export class PlanningPanelProvider {
         await this._themeAddTheme();
         break;
 
-      case "theme:removeTheme":
-        await this._themeRemoveTheme(msg.themeId as string);
+      case "theme:updateBookTitle":
+        this._scheduleProjectIdentityWrite({ workingTitle: String(msg.value ?? "") });
         break;
+
+      case "theme:updateGenres":
+        this._scheduleProjectIdentityWrite({ genresCsv: String(msg.value ?? "") });
+        break;
+
+      case "theme:promptAddBookField": {
+        const name = await this.vscodeApi.window.showInputBox({
+          prompt: "Book-level custom field name",
+          placeHolder: "e.g. tone, era",
+        });
+        if (name?.trim()) {
+          await this._themeUpdateBookCustom(name.trim(), "");
+        }
+        break;
+      }
+
+      case "theme:promptRemoveTheme": {
+        const themeId = msg.themeId as string;
+        if (!themeId) {
+          break;
+        }
+        const choice = await this.vscodeApi.window.showWarningMessage(
+          "Remove this central theme?",
+          { modal: true },
+          "Remove",
+        );
+        if (choice === "Remove") {
+          await this._themeRemoveTheme(themeId);
+        }
+        break;
+      }
 
       case "thread:select":
         this._selectedThreadFileName = msg.fileName as string;
@@ -387,11 +478,11 @@ export class PlanningPanelProvider {
     this._scheduleThemeWrite();
   }
 
-  private async _themeUpdateBookCustom(key: string, value: string): Promise<void> {
+  private async _themeUpdateBookCustom(key: string, value: string | undefined): Promise<void> {
     let doc = this._pendingThemes ?? await readThemesDocument(this.rootPath);
     doc = {
       ...doc,
-      bookCustomFields: { ...doc.bookCustomFields, [key]: value },
+      bookCustomFields: { ...doc.bookCustomFields, [key]: value ?? "" },
     };
     this._pendingThemes = doc;
     this._scheduleThemeWrite();
@@ -423,20 +514,6 @@ export class PlanningPanelProvider {
     doc = { ...doc, centralThemes: nextThemes };
     this._pendingThemes = doc;
     this._scheduleThemeWrite();
-  }
-
-  private async _themeToggleBookChapter(path: string): Promise<void> {
-    let doc = this._pendingThemes ?? await readThemesDocument(this.rootPath);
-    const set = new Set(doc.bookLinkedChapters);
-    if (set.has(path)) {
-      set.delete(path);
-    } else {
-      set.add(path);
-    }
-    doc = { ...doc, bookLinkedChapters: [...set] };
-    this._pendingThemes = doc;
-    this._scheduleThemeWrite();
-    await this._renderPanel();
   }
 
   private async _themeToggleThemeChapter(themeId: string, path: string): Promise<void> {

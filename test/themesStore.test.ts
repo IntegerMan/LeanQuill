@@ -14,7 +14,6 @@ test("defaultThemesDocument has schema 1 and empty collections", () => {
   assert.equal(d.bookSynopsis, "");
   assert.deepEqual(d.bookCustomFields, {});
   assert.deepEqual(d.centralThemes, []);
-  assert.deepEqual(d.bookLinkedChapters, []);
 });
 
 test("parseThemesYaml reads minimal scalars", () => {
@@ -24,19 +23,17 @@ test("parseThemesYaml reads minimal scalars", () => {
     "book_synopsis: A story.",
     "book_custom_fields: {}",
     "central_themes: []",
-    "book_linked_chapters: []",
   ].join("\n");
   const d = parseThemesYaml(yaml);
   assert.equal(d.centralQuestion, "Why?");
   assert.equal(d.bookSynopsis, "A story.");
 });
 
-test("serialize then parse round-trips central themes and book linked chapters", () => {
+test("serialize then parse round-trips central themes", () => {
   let d = defaultThemesDocument();
   d.centralQuestion = "Q";
   d.bookSynopsis = "S";
   d.bookCustomFields = { tone: "dark" };
-  d.bookLinkedChapters = ["manuscript/ch1.md"];
   d = addCentralThemeEntry(d).doc;
   d.centralThemes[0]!.title = "T1";
   d.centralThemes[0]!.summary = "Sum one";
@@ -51,7 +48,6 @@ test("serialize then parse round-trips central themes and book linked chapters",
   assert.equal(back.centralQuestion, "Q");
   assert.equal(back.bookSynopsis, "S");
   assert.equal(back.bookCustomFields.tone, "dark");
-  assert.deepEqual(back.bookLinkedChapters, ["manuscript/ch1.md"]);
   assert.equal(back.centralThemes.length, 2);
   assert.equal(back.centralThemes[0]!.title, "T1");
   assert.deepEqual(back.centralThemes[0]!.linkedChapters, ["manuscript/ch2.md"]);
