@@ -276,6 +276,9 @@ export class PlanningPanelProvider {
     field: string,
     value: string,
   ): Promise<void> {
+    if (this._pendingCharacter && this._pendingCharacter.fileName !== fileName) {
+      await this._flushPendingCharacter();
+    }
     if (!this._pendingCharacter || this._pendingCharacter.fileName !== fileName) {
       const config = await readProjectConfigWithDefaults(this.rootPath);
       const profiles = await listCharacters(this.rootPath, config);
