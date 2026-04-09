@@ -417,7 +417,10 @@ export class PlanningPanelProvider {
           placeHolder: "e.g. tone, era",
         });
         if (name?.trim()) {
-          await this._themeUpdateBookCustom(name.trim(), "");
+          const safeName = name.trim().replace(/[^a-zA-Z0-9_]/g, "_");
+          if (safeName) {
+            await this._themeUpdateBookCustom(safeName, "");
+          }
         }
         break;
       }

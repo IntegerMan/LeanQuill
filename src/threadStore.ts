@@ -3,7 +3,7 @@ import * as path from "node:path";
 import type { ThreadProfile } from "./types";
 import type { ProjectConfig } from "./projectConfig";
 import type { SafeFileSystem } from "./safeFileSystem";
-import { escapeYamlString } from "./yamlUtils";
+import { escapeYamlString, stripYamlQuotes } from "./yamlUtils";
 
 export function slugifyThreadTitle(name: string): string {
   const slug = name
@@ -87,7 +87,7 @@ export function parseThreadFile(fileName: string, content: string): ThreadProfil
       continue;
     }
 
-    const val = rawVal.replace(/^["']|["']$/g, "");
+    const val = stripYamlQuotes(rawVal);
 
     if (key === "title") {
       title = val;
