@@ -196,11 +196,10 @@ export function patchProjectIdentityInYaml(
         let end = gi + 1;
         while (end < lines.length) {
           const l = lines[end];
-          if (/^\s*-\s+/.test(l)) {
-            end++;
-            continue;
+          if (l.length > 0 && !/^\s/.test(l)) {
+            break;
           }
-          break;
+          end++;
         }
         lines.splice(gi, end - gi, ...gLines);
       }
