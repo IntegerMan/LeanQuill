@@ -161,6 +161,8 @@ export function serializeCharacterFile(profile: CharacterProfile): string {
     for (const descLine of profile.description.split("\n")) {
       lines.push(`  ${descLine}`);
     }
+  } else if (profile.description === "|" || profile.description === "|-") {
+    lines.push(`description: "${profile.description}"`);
   } else {
     lines.push(`description: ${profile.description}`);
   }
@@ -181,6 +183,8 @@ export function serializeCharacterFile(profile: CharacterProfile): string {
       for (const valLine of val.split("\n")) {
         lines.push(`  ${valLine}`);
       }
+    } else if (val === "|" || val === "|-") {
+      lines.push(`${key}: "${val}"`);
     } else {
       lines.push(`${key}: ${val}`);
     }

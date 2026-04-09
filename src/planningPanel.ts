@@ -16,6 +16,7 @@ export class PlanningPanelProvider {
   private _selectedCharacterFileName: string | undefined;
   private _pendingCharacter: CharacterProfile | undefined;
   private _charDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  private _charUpdateLock: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly vscodeApi: typeof VSCode,
@@ -168,11 +169,14 @@ export class PlanningPanelProvider {
         break;
 
       case "character:updateField":
-        await this._updateCharacterField(
-          msg.fileName as string,
-          msg.field as string,
-          msg.value as string,
+        this._charUpdateLock = this._charUpdateLock.then(() =>
+          this._updateCharacterField(
+            msg.fileName as string,
+            msg.field as string,
+            msg.value as string,
+          ),
         );
+        await this._charUpdateLock;
         break;
 
       case "character:addCustomField":
