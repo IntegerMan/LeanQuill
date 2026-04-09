@@ -367,6 +367,8 @@ async function runScaffoldAndFinish(
   chapterWarnings: string[],
   options?: RunInitializeFlowOptions,
 ): Promise<boolean> {
+  // Allow scaffold to create the default chapter .md under manuscript/ (one-time init only).
+  safeFs.allowPath("manuscript", ".md");
   const result = await applyLeanpubManuscriptScaffold(rootPath, { safeFs });
   for (const p of result.created) {
     log?.info(`Scaffold created: ${p}`);

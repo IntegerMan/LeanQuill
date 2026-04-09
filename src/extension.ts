@@ -442,8 +442,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
 
   // --- Outline Commands ---
-  // generateBookTxt can return "" when outline has no active nodes — syncBookTxt still runs from watchers;
-  // avoid treating empty string as intentional wipe of a non-empty Book.txt (see chapter order / outline sync).
   const openPlanningWorkspaceCommand = vscode.commands.registerCommand(
     "leanquill.openPlanningWorkspace",
     async (opts?: { tab?: "cards" }) => {

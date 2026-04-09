@@ -102,10 +102,19 @@ async function writeBookTxt(
   await fs.writeFile(bookAbs, content, "utf8");
 }
 
-async function writeChapterFile(manuscriptDir: string, basename: string, body: string): Promise<void> {
+async function writeChapterFile(
+  manuscriptDir: string,
+  basename: string,
+  body: string,
+  options: ApplyLeanpubManuscriptScaffoldOptions,
+): Promise<void> {
   const abs = path.resolve(path.join(manuscriptDir, basename));
   assertResolvedPathUnderManuscript(manuscriptDir, abs);
-  await fs.writeFile(abs, body, "utf8");
+  if (options.safeFs) {
+    await options.safeFs.writeFile(abs, body);
+  } else {
+    await fs.writeFile(abs, body, "utf8");
+  }
 }
 
 /**
@@ -158,7 +167,7 @@ export async function applyLeanpubManuscriptScaffold(
         await fs.access(absChapter);
         skipped.push(`manuscript/${chapterName}`);
       } catch {
-        await writeChapterFile(manuscriptDir, chapterName, PLACEHOLDER_CHAPTER_BODY);
+        await writeChapterFile(manuscriptDir, chapterName, PLACEHOLDER_CHAPTER_BODY, options);
         created.push(`manuscript/${chapterName}`);
       }
     }
@@ -180,7 +189,7 @@ export async function applyLeanpubManuscriptScaffold(
     skipped.push(`manuscript/${defaultBasename}`);
   } else {
     bookLineBasename = "ch1.md";
-    await writeChapterFile(manuscriptDir, bookLineBasename, PLACEHOLDER_CHAPTER_BODY);
+    await writeChapterFile(manuscriptDir, bookLineBasename, PLACEHOLDER_CHAPTER_BODY, options);
     created.push(`manuscript/${bookLineBasename}`);
   }
 

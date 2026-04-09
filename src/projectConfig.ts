@@ -94,6 +94,10 @@ export function validateProjectYamlForSetup(content: string): ProjectYamlSetupVa
     return { ok: false, reason: "missing_working_title" };
   }
 
+  if (!/^schema_version:\s+/m.test(normalized)) {
+    return { ok: false, reason: "missing_schema_version" };
+  }
+
   const parsed = parseProjectConfig(content);
   const schemaVersion = parsed.schemaVersion.trim();
   if (schemaVersion !== "1" && schemaVersion !== "2") {
