@@ -81,6 +81,17 @@ export class PlanningPanelProvider {
     }
   }
 
+  public async showCards(): Promise<void> {
+    this._activeTab = "cards";
+    this._selectedCharacterFileName = undefined;
+    if (this._panel) {
+      this._panel.reveal(this.vscodeApi.ViewColumn.One);
+      await this._renderPanel();
+    } else {
+      await this.show();
+    }
+  }
+
   public async dispose(): Promise<void> {
     if (this._debounceTimer) {
       clearTimeout(this._debounceTimer);

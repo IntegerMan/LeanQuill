@@ -140,17 +140,17 @@
           "id": "leanquill.chapterContext",
           "name": "Context",
           "type": "webview",
-          "when": "leanquill.isInitialized"
+          "when": "leanquill.workspaceLeanQuillReady"
         },
         {
           "id": "leanquill.research",
           "name": "Research",
-          "when": "leanquill.isInitialized"
+          "when": "leanquill.workspaceLeanQuillReady"
         },
         {
           "id": "leanquill.characters",
           "name": "Characters",
-          "when": "leanquill.isInitialized"
+          "when": "leanquill.workspaceLeanQuillReady"
         }
       ]
     },
@@ -158,12 +158,12 @@
       "view/title": [
         {
           "command": "leanquill.openPlanningWorkspace",
-          "when": "view == leanquill.outlineTree && leanquill.isInitialized",
+          "when": "view == leanquill.outlineTree && leanquill.workspaceLeanQuillReady",
           "group": "navigation@1"
         },
         {
           "command": "leanquill.addChildNode",
-          "when": "view == leanquill.outlineTree && leanquill.isInitialized",
+          "when": "view == leanquill.outlineTree && leanquill.workspaceLeanQuillReady",
           "group": "navigation@2"
         },
         {
@@ -181,38 +181,38 @@
     "viewsWelcome": [
       {
         "view": "leanquill.actions",
-        "contents": "Welcome to LeanQuill \u2014 your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\n[Initialize Repository](command:leanquill.initialize)\n\nOpen a workspace containing your manuscript folder or Book.txt to get started.",
-        "when": "!leanquill.hasManuscriptMarkers && !leanquill.isInitialized"
+        "contents": "Welcome to LeanQuill \u2014 your LeanPub-style authoring assistant.\n\nLeanQuill works in any folder: add a LeanPub-style `manuscript/` tree (including `manuscript/Book.txt`) or let Initialize create it.\n\n[Initialize Repository](command:leanquill.initialize)\n\nOpen a folder in VS Code, then initialize when you are ready.",
+        "when": "leanquill.setupNeedsAttention && !leanquill.hasManuscriptMarkers"
       },
       {
         "view": "leanquill.actions",
-        "contents": "Welcome to LeanQuill \u2014 your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\n[Initialize Repository](command:leanquill.initialize)\n\nManuscript markers detected \u2014 initialize to start managing your project with LeanQuill.",
-        "when": "leanquill.hasManuscriptMarkers && !leanquill.isInitialized"
+        "contents": "Welcome to LeanQuill \u2014 your LeanPub-style authoring assistant.\n\nLeanQuill detected manuscript files or folders. [Initialize or complete setup](command:leanquill.initialize) to finish `project.yaml` and `manuscript/Book.txt` under `manuscript/` if anything is still missing.",
+        "when": "leanquill.setupNeedsAttention && leanquill.hasManuscriptMarkers"
       },
       {
         "view": "leanquill.actions",
-        "contents": "Welcome to LeanQuill \u2014 your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\nThis project is initialized and ready to use.\n\n[Re-initialize](command:leanquill.initialize)",
-        "when": "leanquill.isInitialized"
+        "contents": "Welcome to LeanQuill \u2014 your LeanPub-style authoring assistant.\n\nLeanQuill keeps your manuscript safe with strict write boundaries while helping you organize chapters, track characters, and manage your writing project.\n\nThis workspace has a valid LeanQuill project and manuscript layout.\n\n[Re-initialize](command:leanquill.initialize)",
+        "when": "leanquill.workspaceLeanQuillReady"
       },
       {
         "view": "leanquill.outlineTree",
-        "contents": "This workspace is not a LeanQuill project.\n\nUse the Setup pane above to initialize your repository first.",
-        "when": "!leanquill.isInitialized"
+        "contents": "LeanQuill setup is not complete yet.\n\nUse the Setup view to [initialize or finish manuscript layout](command:leanquill.initialize).",
+        "when": "!leanquill.workspaceLeanQuillReady"
       },
       {
         "view": "leanquill.outlineTree",
         "contents": "No outline yet. Create one from your existing chapters.\n\n[Create Outline](command:leanquill.createOutline)",
-        "when": "leanquill.isInitialized"
+        "when": "leanquill.workspaceLeanQuillReady"
       },
       {
         "view": "leanquill.research",
         "contents": "No research documents yet.\n\nUse the + button above to start your first research query, or ask your AI assistant to run the LeanQuill research workflow.",
-        "when": "leanquill.isInitialized"
+        "when": "leanquill.workspaceLeanQuillReady"
       },
       {
         "view": "leanquill.characters",
         "contents": "No characters yet.\n\nUse the + button above to create your first character profile.",
-        "when": "leanquill.isInitialized"
+        "when": "leanquill.workspaceLeanQuillReady"
       }
     ]
   },

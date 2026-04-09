@@ -20,7 +20,7 @@
 | 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
 | 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
 | 12 | Standardized Research Workflow and Results Repository | Author can capture standardized research findings and store them in a consistent project repository for later planning and drafting use | RES-01, RES-02 | 2 criteria |
-| 13 | LeanPub Workspace Initialization | 1/4 | In Progress|  |
+| 13 | LeanPub Workspace Initialization | 4/4 | Complete    | 2026-04-09 |
 
 ## Phases
 
@@ -36,7 +36,7 @@
 - [ ] **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
 - [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
 - [x] **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
-- [ ] **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing.
+- [x] **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing. (completed 2026-04-09)
 
 ## Phase Details
 
@@ -257,13 +257,13 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 1
 **Requirements:** INIT-01, INIT-02
-**Plans:** 1/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 13-01-PLAN.md — Project.yaml Setup validation + `leanpubScaffold` module (Book.txt/ch1 rules, D-05/D-07/D-11/D-18).
-- [ ] 13-02-PLAN.md — `setWorkspaceContext` keys + `package.json` viewsWelcome readiness gating (D-02/D-04, copy partial D-03).
-- [ ] 13-03-PLAN.md — `showCards`, unified `runInitializeFlow` (scaffold-only vs full init), extension wiring, chapter-order refresh (D-08–D-17, INIT-01/02).
-- [ ] 13-04-PLAN.md — Unit tests (`leanpubScaffold`, `validateProjectYamlForSetup`) + D-03 copy audit.
+- [x] 13-02-PLAN.md — `setWorkspaceContext` keys + `package.json` viewsWelcome readiness gating (D-02/D-04, copy partial D-03).
+- [x] 13-03-PLAN.md — `showCards`, unified `runInitializeFlow` (scaffold-only vs full init), extension wiring, chapter-order refresh (D-08–D-17, INIT-01/02).
+- [x] 13-04-PLAN.md — Unit tests (`leanpubScaffold`, `validateProjectYamlForSetup`) + D-03 copy audit.
 
 **Success criteria:**
 1. When the workspace lacks LeanPub manuscript scaffolding, the author can trigger initialization from the sidebar.

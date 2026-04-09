@@ -13,7 +13,7 @@ import { OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTr
 import { OutlineWebviewProvider } from "./outlineWebviewPanel";
 import { PlanningPanelProvider } from "./planningPanel";
 import { SafeFileSystem } from "./safeFileSystem";
-import { readProjectConfig, readProjectConfigWithDefaults } from "./projectConfig";
+import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlForSetup } from "./projectConfig";
 import { migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
 import { ResearchTreeProvider } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
@@ -23,10 +23,29 @@ import { createCharacter, scanManuscriptFileForCharacters } from "./characterSto
 async function setWorkspaceContext(rootPath: string): Promise<void> {
   const hasBookTxt = await fs.stat(path.join(rootPath, "manuscript", "Book.txt")).then(() => true).catch(() => false);
   const hasManuscript = await fs.stat(path.join(rootPath, "manuscript")).then(() => true).catch(() => false);
-  const hasLeanquill = await fs.stat(path.join(rootPath, ".leanquill", "project.yaml")).then(() => true).catch(() => false);
+  const projectYamlPath = path.join(rootPath, ".leanquill", "project.yaml");
+  const hasLeanquill = await fs.stat(projectYamlPath).then(() => true).catch(() => false);
+
+  let projectYamlValid = false;
+  if (hasLeanquill) {
+    try {
+      const yamlText = await fs.readFile(projectYamlPath, "utf8");
+      projectYamlValid = validateProjectYamlForSetup(yamlText).ok;
+    } catch {
+      projectYamlValid = false;
+    }
+  }
+
+  const manuscriptScaffoldComplete = hasManuscript && hasBookTxt;
+  const workspaceLeanQuillReady = projectYamlValid && manuscriptScaffoldComplete;
+  const setupNeedsAttention = !workspaceLeanQuillReady;
 
   await vscode.commands.executeCommand("setContext", "leanquill.hasManuscriptMarkers", hasBookTxt || hasManuscript);
   await vscode.commands.executeCommand("setContext", "leanquill.isInitialized", hasLeanquill);
+  await vscode.commands.executeCommand("setContext", "leanquill.projectYamlValid", projectYamlValid);
+  await vscode.commands.executeCommand("setContext", "leanquill.manuscriptScaffoldComplete", manuscriptScaffoldComplete);
+  await vscode.commands.executeCommand("setContext", "leanquill.workspaceLeanQuillReady", workspaceLeanQuillReady);
+  await vscode.commands.executeCommand("setContext", "leanquill.setupNeedsAttention", setupNeedsAttention);
 }
 
 const log = vscode.window.createOutputChannel("LeanQuill", { log: true });
@@ -70,11 +89,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   log.info("Extension activating...");
   log.show(true);
 
+  let planningPanel: PlanningPanelProvider | undefined;
+
   const initializeCommand = vscode.commands.registerCommand("leanquill.initialize", async () => {
     console.log("[LeanQuill] Initialize command fired");
     log.info("Initialize command fired");
     try {
-      await runInitializeFlow(context, log);
+      await runInitializeFlow(context, log, { planningPanel });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       log.error(`Initialize command error: ${message}`);
@@ -153,7 +174,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
   );
 
-  const planningPanel = new PlanningPanelProvider(vscode, context.extensionUri, rootPath, safeFileSystem);
+  planningPanel = new PlanningPanelProvider(vscode, context.extensionUri, rootPath, safeFileSystem);
 
   // Flag to prevent Book.txt write-loop (reset after delay to allow watcher to fire)
   let _selfEditingBookTxt = false;
@@ -365,9 +386,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
 
   // --- Outline Commands ---
-  const openPlanningWorkspaceCommand = vscode.commands.registerCommand("leanquill.openPlanningWorkspace", async () => {
-    await planningPanel.show();
-  });
+  // generateBookTxt can return "" when outline has no active nodes — syncBookTxt still runs from watchers;
+  // avoid treating empty string as intentional wipe of a non-empty Book.txt (see chapter order / outline sync).
+  const openPlanningWorkspaceCommand = vscode.commands.registerCommand(
+    "leanquill.openPlanningWorkspace",
+    async (opts?: { tab?: "cards" }) => {
+      if (!planningPanel) {
+        return;
+      }
+      if (opts?.tab === "cards") {
+        await planningPanel.showCards();
+      } else {
+        await planningPanel.show();
+      }
+    },
+  );
 
   const createOutlineCommand = vscode.commands.registerCommand("leanquill.createOutline", async () => {
     const chapterOrder = await readChapterOrderState(rootPath);
@@ -727,7 +760,7 @@ async function scheduleInitPrompt(context: vscode.ExtensionContext, rootPath: st
   }
 
   const choice = await vscode.window.showInformationMessage(
-    "LeanQuill detected a LeanPub-style workspace. Initialize this repository for LeanQuill?",
+    "LeanQuill detected manuscript files in this folder. Initialize the workspace for LeanQuill?",
     "Initialize",
     "Dismiss",
   );
