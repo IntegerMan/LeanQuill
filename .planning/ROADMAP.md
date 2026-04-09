@@ -20,6 +20,7 @@
 | 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
 | 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
 | 12 | Standardized Research Workflow and Results Repository | Author can capture standardized research findings and store them in a consistent project repository for later planning and drafting use | RES-01, RES-02 | 2 criteria |
+| 13 | LeanPub Workspace Initialization | Author can scaffold LeanPub manuscript layout from the sidebar when the workspace is not yet initialized | TBD | 3 criteria |
 
 ## Phases
 
@@ -35,6 +36,7 @@
 - [ ] **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
 - [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
 - [x] **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
+- [ ] **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing.
 
 ## Phase Details
 
@@ -247,6 +249,26 @@ Plans:
 
 **Notes:** Research execution happens in AI chat via harness-specific agent files, not as extension commands. The extension provides storage, browsing, and quick-start. Canonical workflow definition generated in .leanquill/workflows/ during init.
 
+---
+
+### Phase 13: LeanPub Workspace Initialization
+
+**Goal:** Author can initialize a workspace for LeanPub publishing if it is not yet initialized — create the `manuscript/` directory, `Book.txt`, and a placeholder chapter — using a button on the sidebar.
+**UI hint:** yes
+**Depends on:** Phase 1
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 13 to break down)
+
+**Success criteria:**
+1. When the workspace lacks LeanPub manuscript scaffolding, the author can trigger initialization from the sidebar.
+2. Initialization creates `manuscript/`, a valid `Book.txt`, and at least one placeholder chapter file consistent with `Book.txt` ordering.
+3. Operation respects existing SafeFileSystem boundaries (no unsafe writes outside approved targets).
+
+**Notes:** Promoted from backlog (999.1). Complements command-based init from Phase 1 with a discoverable sidebar path.
+
 ## Progress Table
 
 | Phase | Plans Complete | Status | Completed |
@@ -263,14 +285,6 @@ Plans:
 | 10. AI Review and Advisory Workflows | 0/0 | Not started | - |
 | 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
 | 12. Standardized Research Workflow and Results Repository | 2/2 | Completed | 2026-04-05 |
+| 13. LeanPub Workspace Initialization | 0/0 | Not started | - |
 
 ## Backlog
-
-### Phase 999.1: LeanPub workspace initialization — sidebar button to create manuscript dir, Book.txt, and placeholder chapter (BACKLOG)
-
-**Goal:** Author can initialize a workspace for LeanPub publishing if it's not yet initialized — create the `manuscript/` directory, `Book.txt`, and a placeholder chapter — using a button on the sidebar.
-**Requirements:** TBD
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
