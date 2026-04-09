@@ -100,6 +100,18 @@ export class PlanningPanelProvider {
       await writeOutlineIndex(this.rootPath, this._pendingIndex, this.safeFs);
       this._pendingIndex = undefined;
     }
+    if (this._charDebounceTimer) {
+      clearTimeout(this._charDebounceTimer);
+      this._charDebounceTimer = undefined;
+    }
+    if (this._pendingCharacter) {
+      const config = await readProjectConfig(this.rootPath) ?? {
+        schemaVersion: '1',
+        folders: { research: 'research/leanquill/', characters: 'notes/characters/' },
+      };
+      await saveCharacter(this._pendingCharacter, this.rootPath, config, this.safeFs);
+      this._pendingCharacter = undefined;
+    }
     if (this._panel) {
       this._panel.dispose();
       this._panel = undefined;
@@ -319,6 +331,10 @@ export class PlanningPanelProvider {
   }
 
   private async _addCharacterCustomField(fileName: string, fieldName: string): Promise<void> {
+    if (this._charDebounceTimer) {
+      clearTimeout(this._charDebounceTimer);
+      this._charDebounceTimer = undefined;
+    }
     const RESERVED_KEYS = new Set(["name", "aliases", "role", "description", "referencedByNameIn", "body"]);
     const safeName = fieldName.trim().replace(/[^a-zA-Z0-9_]/g, "_");
     if (!safeName || RESERVED_KEYS.has(safeName)) {
@@ -332,11 +348,18 @@ export class PlanningPanelProvider {
       schemaVersion: "1",
       folders: { research: "research/leanquill/", characters: "notes/characters/" },
     };
-    const profiles = await listCharacters(this.rootPath, config);
-    const found = profiles.find((p) => p.fileName === fileName);
-    if (!found) { return; }
-    found.customFields[safeName] = "";
-    await saveCharacter(found, this.rootPath, config, this.safeFs);
+    let profile: CharacterProfile;
+    if (this._pendingCharacter && this._pendingCharacter.fileName === fileName) {
+      profile = this._pendingCharacter;
+      this._pendingCharacter = undefined;
+    } else {
+      const profiles = await listCharacters(this.rootPath, config);
+      const found = profiles.find((p) => p.fileName === fileName);
+      if (!found) { return; }
+      profile = found;
+    }
+    profile.customFields[safeName] = "";
+    await saveCharacter(profile, this.rootPath, config, this.safeFs);
     await this._renderPanel();
   }
 
@@ -354,6 +377,13 @@ export class PlanningPanelProvider {
       "Delete",
     );
     if (choice !== "Delete") { return; }
+    if (this._charDebounceTimer) {
+      clearTimeout(this._charDebounceTimer);
+      this._charDebounceTimer = undefined;
+    }
+    if (this._pendingCharacter && this._pendingCharacter.fileName === fileName) {
+      this._pendingCharacter = undefined;
+    }
     await deleteCharacter(fileName, this.rootPath, config, this.safeFs);
     if (this._selectedCharacterFileName === fileName) {
       this._selectedCharacterFileName = undefined;
