@@ -5,72 +5,65 @@
 
 **Date:** 2026-04-09
 **Phase:** 6 — Threads and Themes
-**Areas discussed (user order):** Thread vs theme taxonomy, Threads tab UX, Storage and project config, Linking to story structure
+**Discuss order:** Area 3 → 4 → 2 → 1 (user-specified)
 
 ---
 
-## Area 3 — Thread vs theme taxonomy
+## Session note
 
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Single type + `kind` field | One markdown profile type; subplot/theme/motif distinguished by string `kind` | ✓ |
-| Separate “theme” vs “thread” record types | Two schemas or folders | |
-| Only “threads” label, tags only | No structured kind | |
-
-**User's choice:** Discuss area 3 first; aligned with **single profile type + `kind`** with datalist defaults and freeform values (mirrors character role pattern).
-
-**Notes:** User did not request separate tabs or file taxonomies.
+An initial context file was committed from **inferred** defaults before the user finished walking through areas. Subsequent messages replaced that intent. **`06-CONTEXT.md` was rewritten** to match the full discussion below.
 
 ---
 
-## Area 4 — Threads tab UX and organization
+## Area 3 — Taxonomy
 
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Match Characters (list/detail, grouping, commands) | Consistent planning workspace | ✓ |
-| Simplified single-column list | Lighter UI | |
-| Rename tab “Threads & Themes” | Broader label | |
+**User intent**
 
-**User's choice:** **Match Characters** layout and flows; keep tab label **“Threads”** (themes live under same tab per taxonomy decision).
+- **Themes:** book-wide; underpinnings / central questions; possibly book-level metadata; may track to chapters/characters — later refined.
+- **Threads:** more isolated (A/B/C plots); narrative strands across the book.
+- **Flexibility:** match dynamic outline + character-style key/value patterns.
 
-**Notes:** Group list by **`kind`**. Include + New control and command palette create; delete with confirmation; no search box (Characters parity).
+**Decisions**
 
----
-
-## Area 2 — Storage and project config
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Mirror Characters | Per-file `.md` under `folders.threads`, no JSON index, SafeFileSystem allowlist | ✓ |
-| Store threads only in `outline-index.json` | Central JSON | |
-| Single rollup markdown file | One file for all threads | |
-
-**User's choice:** **Mirror Characters** — dedicated folder (default `notes/threads/`), `folders.threads` in `project.yaml`, parse-on-render.
+- **Storage philosophy:** `.leanquill/` = metadata only; rich content in repo dirs (e.g. `notes/`), characters as precedent (md + frontmatter only in repo).
+- **Themes:** hybrid — compact structured data in `.leanquill` + linked markdown under `notes/`.
+- **UI:** **two entry points** — **Themes** tab (structured literary fields) vs **Threads** tab (individual threads + chapter presence).
+- **Book-wide:** not “implicit everywhere” vs “must link”; structured **key/value and slots** at book level.
+- **Clarification:** theme metadata in **dedicated file** `.leanquill/themes.yaml` (not `project.yaml`).
 
 ---
 
-## Area 1 — Linking threads to the story
+## Area 4 — UX
 
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Chapter paths only, author-maintained | Frontmatter list + UI picker; no beat granularity | ✓ |
-| Character-style auto scan | Keywords/aliases in manuscript | |
-| Beat/outline child node IDs | Fine-grained outline links | |
-
-**User's choice:** **Chapter-level, author-maintained** linking. **Explicit product note:** **beats are no longer a thing** — no beat-level linking or UI.
-
-**Notes:** Use a frontmatter array of manuscript-relative paths (e.g. `touchesChapters`), analogous to `referencedByNameIn` for characters. Defer automatic manuscript scanning for abstract threads.
+| Topic | Choice |
+|-------|--------|
+| Tab placement | **Early / book-level** — **Themes** before Characters, Places, Threads; concrete order: Outline → Cards → **Themes** → Characters → Places → Threads |
+| Themes layout | **Single scrollable form**; includes **central question**, **book synopsis**, **book-level custom KVs**, **central themes (0…N)** |
+| Threads layout | **Match Characters** (list/detail, inline edit) |
+| Create flows | **Header + command palette** for **New Theme** and **New Thread** |
 
 ---
 
-## Claude's Discretion
+## Area 2 — Storage
 
-- Filename/slug rules for new thread files
-- Exact UI for editing `touchesChapters`
-- Styling and debounce defaults
+| Topic | Choice |
+|-------|--------|
+| Thread files | **Yes** — one `.md` per thread, `folders.threads` / default `notes/threads/`, characters-style |
+| Theme longform | Under **`notes/`** (paths in `themes.yaml`) |
+| Book-level fields | **Single file** `.leanquill/themes.yaml` for all book theme framing + custom KVs |
 
-## Deferred Ideas
+---
 
-- Optional future keyword scanning for motifs
-- Finer-than-chapter linking if outline model gains new primitives
-- Updating REQUIREMENTS.md / ROADMAP wording away from “beats” for THREAD-01
+## Area 1 — Linking
+
+| Topic | Choice |
+|-------|--------|
+| Thread→chapter | **A.1** — author-maintained frontmatter list + UI chapter picker from outline/order |
+| Outline granularity | **B.1** — **chapters only** (manuscript file nodes) |
+| Theme links v1 | **C.3** — **chapters only** (optional); **no** theme→character links in v1 |
+
+---
+
+## Claude's Discretion (summary)
+
+YAML structure for `themes.yaml`, thread list grouping, picker control style, filenames, styling.
