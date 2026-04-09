@@ -7,11 +7,11 @@
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
 
-> Source headings in `13-CONTEXT.md` use `## Implementation Decisions` (there is no separate `## Decisions` section). Content below is copied verbatim from that file.
-
 ### Locked Decisions
 
-#### Area 1 — Setup visibility, eligibility, and copy
+> Copied from `13-CONTEXT.md` under **Implementation Decisions** (Areas 1–4, D-01–D-18).
+
+### Area 1 — Setup visibility, eligibility, and copy
 
 - **D-01:** The **Setup** view remains the home for this capability (no separate scaffold-only pane). The **Initialize** (or equivalent) action’s **behavior changes by state** rather than adding a parallel entry point.
 - **D-02:** Show the Setup / initialize path when **any** of:
@@ -22,14 +22,14 @@
 - **D-03:** **Copy audit:** Review user-facing strings that assume the user already opened a “LeanQuill” or manuscript-marked folder (e.g. “Open a LeanQuill directory”). Wording should allow **any folder** to be initialized or scaffolded, consistent with D-01–D-02.
 - **D-04:** Expose eligibility to UI via **workspace context keys** (extend or add alongside `leanquill.isInitialized`, `leanquill.hasManuscriptMarkers`) so `viewsWelcome` `when` clauses stay declarative.
 
-#### Area 2 — SafeFileSystem and safety
+### Area 2 — SafeFileSystem and safety
 
 - **D-05:** **No** permanent allowlist for arbitrary `manuscript/**/*.md` for all callers. Implementation may use either **scoped scaffold mode** (e.g. run-only callback) or **dedicated SafeFileSystem APIs** for scaffold paths — **planner/implementation chooses** (Claude’s discretion) as long as D-05 holds.
 - **D-06:** **No preference** whether scaffold I/O goes through `SafeFileSystem` or raw `fs`, except that **path checks** must keep writes inside the workspace manuscript tree and respect the same safety intent.
 - **D-07:** **Never overwrite** existing files targeted by this flow (chapter files, `Book.txt`). Create-only or skip; see Area 3 for chapter naming and `Book.txt` rules.
 - **D-08:** **Audit trail:** On success, log **concise per-path creation** (or “skipped existing”) to the extension output channel in addition to any toast (see Area 4).
 
-#### Area 3 — Generated files (`Book.txt`, placeholder chapter)
+### Area 3 — Generated files (`Book.txt`, placeholder chapter)
 
 - **D-09:** Default new chapter filename **`ch1.md`** (lowercase convention; on case-insensitive OS, treat existing **`Ch1.md`** / **`ch1.md`** as **already present** — do not create or overwrite; use **actual on-disk basename** in any new `Book.txt` line).
 - **D-10:** If **`ch1.md` (case-insensitive) already exists:** **do not** write a new chapter file; treat that file as the chapter. When **`Book.txt` is created in this flow** (because it was missing), **include a line** pointing at that existing file’s basename.
@@ -37,7 +37,7 @@
 - **D-12:** **New** placeholder chapter **content:** `# Chapter 1` (or index-appropriate number) **plus** one short stub line (e.g. inviting the author to write).
 - **D-13:** **Tension (explicit):** D-10 wants `Book.txt` to reference an existing `ch1.md` when **creating** `Book.txt`. D-11 forbids editing **existing** `Book.txt`. If both `Book.txt` and `ch1.md` exist but `Book.txt` does not list the chapter, the flow **must not** patch `Book.txt` — surface **clear guidance** via D-18.
 
-#### Area 4 — After success and failure UX
+### Area 4 — After success and failure UX
 
 - **D-14:** On **success:** show an **information notification** (toast).
 - **D-15:** On **success:** **do not** focus the chapter in the **text editor** as the primary affordance. Instead, open the **Planning Workspace** webview (`PlanningPanelProvider`, same surface as **LeanQuill: Open Planning Workspace**) with the **Cards** tab active. Today `show()` defaults to the outline tab; **`showCharacter`-style** behavior is the precedent — add a **small API** (e.g. `showCards()` or `show({ initialTab: "cards" })`) that sets `_activeTab` to **`cards`** before `show` / `_renderPanel`. Implementation detail is Claude’s discretion.
