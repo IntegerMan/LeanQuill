@@ -1,5 +1,5 @@
 import { escapeHtml } from "./htmlUtils";
-import { OutlineNode, OutlineIndex } from "./types";
+import { OutlineNode, OutlineIndex, CharacterProfile } from "./types";
 
 function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) {
@@ -173,8 +173,151 @@ const TAB_LABELS: Record<string, string> = {
   threads: "Threads",
 };
 
+
+// ---------------------------------------------------------------------------
+// Characters tab rendering
+// ---------------------------------------------------------------------------
+
+function renderCharacterDetail(profile: CharacterProfile): string {
+  const standardFields = `
+    <div class="char-field-row">
+      <label class="char-field-label">Name</label>
+      <input class="char-field-input" data-action="character:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="name"
+        value="${escapeHtml(profile.name)}" />
+    </div>
+    <div class="char-field-row">
+      <label class="char-field-label">Role</label>
+      <input class="char-field-input" list="char-roles-datalist"
+        data-action="character:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="role"
+        value="${escapeHtml(profile.role)}" />
+      <datalist id="char-roles-datalist">
+        <option value="protagonist"/>
+        <option value="antagonist"/>
+        <option value="supporting"/>
+        <option value="minor"/>
+      </datalist>
+    </div>
+    <div class="char-field-row">
+      <label class="char-field-label">Aliases</label>
+      <input class="char-field-input" data-action="character:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="aliases"
+        value="${escapeHtml(profile.aliases.join(", "))}"
+        placeholder="Comma-separated aliases" />
+    </div>
+    <div class="char-field-row">
+      <label class="char-field-label">Description</label>
+      <textarea class="char-field-textarea" data-action="character:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="description">${escapeHtml(profile.description)}</textarea>
+    </div>`;
+
+  const customFieldRows = Object.entries(profile.customFields).map(([key, val]) =>
+    `<div class="char-field-row char-field-custom">
+      <label class="char-field-label char-field-label--custom">${escapeHtml(key)}</label>
+      <input class="char-field-input" data-action="character:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="custom:${escapeHtml(key)}"
+        value="${escapeHtml(val)}" />
+    </div>`
+  ).join("");
+
+  const refs = profile.referencedByNameIn.length > 0
+    ? profile.referencedByNameIn.map((r) => `<li class="char-ref-item">${escapeHtml(r)}</li>`).join("")
+    : '<li class="char-ref-empty">No manuscript references detected yet.</li>';
+
+  return `
+    <div class="char-detail-inner" data-file="${escapeHtml(profile.fileName)}">
+      ${standardFields}
+      ${customFieldRows}
+      <div class="char-field-row">
+        <button class="char-btn-add-field" data-action="character:addCustomField"
+          data-file="${escapeHtml(profile.fileName)}">+ Add Field</button>
+      </div>
+      <div class="char-field-row">
+        <label class="char-field-label" for="char-body-notes">Notes</label>
+        <textarea id="char-body-notes" class="char-field-textarea char-field-textarea--body" data-action="character:updateField"
+          data-file="${escapeHtml(profile.fileName)}" data-field="body"
+          placeholder="Extended notes about this character...">${escapeHtml(profile.body)}</textarea>
+      </div>
+      <div class="char-refs-section">
+        <div class="char-refs-label">Appears in manuscript</div>
+        <ul class="char-refs-list">${refs}</ul>
+      </div>
+      <div class="char-detail-actions">
+        <button class="char-btn-editor" data-action="character:openInEditor"
+          data-file="${escapeHtml(profile.fileName)}">Open in Editor</button>
+        <button class="char-btn-delete" data-action="character:delete"
+          data-file="${escapeHtml(profile.fileName)}">Delete Character</button>
+      </div>
+    </div>`;
+}
+
+function renderCharactersTab(
+  profiles: CharacterProfile[],
+  selectedFileName: string | undefined,
+): string {
+  const effectiveSelected = selectedFileName ?? profiles[0]?.fileName;
+
+  const roleOrder = ["protagonist", "antagonist", "supporting", "minor"];
+  const roleGroups = new Map<string, CharacterProfile[]>();
+  for (const p of profiles) {
+    const role = p.role.trim() || "uncategorized";
+    if (!roleGroups.has(role)) { roleGroups.set(role, []); }
+    roleGroups.get(role)!.push(p);
+  }
+
+  const sortedRoles = [...roleGroups.keys()].sort((a, b) => {
+    const ai = roleOrder.indexOf(a);
+    const bi = roleOrder.indexOf(b);
+    if (ai !== -1 && bi !== -1) { return ai - bi; }
+    if (ai !== -1) { return -1; }
+    if (bi !== -1) { return 1; }
+    if (a === "uncategorized") { return 1; }
+    if (b === "uncategorized") { return -1; }
+    return a.localeCompare(b);
+  });
+
+  let listItems = "";
+  for (const role of sortedRoles) {
+    const roleProfiles = roleGroups.get(role)!;
+    const groupItems = roleProfiles.map((p) =>
+      `<div class="char-list-item${p.fileName === effectiveSelected ? " char-list-item--selected" : ""}"
+           data-action="character:select"
+           data-file="${escapeHtml(p.fileName)}">
+        ${escapeHtml(p.name || "(untitled)")}
+      </div>`
+    ).join("");
+    listItems += `<div class="char-role-group">
+      <div class="char-role-label">${escapeHtml(role)}</div>
+      ${groupItems}
+    </div>`;
+  }
+
+  const listPane = `<div class="char-list">
+    <div class="char-list-header">
+      <button class="char-btn-new" data-action="character:create">+ New Character</button>
+    </div>
+    <div class="char-list-body">
+      ${profiles.length === 0
+        ? '<div class="char-empty-list">No characters yet. Click + New Character to start.</div>'
+        : listItems}
+    </div>
+  </div>`;
+
+  const selected = profiles.find((p) => p.fileName === effectiveSelected);
+  const detailPane = `<div class="char-detail">
+    ${selected
+      ? renderCharacterDetail(selected)
+      : '<div class="char-empty-detail">Select a character to view its profile.</div>'}
+  </div>`;
+
+  return `<div class="char-container">${listPane}${detailPane}</div>`;
+}
+
 export function renderPlanningHtml(
   index: OutlineIndex,
+  characters: CharacterProfile[],
+  selectedCharacterFileName: string | undefined,
   nonce: string,
   cspSource: string,
   activeTab: string,
@@ -190,6 +333,8 @@ export function renderPlanningHtml(
       content = renderOutlineTab(index);
     } else if (id === "cards") {
       content = renderCardsTab(index);
+    } else if (id === "characters") {
+      content = renderCharactersTab(characters, selectedCharacterFileName);
     } else {
       content = renderStubTab(TAB_LABELS[id]);
     }
@@ -527,6 +672,196 @@ export function renderPlanningHtml(
     .card-group-icon { font-size: 14px; opacity: 0.7; flex-shrink: 0; }
     .card-group-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-group-body { }
+
+    /* --- Character reference tab --- */
+    .char-container {
+      display: flex;
+      height: 100%;
+      min-height: 400px;
+    }
+    .char-list {
+      width: 220px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--vscode-panel-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .char-list-header {
+      padding: 8px;
+      border-bottom: 1px solid var(--vscode-panel-border);
+      flex-shrink: 0;
+    }
+    .char-btn-new {
+      width: 100%;
+      padding: 4px 8px;
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      text-align: left;
+    }
+    .char-btn-new:hover { background: var(--vscode-button-hoverBackground); }
+    .char-list-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+    .char-role-group { margin-bottom: 4px; }
+    .char-role-label {
+      padding: 4px 10px 2px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.5;
+    }
+    .char-list-item {
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-radius: 0;
+    }
+    .char-list-item:hover { background: var(--vscode-list-hoverBackground); }
+    .char-list-item--selected {
+      background: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
+    }
+    .char-empty-list {
+      padding: 16px 12px;
+      font-size: 12px;
+      opacity: 0.6;
+      font-style: italic;
+    }
+    .char-detail {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+      min-width: 0;
+    }
+    .char-detail-inner {
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .char-empty-detail {
+      padding: 32px 16px;
+      font-size: 13px;
+      opacity: 0.6;
+      font-style: italic;
+      text-align: center;
+    }
+    .char-field-row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .char-field-label {
+      font-size: 11px;
+      font-weight: 600;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .char-field-label--custom { color: var(--vscode-descriptionForeground); }
+    .char-field-input, .char-field-textarea {
+      padding: 4px 8px;
+      border-radius: 3px;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+      font-family: var(--vscode-font-family);
+      font-size: 13px;
+      outline: none;
+    }
+    .char-field-input:focus, .char-field-textarea:focus {
+      border-color: var(--vscode-focusBorder);
+    }
+    .char-field-textarea {
+      resize: vertical;
+      min-height: 56px;
+    }
+    .char-btn-add-field {
+      padding: 3px 8px;
+      background: none;
+      border: 1px dashed var(--vscode-panel-border);
+      border-radius: 3px;
+      color: var(--vscode-descriptionForeground);
+      cursor: pointer;
+      font-size: 12px;
+      align-self: flex-start;
+    }
+    .char-btn-add-field:hover {
+      border-color: var(--vscode-focusBorder);
+      color: var(--vscode-foreground);
+    }
+    .char-refs-section {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--vscode-panel-border);
+    }
+    .char-refs-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.5;
+      margin-bottom: 4px;
+    }
+    .char-refs-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .char-ref-item {
+      font-size: 12px;
+      padding: 2px 0;
+      opacity: 0.8;
+      font-family: var(--vscode-editor-font-family, monospace);
+    }
+    .char-ref-empty {
+      font-size: 12px;
+      opacity: 0.5;
+      font-style: italic;
+    }
+    .char-detail-actions {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--vscode-panel-border);
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .char-btn-editor {
+      padding: 4px 10px;
+      background: none;
+      border: 1px solid var(--vscode-panel-border);
+      border-radius: 3px;
+      color: var(--vscode-foreground);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .char-btn-editor:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+    .char-btn-delete {
+      padding: 4px 10px;
+      background: none;
+      border: 1px solid var(--vscode-inputValidation-errorBorder, #f44);
+      border-radius: 3px;
+      color: var(--vscode-inputValidation-errorForeground, #f44);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .char-btn-delete:hover {
+      background: var(--vscode-inputValidation-errorBackground, rgba(244,68,68,0.1));
+    }
   </style>
 </head>
 <body>
@@ -749,6 +1084,48 @@ export function renderPlanningHtml(
           if (nodeId) vscode.postMessage({ type: 'node:openInEditor', nodeId: nodeId });
         });
       });
+
+
+      // --- Character event delegation ---
+      const charContainer = document.querySelector('.char-container');
+      if (charContainer) {
+        const charDebounceTimers = {};
+        charContainer.addEventListener('click', (e) => {
+          const target = e.target;
+          if (!target) return;
+          const el = target.closest('[data-action]');
+          if (!el) return;
+          const action = el.getAttribute('data-action');
+          const fileName = el.getAttribute('data-file');
+          if (action === 'character:select' && fileName) {
+            vscode.postMessage({ type: 'character:select', fileName: fileName });
+          } else if (action === 'character:create') {
+            vscode.postMessage({ type: 'character:create' });
+          } else if (action === 'character:addCustomField' && fileName) {
+            const fieldName = prompt('Field name:');
+            if (fieldName && fieldName.trim()) {
+              vscode.postMessage({ type: 'character:addCustomField', fileName: fileName, fieldName: fieldName.trim() });
+            }
+          } else if (action === 'character:delete' && fileName) {
+            vscode.postMessage({ type: 'character:delete', fileName: fileName });
+          } else if (action === 'character:openInEditor' && fileName) {
+            vscode.postMessage({ type: 'character:openInEditor', fileName: fileName });
+          }
+        });
+        charContainer.addEventListener('input', (e) => {
+          const target = e.target;
+          if (!target || target.getAttribute('data-action') !== 'character:updateField') return;
+          const fileName = target.getAttribute('data-file');
+          const field = target.getAttribute('data-field');
+          if (!fileName || !field) return;
+          const value = target.value;
+          const key = fileName + ':' + field;
+          if (charDebounceTimers[key]) clearTimeout(charDebounceTimers[key]);
+          charDebounceTimers[key] = setTimeout(() => {
+            vscode.postMessage({ type: 'character:updateField', fileName: fileName, field: field, value: value });
+          }, 300);
+        });
+      }
 
       // Incoming messages from extension host
       window.addEventListener('message', event => {

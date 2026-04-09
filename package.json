@@ -15,7 +15,10 @@
     "onCommand:leanquill.openPlanningWorkspace",
     "onCommand:leanquill.createOutline",
     "onView:leanquill.outlineTree",
-    "onView:leanquill.chapterContext",      "onView:leanquill.research",    "workspaceContains:manuscript/Book.txt",
+    "onView:leanquill.chapterContext",
+    "onView:leanquill.research",
+    "onView:leanquill.characters",
+    "workspaceContains:manuscript/Book.txt",
     "workspaceContains:manuscript"
   ],
   "main": "./dist/extension.js",
@@ -105,6 +108,12 @@
         "title": "New Research",
         "category": "LeanQuill",
         "icon": "$(add)"
+      },
+      {
+        "command": "leanquill.newCharacter",
+        "title": "New Character",
+        "category": "LeanQuill",
+        "icon": "$(person-add)"
       }
     ],
     "viewsContainers": {
@@ -137,6 +146,11 @@
           "id": "leanquill.research",
           "name": "Research",
           "when": "leanquill.isInitialized"
+        },
+        {
+          "id": "leanquill.characters",
+          "name": "Characters",
+          "when": "leanquill.isInitialized"
         }
       ]
     },
@@ -155,6 +169,11 @@
         {
           "command": "leanquill.startResearch",
           "when": "view == leanquill.research",
+          "group": "navigation"
+        },
+        {
+          "command": "leanquill.newCharacter",
+          "when": "view == leanquill.characters",
           "group": "navigation"
         }
       ]
@@ -188,6 +207,11 @@
       {
         "view": "leanquill.research",
         "contents": "No research documents yet.\n\nUse the + button above to start your first research query, or ask your AI assistant to run the LeanQuill research workflow.",
+        "when": "leanquill.isInitialized"
+      },
+      {
+        "view": "leanquill.characters",
+        "contents": "No characters yet.\n\nUse the + button above to create your first character profile.",
         "when": "leanquill.isInitialized"
       }
     ]

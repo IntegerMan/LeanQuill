@@ -108,3 +108,21 @@ test("parseProjectConfig handles CRLF line endings in folders block", () => {
   const result = parseProjectConfig(content);
   assert.equal(result.folders.research, "custom/research/");
 });
+
+test("parseProjectConfig parses characters folder from YAML", () => {
+  const content = 'schema_version: "2"\nfolders:\n  research: research/leanquill/\n  characters: notes/characters/\n';
+  const result = parseProjectConfig(content);
+  assert.equal(result.folders.characters, "notes/characters/");
+});
+
+test("parseProjectConfig defaults characters to notes/characters/ when missing", () => {
+  const content = 'schema_version: "2"\nfolders:\n  research: research/leanquill/\n';
+  const result = parseProjectConfig(content);
+  assert.equal(result.folders.characters, "notes/characters/");
+});
+
+test("parseProjectConfig parses custom characters folder path", () => {
+  const content = 'schema_version: "2"\nfolders:\n  research: research/leanquill/\n  characters: custom/chars/\n';
+  const result = parseProjectConfig(content);
+  assert.equal(result.folders.characters, "custom/chars/");
+});

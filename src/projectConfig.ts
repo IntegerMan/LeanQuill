@@ -5,8 +5,14 @@ export interface ProjectConfig {
   schemaVersion: string;
   folders: {
     research: string;
+    characters: string;
   };
 }
+
+export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
+  schemaVersion: "1",
+  folders: { research: "research/leanquill/", characters: "notes/characters/" },
+};
 
 export function parseProjectConfig(content: string): ProjectConfig {
   // Normalize CRLF so Windows-authored files parse correctly
@@ -16,6 +22,7 @@ export function parseProjectConfig(content: string): ProjectConfig {
   const schemaVersion = schemaVersionMatch ? schemaVersionMatch[1].trim() : "1";
 
   let research = "research/leanquill/";
+  let characters = "notes/characters/";
 
   // Find the folders: block and extract research: from it
   const lines = normalized.split("\n");
@@ -34,14 +41,17 @@ export function parseProjectConfig(content: string): ProjectConfig {
       const researchMatch = /^\s+research:\s*["']?(.+?)["']?\s*$/.exec(line);
       if (researchMatch) {
         research = researchMatch[1].trim();
-        break;
+      }
+      const charactersMatch = /^\s+characters:\s*["']?(.+?)["']?\s*$/.exec(line);
+      if (charactersMatch) {
+        characters = charactersMatch[1].trim();
       }
     }
   }
 
   return {
     schemaVersion,
-    folders: { research },
+    folders: { research, characters },
   };
 }
 
@@ -55,4 +65,8 @@ export async function readProjectConfig(rootPath: string): Promise<ProjectConfig
     // so callers never see a raw filesystem error during extension activation.
     return null;
   }
+}
+
+export async function readProjectConfigWithDefaults(rootPath: string): Promise<ProjectConfig> {
+  return await readProjectConfig(rootPath) ?? DEFAULT_PROJECT_CONFIG;
 }

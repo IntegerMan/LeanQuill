@@ -107,6 +107,12 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 3
 **Requirements:** CHAR-01
+**Plans:** 3 plans
+
+Plans:
+- [x] 04-01-PLAN.md — CharacterProfile types, ProjectConfig.folders.characters, and characterStore CRUD + manuscript scanning.
+- [ ] 04-02-PLAN.md — Characters tab HTML with list/detail layout and PlanningPanel message handlers.
+- [ ] 04-03-PLAN.md — Extension wiring: SafeFileSystem allowance, manuscript watchers, and leanquill.newCharacter command.
 
 **Success criteria:**
 1. Author can open the Characters tab in the planning webview and create, edit, and organize character entries with author-defined fields.
@@ -257,3 +263,14 @@ Plans:
 | 10. AI Review and Advisory Workflows | 0/0 | Not started | - |
 | 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
 | 12. Standardized Research Workflow and Results Repository | 2/2 | Completed | 2026-04-05 |
+
+## Backlog
+
+### Phase 999.1: LeanPub workspace initialization — sidebar button to create manuscript dir, Book.txt, and placeholder chapter (BACKLOG)
+
+**Goal:** Author can initialize a workspace for LeanPub publishing if it's not yet initialized — create the `manuscript/` directory, `Book.txt`, and a placeholder chapter — using a button on the sidebar.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
