@@ -11,7 +11,7 @@
 | 1 | Foundation and Safe Init | Author can bootstrap a LeanQuill project on a reliable local-first foundation with enforced file safety boundaries | INIT-01, INIT-02 | 3 criteria |
 | 2 | Core Chapter Workflow | Author can navigate chapters, open files, and manage chapter state from VS Code sidebars | CHAP-01, CHAP-02, CHAP-03, CHAP-04 | 4 criteria |
 | 3 | Outline and Beat Planning | Author can plan long-form structure in a dedicated Scrivener-style planning workspace | PLAN-01, PLAN-02 | 3 criteria |
-| 4 | Character Reference | Author can manage character profiles in the planning workspace Characters tab | CHAR-01 | 2 criteria |
+| 4 | Character Reference | Author can manage character profiles in the planning workspace Characters tab | Complete    | 2026-04-09 |
 | 5 | Place and Setting Reference | Author can manage place and setting profiles in the planning workspace Places tab | PLACE-01 | 2 criteria |
 | 6 | Threads and Themes | Author can manage narrative threads and thematic arcs in the planning workspace Threads tab | THREAD-01 | 2 criteria |
 | 7 | Global Knowledge Reference | Author can continuously consult and edit project knowledge notes during planning and drafting | KNOW-01, KNOW-02, KNOW-03 | 3 criteria |
@@ -27,7 +27,7 @@
 - [x] **Phase 1: Foundation and Safe Init** - Scaffold LeanQuill files, chapter ordering detection, and safe IO boundaries.
 - [x] **Phase 2: Core Chapter Workflow** - Deliver chapter tree navigation and chapter context basics.
 - [x] **Phase 3: Outline and Beat Planning** - Deliver standalone Scrivener-style planning webview.
-- [ ] **Phase 4: Character Reference** - Populate Characters tab with character profile management.
+- [x] **Phase 4: Character Reference** - Populate Characters tab with character profile management. (completed 2026-04-09)
 - [ ] **Phase 5: Place and Setting Reference** - Populate Places tab with location/setting management.
 - [ ] **Phase 6: Threads and Themes** - Populate Threads tab with narrative thread and thematic arc tracking.
 - [ ] **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
@@ -109,7 +109,7 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 3
 **Requirements:** CHAR-01
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 04-01-PLAN.md — CharacterProfile types, ProjectConfig.folders.characters, and characterStore CRUD + manuscript scanning.
@@ -288,6 +288,6 @@ Plans:
 | 10. AI Review and Advisory Workflows | 0/0 | Not started | - |
 | 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
 | 12. Standardized Research Workflow and Results Repository | 2/2 | Completed | 2026-04-05 |
-| 13. LeanPub Workspace Initialization | 0/4 | Not started | - |
+| 13. LeanPub Workspace Initialization | 4/4 | Completed | 2026-04-09 |
 
 ## Backlog
