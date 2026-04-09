@@ -159,3 +159,10 @@ test("validateProjectYamlForSetup not ok for schema_version 9", () => {
   const v = validateProjectYamlForSetup(content);
   assert.equal(v.ok, false);
 });
+
+test("validateProjectYamlForSetup not ok when schema_version missing", () => {
+  const content = minimalValidSetupYaml.replace(/^schema_version:.*\n/m, "");
+  const v = validateProjectYamlForSetup(content);
+  assert.equal(v.ok, false);
+  assert.equal(v.reason, "missing_schema_version");
+});
