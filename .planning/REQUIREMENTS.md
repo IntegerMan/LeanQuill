@@ -41,7 +41,7 @@
 
 ### Threads and Themes
 
-- [ ] **THREAD-01**: Author can manage narrative threads and themes within the planning workspace Threads tab — tracking subplots, thematic arcs, and recurring concepts across the story structure, with visibility into which beats and chapters each thread touches
+- [x] **THREAD-01**: Author can manage narrative threads and themes within the planning workspace Threads tab — tracking subplots, thematic arcs, and recurring concepts across the story structure, with visibility into which beats and chapters each thread touches *(Phase 6 — chapter-level `touchesChapters`; beats not a linking unit in v1)*
 
 ### Issue Tracking
 
@@ -131,7 +131,7 @@ Which phases cover which requirements. To be populated during roadmap creation.
 | PLAN-03 | 8 | Pending |
 | CHAR-01 | 4 | Complete |
 | PLACE-01 | 5 | Pending |
-| THREAD-01 | 6 | Pending |
+| THREAD-01 | 6 | Complete |
 | KNOW-01 | 7 | Pending |
 | KNOW-02 | 7 | Pending |
 | KNOW-03 | 7 | Pending |

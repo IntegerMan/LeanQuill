@@ -1,17 +1,19 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { stripYamlQuotes } from "./yamlUtils";
 
 export interface ProjectConfig {
   schemaVersion: string;
   folders: {
     research: string;
     characters: string;
+    threads: string;
   };
 }
 
 export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
   schemaVersion: "1",
-  folders: { research: "research/leanquill/", characters: "notes/characters/" },
+  folders: { research: "research/leanquill/", characters: "notes/characters/", threads: "notes/threads/" },
 };
 
 export function parseProjectConfig(content: string): ProjectConfig {
@@ -23,6 +25,7 @@ export function parseProjectConfig(content: string): ProjectConfig {
 
   let research = "research/leanquill/";
   let characters = "notes/characters/";
+  let threads = "notes/threads/";
 
   // Find the folders: block and extract research: from it
   const lines = normalized.split("\n");
@@ -46,12 +49,16 @@ export function parseProjectConfig(content: string): ProjectConfig {
       if (charactersMatch) {
         characters = charactersMatch[1].trim();
       }
+      const threadsMatch = /^\s+threads:\s*["']?(.+?)["']?\s*$/.exec(line);
+      if (threadsMatch) {
+        threads = threadsMatch[1].trim();
+      }
     }
   }
 
   return {
     schemaVersion,
-    folders: { research, characters },
+    folders: { research, characters, threads },
   };
 }
 
@@ -69,6 +76,150 @@ export async function readProjectConfig(rootPath: string): Promise<ProjectConfig
 
 export async function readProjectConfigWithDefaults(rootPath: string): Promise<ProjectConfig> {
   return await readProjectConfig(rootPath) ?? DEFAULT_PROJECT_CONFIG;
+}
+
+/** Book title + genres from `project.yaml` (for Themes pane). */
+export interface ProjectIdentity {
+  workingTitle: string;
+  genres: string[];
+}
+
+
+export async function readProjectYamlRaw(rootPath: string): Promise<string | null> {
+  const yamlPath = path.join(rootPath, ".leanquill", "project.yaml");
+  try {
+    return await fs.readFile(yamlPath, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+export function parseProjectIdentity(content: string): ProjectIdentity {
+  const normalized = content.replace(/\r\n/g, "\n");
+  const wt = /^working_title:\s*(.+)$/m.exec(normalized);
+  const workingTitle = wt ? stripYamlQuotes(wt[1]) : "";
+
+  const genres: string[] = [];
+  const lines = normalized.split("\n");
+  const gi = lines.findIndex((l) => /^genre:\s*/.test(l));
+  if (gi !== -1) {
+    const genreLine = lines[gi];
+    const inlineMatch = /^genre:\s*(.+)$/.exec(genreLine);
+    if (inlineMatch) {
+      const inlineVal = inlineMatch[1].trim();
+      if (inlineVal.startsWith("[") && inlineVal.endsWith("]")) {
+        const inner = inlineVal.slice(1, -1).trim();
+        if (inner) {
+          for (const item of inner.split(",")) {
+            genres.push(stripYamlQuotes(item.trim()));
+          }
+        }
+      } else {
+        genres.push(stripYamlQuotes(inlineVal));
+      }
+    } else {
+      let i = gi + 1;
+      while (i < lines.length) {
+        const l = lines[i];
+        if (l.length > 0 && !/^\s/.test(l)) {
+          break;
+        }
+        const m = /^\s*-\s+(.+)$/.exec(l);
+        if (m) {
+          genres.push(stripYamlQuotes(m[1]));
+        }
+        i++;
+      }
+    }
+  }
+
+  return { workingTitle, genres };
+}
+
+export async function readProjectIdentity(rootPath: string): Promise<ProjectIdentity> {
+  const raw = await readProjectYamlRaw(rootPath);
+  if (!raw) {
+    return { workingTitle: "", genres: [] };
+  }
+  return parseProjectIdentity(raw);
+}
+
+function quoteProjectYamlScalar(value: string): string {
+  if (value === "") {
+    return '""';
+  }
+  if (/[\n:#'"[\]{}]/.test(value)) {
+    return JSON.stringify(value);
+  }
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+/**
+ * Update `working_title` and/or `genre:` list in existing project.yaml text.
+ * Preserves other keys and relative order where possible.
+ */
+export function patchProjectIdentityInYaml(
+  content: string,
+  patch: { workingTitle?: string; genres?: string[] },
+): string {
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+
+  const genreBlock = (genres: string[]): string[] => {
+    const g = genres.length > 0 ? genres : ["fiction"];
+    return ["genre:", ...g.map((x) => `  - ${quoteProjectYamlScalar(x)}`)];
+  };
+
+  if (patch.workingTitle !== undefined) {
+    const idx = lines.findIndex((l) => /^working_title:\s*/.test(l));
+    const nl = `working_title: ${quoteProjectYamlScalar(patch.workingTitle)}`;
+    if (idx >= 0) {
+      lines[idx] = nl;
+    } else {
+      const svi = lines.findIndex((l) => /^schema_version:\s*/.test(l));
+      if (svi >= 0) {
+        lines.splice(svi + 1, 0, nl);
+      } else {
+        lines.unshift(nl);
+      }
+    }
+  }
+
+  if (patch.genres !== undefined) {
+    const gLines = genreBlock(patch.genres);
+    const gi = lines.findIndex((l) => /^genre:\s*/.test(l));
+    if (gi >= 0) {
+      const genreLine = lines[gi];
+      const isInline = /^genre:\s*.+$/.test(genreLine);
+      if (isInline) {
+        lines.splice(gi, 1, ...gLines);
+      } else {
+        let end = gi + 1;
+        while (end < lines.length) {
+          const l = lines[end];
+          if (l.length > 0 && !/^\s/.test(l)) {
+            break;
+          }
+          end++;
+        }
+        lines.splice(gi, end - gi, ...gLines);
+      }
+    } else {
+      const wti = lines.findIndex((l) => /^working_title:\s*/.test(l));
+      if (wti >= 0) {
+        lines.splice(wti + 1, 0, ...gLines);
+      } else {
+        const svi = lines.findIndex((l) => /^schema_version:\s*/.test(l));
+        if (svi >= 0) {
+          lines.splice(svi + 1, 0, ...gLines);
+        } else {
+          lines.unshift(...gLines);
+        }
+      }
+    }
+  }
+
+  const text = lines.join("\n");
+  return text.endsWith("\n") ? text : `${text}\n`;
 }
 
 export interface ProjectYamlSetupValidation {

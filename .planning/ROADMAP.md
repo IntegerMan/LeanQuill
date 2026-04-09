@@ -29,7 +29,7 @@
 - [x] **Phase 3: Outline and Beat Planning** - Deliver standalone Scrivener-style planning webview.
 - [x] **Phase 4: Character Reference** - Populate Characters tab with character profile management. (completed 2026-04-09)
 - [ ] **Phase 5: Place and Setting Reference** - Populate Places tab with location/setting management.
-- [ ] **Phase 6: Threads and Themes** - Populate Threads tab with narrative thread and thematic arc tracking.
+- [x] **Phase 6: Threads and Themes** - Populate planning workspace with Themes + Threads tabs, `themes.yaml`, and thread markdown under `folders.threads`. (completed 2026-04-09)
 - [ ] **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
 - [ ] **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators.
 - [ ] **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
@@ -145,12 +145,18 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 3
 **Requirements:** THREAD-01
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 06-01-PLAN.md — ThreadProfile/ThemesDocument types, `folders.threads`, `themes.yaml` + `threadStore` + chapter picker helper + tests.
+- [x] 06-02-PLAN.md — Planning webview: Themes + Threads tabs (tab order D-05), HTML + `PlanningPanel` message handlers.
+- [x] 06-03-PLAN.md — Extension wiring: SafeFs threads path, watcher, `leanquill.newThread` / `leanquill.newTheme` commands.
 
 **Success criteria:**
-1. Author can open the Threads tab in the planning webview and create, edit, and organize thread/theme entries with author-defined fields.
-2. Thread entries show which chapters and beats each thread touches, giving the author visibility into how concepts and subplots weave through the narrative.
+1. Author can open the **Themes** and **Threads** tabs in the planning webview and create, edit, and organize book-level theme framing and per-thread profiles with author-defined fields (per `06-CONTEXT.md`).
+2. Thread entries show which **chapter files** each thread touches (author-maintained `touchesChapters`); theme entries may optionally link to chapters only — visibility into how concepts and subplots weave through the narrative at **chapter** granularity (beats are not a linking unit in v1).
 
-**Notes:** Populates the Threads/Themes stub tab created in Phase 3. Threads differ from characters/places in that they represent abstract narrative concepts rather than concrete entities.
+**Notes:** Populates the planning workspace with an explicit **Themes** tab (`.leanquill/themes.yaml` + optional notes paths) and a **Threads** tab (markdown under `folders.threads`, default `notes/threads/`). Tab order: Outline → Cards → Themes → Characters → Places → Threads. Deferred: theme→character links, thread→non-chapter outline nodes, automatic manuscript detection — see `06-CONTEXT.md`.
 
 ---
 
@@ -280,7 +286,7 @@ Plans:
 | 3. Outline and Beat Planning | 3/3 | Completed | 2026-04-05 |
 | 4. Character Reference | 3/3 | Completed | 2026-04-09 |
 | 5. Place and Setting Reference | 0/0 | Not started | - |
-| 6. Threads and Themes | 0/0 | Not started | - |
+| 6. Threads and Themes | 3/3 | Completed | 2026-04-09 |
 | 7. Global Knowledge Reference | 0/0 | Not started | - |
 | 8. Issue Capture, Triage, and Editor Signals | 0/0 | Not started | - |
 | 9. AI Safety Rails and Persona Baseline | 0/0 | Not started | - |
