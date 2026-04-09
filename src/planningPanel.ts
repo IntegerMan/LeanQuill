@@ -681,6 +681,9 @@ export class PlanningPanelProvider {
   }
 
   private async _setThreadTouchesChapters(fileName: string, paths: string[]): Promise<void> {
+    if (this._pendingThread && this._pendingThread.fileName !== fileName) {
+      await this._flushPendingThread();
+    }
     const config = await readProjectConfigWithDefaults(this.rootPath);
     const profiles = await listThreads(this.rootPath, config);
     const found = profiles.find((p) => p.fileName === fileName);
@@ -691,11 +694,13 @@ export class PlanningPanelProvider {
       clearTimeout(this._threadDebounceTimer);
       this._threadDebounceTimer = undefined;
     }
+    const base =
+      this._pendingThread?.fileName === fileName ? this._pendingThread : found;
     if (this._pendingThread?.fileName === fileName) {
       this._pendingThread = undefined;
     }
     const normalized = paths.map((p) => p.replace(/\\/g, "/"));
-    const next = { ...found, touchesChapters: normalized };
+    const next = { ...base, touchesChapters: normalized };
     await saveThread(next, this.rootPath, config, this.safeFs);
     await this._renderPanel();
   }
