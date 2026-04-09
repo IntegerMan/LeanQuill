@@ -3,6 +3,7 @@ import * as path from "node:path";
 import * as crypto from "node:crypto";
 import type { CentralThemeEntry, ThemesDocument } from "./types";
 import type { SafeFileSystem } from "./safeFileSystem";
+import { stripYamlQuotes } from "./yamlUtils";
 
 export const THEMES_FILE_NAME = "themes.yaml";
 
@@ -16,19 +17,8 @@ export function defaultThemesDocument(): ThemesDocument {
   };
 }
 
-function stripQuotes(s: string): string {
-  const t = s.trim();
-  if (
-    (t.startsWith('"') && t.endsWith('"')) ||
-    (t.startsWith("'") && t.endsWith("'"))
-  ) {
-    return t.slice(1, -1);
-  }
-  return t;
-}
-
 function yamlScalarValue(raw: string): string {
-  return stripQuotes(raw);
+  return stripYamlQuotes(raw);
 }
 
 function readBlockScalar(lines: string[], startIdx: number, baseIndent: number): { value: string; next: number } {
@@ -107,7 +97,7 @@ function parseCentralThemesBlock(lines: string[], startIdx: number): { themes: C
               }
               const li = /^\s{6}-\s+(.+)$/.exec(ll);
               if (li) {
-                entry.linkedChapters.push(stripQuotes(li[1]).replace(/\\/g, "/"));
+                entry.linkedChapters.push(stripYamlQuotes(li[1]).replace(/\\/g, "/"));
                 i++;
               } else if (/^\s{4}[a-z_]+:/.test(ll)) {
                 break;

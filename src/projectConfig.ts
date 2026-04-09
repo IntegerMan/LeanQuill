@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { stripYamlQuotes } from "./yamlUtils";
 
 export interface ProjectConfig {
   schemaVersion: string;
@@ -83,16 +84,6 @@ export interface ProjectIdentity {
   genres: string[];
 }
 
-function stripYamlScalarToken(raw: string): string {
-  const t = raw.trim();
-  if (
-    (t.startsWith('"') && t.endsWith('"')) ||
-    (t.startsWith("'") && t.endsWith("'"))
-  ) {
-    return t.slice(1, -1);
-  }
-  return t;
-}
 
 export async function readProjectYamlRaw(rootPath: string): Promise<string | null> {
   const yamlPath = path.join(rootPath, ".leanquill", "project.yaml");
@@ -106,7 +97,7 @@ export async function readProjectYamlRaw(rootPath: string): Promise<string | nul
 export function parseProjectIdentity(content: string): ProjectIdentity {
   const normalized = content.replace(/\r\n/g, "\n");
   const wt = /^working_title:\s*(.+)$/m.exec(normalized);
-  const workingTitle = wt ? stripYamlScalarToken(wt[1]) : "";
+  const workingTitle = wt ? stripYamlQuotes(wt[1]) : "";
 
   const genres: string[] = [];
   const lines = normalized.split("\n");
@@ -120,7 +111,7 @@ export function parseProjectIdentity(content: string): ProjectIdentity {
       }
       const m = /^\s*-\s+(.+)$/.exec(l);
       if (m) {
-        genres.push(stripYamlScalarToken(m[1]));
+        genres.push(stripYamlQuotes(m[1]));
       }
       i++;
     }
