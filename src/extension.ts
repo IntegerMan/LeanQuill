@@ -13,7 +13,7 @@ import { OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTr
 import { OutlineWebviewProvider } from "./outlineWebviewPanel";
 import { PlanningPanelProvider } from "./planningPanel";
 import { SafeFileSystem } from "./safeFileSystem";
-import { readProjectConfig } from "./projectConfig";
+import { readProjectConfig, readProjectConfigWithDefaults } from "./projectConfig";
 import { migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
 import { ResearchTreeProvider } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
@@ -233,10 +233,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (!name?.trim()) {
       return;
     }
-    const latestConfig = await readProjectConfig(rootPath) ?? {
-      schemaVersion: "1",
-      folders: { research: "research/leanquill/", characters: "notes/characters/" },
-    };
+    const latestConfig = await readProjectConfigWithDefaults(rootPath);
     try {
       await createCharacter(name.trim(), rootPath, latestConfig, safeFileSystem);
       await planningPanel.refresh();
@@ -648,10 +645,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!rel.startsWith("manuscript/") || !rel.endsWith(".md")) {
         return;
       }
-      const latestConfig = await readProjectConfig(rootPath) ?? {
-        schemaVersion: "1",
-        folders: { research: "research/leanquill/", characters: "notes/characters/" },
-      };
+      const latestConfig = await readProjectConfigWithDefaults(rootPath);
       await scanManuscriptFileForCharacters(filePath, rootPath, latestConfig, safeFileSystem);
       await planningPanel.refresh();
       characterTreeProvider.refresh();

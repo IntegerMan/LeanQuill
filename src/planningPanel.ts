@@ -5,7 +5,7 @@ import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStor
 import { renderPlanningHtml } from "./planningPanelHtml";
 import { SafeFileSystem } from "./safeFileSystem";
 import { OutlineNode, OutlineIndex, ChapterStatus, CharacterProfile } from "./types";
-import { readProjectConfig } from "./projectConfig";
+import { readProjectConfigWithDefaults } from "./projectConfig";
 import { listCharacters, createCharacter, saveCharacter, deleteCharacter } from "./characterStore";
 
 export class PlanningPanelProvider {
@@ -102,10 +102,7 @@ export class PlanningPanelProvider {
       this._charDebounceTimer = undefined;
     }
     if (this._pendingCharacter) {
-      const config = await readProjectConfig(this.rootPath) ?? {
-        schemaVersion: "1",
-        folders: { research: "research/leanquill/", characters: "notes/characters/" },
-      };
+      const config = await readProjectConfigWithDefaults(this.rootPath);
       await saveCharacter(this._pendingCharacter, this.rootPath, config, this.safeFs);
       this._pendingCharacter = undefined;
     }
@@ -117,10 +114,7 @@ export class PlanningPanelProvider {
     }
 
     const index = await readOutlineIndex(this.rootPath);
-    const config = await readProjectConfig(this.rootPath) ?? {
-      schemaVersion: "1",
-      folders: { research: "research/leanquill/", characters: "notes/characters/" },
-    };
+    const config = await readProjectConfigWithDefaults(this.rootPath);
     const characters = await listCharacters(this.rootPath, config);
     // Reset selection if selected character was deleted
     if (
@@ -271,10 +265,7 @@ export class PlanningPanelProvider {
       placeHolder: "e.g. Jane Doe",
     });
     if (!name?.trim()) { return; }
-    const config = await readProjectConfig(this.rootPath) ?? {
-      schemaVersion: "1",
-      folders: { research: "research/leanquill/", characters: "notes/characters/" },
-    };
+    const config = await readProjectConfigWithDefaults(this.rootPath);
     const profile = await createCharacter(name.trim(), this.rootPath, config, this.safeFs);
     this._selectedCharacterFileName = profile.fileName;
     await this._renderPanel();
@@ -286,10 +277,7 @@ export class PlanningPanelProvider {
     value: string,
   ): Promise<void> {
     if (!this._pendingCharacter || this._pendingCharacter.fileName !== fileName) {
-      const config = await readProjectConfig(this.rootPath) ?? {
-        schemaVersion: "1",
-        folders: { research: "research/leanquill/", characters: "notes/characters/" },
-      };
+      const config = await readProjectConfigWithDefaults(this.rootPath);
       const profiles = await listCharacters(this.rootPath, config);
       const found = profiles.find((p) => p.fileName === fileName);
       if (!found) { return; }
@@ -310,10 +298,7 @@ export class PlanningPanelProvider {
     const profileToWrite = this._pendingCharacter;
     this._charDebounceTimer = setTimeout(() => {
       const doSave = async () => {
-        const config = await readProjectConfig(this.rootPath) ?? {
-          schemaVersion: "1",
-          folders: { research: "research/leanquill/", characters: "notes/characters/" },
-        };
+        const config = await readProjectConfigWithDefaults(this.rootPath);
         await saveCharacter(profileToWrite, this.rootPath, config, this.safeFs);
         if (this._pendingCharacter?.fileName === profileToWrite.fileName) {
           this._pendingCharacter = undefined;
@@ -341,10 +326,7 @@ export class PlanningPanelProvider {
       await this.vscodeApi.window.showErrorMessage(reason);
       return;
     }
-    const config = await readProjectConfig(this.rootPath) ?? {
-      schemaVersion: "1",
-      folders: { research: "research/leanquill/", characters: "notes/characters/" },
-    };
+    const config = await readProjectConfigWithDefaults(this.rootPath);
     let profile: CharacterProfile;
     if (this._pendingCharacter && this._pendingCharacter.fileName === fileName) {
       profile = this._pendingCharacter;
@@ -361,10 +343,7 @@ export class PlanningPanelProvider {
   }
 
   private async _deleteCharacter(fileName: string): Promise<void> {
-    const config = await readProjectConfig(this.rootPath) ?? {
-      schemaVersion: "1",
-      folders: { research: "research/leanquill/", characters: "notes/characters/" },
-    };
+    const config = await readProjectConfigWithDefaults(this.rootPath);
     const profiles = await listCharacters(this.rootPath, config);
     const profile = profiles.find((p) => p.fileName === fileName);
     const label = profile?.name || fileName.replace(/\.md$/, "");
@@ -391,10 +370,7 @@ export class PlanningPanelProvider {
   }
 
   private async _openCharacterInEditor(fileName: string): Promise<void> {
-    const config = await readProjectConfig(this.rootPath) ?? {
-      schemaVersion: "1",
-      folders: { research: "research/leanquill/", characters: "notes/characters/" },
-    };
+    const config = await readProjectConfigWithDefaults(this.rootPath);
     const charsDir = config.folders.characters.replace(/\/+$/, "");
     const filePath = path.join(this.rootPath, ...charsDir.split("/"), fileName);
     await this.vscodeApi.commands.executeCommand("vscode.open", this.vscodeApi.Uri.file(filePath));

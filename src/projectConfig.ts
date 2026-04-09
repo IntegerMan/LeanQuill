@@ -9,6 +9,11 @@ export interface ProjectConfig {
   };
 }
 
+export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
+  schemaVersion: "1",
+  folders: { research: "research/leanquill/", characters: "notes/characters/" },
+};
+
 export function parseProjectConfig(content: string): ProjectConfig {
   // Normalize CRLF so Windows-authored files parse correctly
   const normalized = content.replace(/\r\n/g, "\n");
@@ -60,4 +65,8 @@ export async function readProjectConfig(rootPath: string): Promise<ProjectConfig
     // so callers never see a raw filesystem error during extension activation.
     return null;
   }
+}
+
+export async function readProjectConfigWithDefaults(rootPath: string): Promise<ProjectConfig> {
+  return await readProjectConfig(rootPath) ?? DEFAULT_PROJECT_CONFIG;
 }
