@@ -10,7 +10,7 @@
 ### Project Setup
 
 - [ ] **INIT-01**: Author can initialize a LeanPub repo with a single "LeanQuill: Initialize" command that scaffolds the `.leanquill/` folder structure and creates a `project.yaml` from a sensible template
-- [ ] **INIT-02**: On initialization, LeanQuill auto-detects `Book.txt` for chapter ordering; falls back to alphabetical sort of manuscript files if not present
+- [x] **INIT-02**: On initialization, LeanQuill auto-detects `Book.txt` for chapter ordering; falls back to alphabetical sort of manuscript files if not present
 
 ### Chapter Management
 
@@ -121,7 +121,7 @@ Which phases cover which requirements. To be populated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | INIT-01 | 1 | Pending |
-| INIT-02 | 1 | Pending |
+| INIT-02 | 1 | Complete |
 | CHAP-01 | 2 | Pending |
 | CHAP-02 | 2 | Pending |
 | CHAP-03 | 2 | Pending |
