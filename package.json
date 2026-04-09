@@ -13,6 +13,8 @@
   "activationEvents": [
     "onCommand:leanquill.initialize",
     "onCommand:leanquill.openPlanningWorkspace",
+    "onCommand:leanquill.newThread",
+    "onCommand:leanquill.newTheme",
     "onCommand:leanquill.createOutline",
     "onView:leanquill.outlineTree",
     "onView:leanquill.chapterContext",
@@ -114,6 +116,16 @@
         "title": "New Character",
         "category": "LeanQuill",
         "icon": "$(person-add)"
+      },
+      {
+        "command": "leanquill.newThread",
+        "title": "New Thread",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newTheme",
+        "title": "New Theme",
+        "category": "LeanQuill"
       }
     ],
     "viewsContainers": {

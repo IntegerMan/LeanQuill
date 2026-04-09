@@ -14,6 +14,7 @@ An author working in a LeanPub markdown repo can see the status of every chapter
 
 - **INIT-01** — Validated in Phase 13: LeanPub Workspace Initialization (unified command: full init + manuscript scaffold when `project.yaml` already valid).
 - **INIT-02** — Validated in Phase 13: chapter order refresh after scaffold; `Book.txt` under `manuscript/`.
+- **THREAD-01** — Validated in Phase 6: Themes + Threads planning tabs, `.leanquill/themes.yaml`, thread markdown under `folders.threads`, chapter picker from outline manuscript paths.
 
 ### Active
 
@@ -25,7 +26,6 @@ An author working in a LeanPub markdown repo can see the status of every chapter
 - [ ] **PLAN-02**: Each story beat supports per-beat fields (what/who/where/why) plus candidate/committed status
 - [ ] **CHAR-01**: Author can manage character profiles in the planning workspace Characters tab with visibility into chapter/beat associations
 - [ ] **PLACE-01**: Author can manage place/setting profiles in the planning workspace Places tab linked to scenes
-- [ ] **THREAD-01**: Author can manage narrative threads and themes in the planning workspace Threads tab across the story structure
 - [ ] **KNOW-01**: Author can view a read-only global knowledge pane (characters, settings, timeline, research) parsed from configured notes folders
 - [ ] **KNOW-02**: Known entity names (characters, locations) are hyperlinked in the knowledge pane for quick navigation
 - [ ] **ISSUE-01**: Author can manually create issues attached to a chapter or project-wide
@@ -105,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-08 — Phase 13 complete; INIT-01/INIT-02 moved to Validated*
+*Last updated: 2026-04-09 — Phase 6 complete; THREAD-01 moved to Validated*

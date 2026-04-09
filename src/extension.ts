@@ -19,6 +19,8 @@ import { ResearchTreeProvider } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
 import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
 import { createCharacter, scanManuscriptFileForCharacters } from "./characterStore";
+import { createThread } from "./threadStore";
+import { addCentralThemeEntry, readThemesDocument, writeThemesDocument } from "./themesStore";
 
 async function setWorkspaceContext(rootPath: string): Promise<void> {
   const hasBookTxt = await fs.stat(path.join(rootPath, "manuscript", "Book.txt")).then(() => true).catch(() => false);
@@ -175,6 +177,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Load project config and configure research folder access
   let config = await readProjectConfig(rootPath);
+  const DEFAULT_THREADS_FOLDER = "notes/threads";
+  let safeThreadsFolder = DEFAULT_THREADS_FOLDER;
   if (config) {
     if (config.schemaVersion === "1") {
       const migrated = await migrateProjectYaml(rootPath, safeFileSystem);
@@ -205,9 +209,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       charactersFolderClean.startsWith("manuscript/");
     const safeCharactersFolder = isCharsMsPath ? DEFAULT_CHARACTERS_FOLDER : charactersFolderClean;
     safeFileSystem.allowPath(safeCharactersFolder, ".md");
+
+    const threadsFolderRaw = config.folders.threads ?? DEFAULT_THREADS_FOLDER;
+    const threadsFolderClean = threadsFolderRaw.replace(/\/+$/g, "");
+    const isThreadsMsPath =
+      threadsFolderClean === "manuscript" ||
+      threadsFolderClean.startsWith("manuscript/");
+    safeThreadsFolder = isThreadsMsPath ? DEFAULT_THREADS_FOLDER : threadsFolderClean;
+    safeFileSystem.allowPath(safeThreadsFolder, ".md");
+
     // Ensure harness entry points exist for projects initialized before phase 12
     // (writeHarnessEntryPoints is idempotent — skips existing files)
     void writeHarnessEntryPoints(rootPath).catch(() => { /* non-critical */ });
+  } else {
+    safeFileSystem.allowPath(DEFAULT_THREADS_FOLDER, ".md");
   }
 
   const researchFolder = (config?.folders.research ?? "research/leanquill").replace(/\/+$/, "");
@@ -270,6 +285,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   charactersWatcher.onDidChange(() => characterTreeProvider.refresh());
   charactersWatcher.onDidDelete(() => characterTreeProvider.refresh());
 
+  const threadsWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(rootPath, `${safeThreadsFolder}/**/*.md`),
+  );
+  threadsWatcher.onDidCreate(() => void planningPanel.refresh());
+  threadsWatcher.onDidChange(() => void planningPanel.refresh());
+  threadsWatcher.onDidDelete(() => void planningPanel.refresh());
+
   const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
     const appName = vscode.env.appName ?? "";
     const isCursor = appName.toLowerCase().includes("cursor");
@@ -321,6 +343,36 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const newThreadCommand = vscode.commands.registerCommand("leanquill.newThread", async () => {
+    const title = await vscode.window.showInputBox({
+      prompt: "Thread title",
+      placeHolder: "e.g. Main mystery arc",
+    });
+    if (!title?.trim()) {
+      return;
+    }
+    const latestConfig = await readProjectConfigWithDefaults(rootPath);
+    try {
+      await createThread(title.trim(), rootPath, latestConfig, safeFileSystem);
+      await planningPanel.showThreads();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(`LeanQuill: Failed to create thread: ${message}`);
+    }
+  });
+
+  const newThemeCommand = vscode.commands.registerCommand("leanquill.newTheme", async () => {
+    try {
+      let doc = await readThemesDocument(rootPath);
+      const { doc: updated } = addCentralThemeEntry(doc);
+      await writeThemesDocument(rootPath, updated, safeFileSystem);
+      await planningPanel.showThemes();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(`LeanQuill: Failed to add theme: ${message}`);
+    }
+  });
+
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("leanquill.actions", setupViewProvider),
     vscode.window.registerWebviewViewProvider("leanquill.outlineTree", outlineWebviewProvider, {
@@ -333,8 +385,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider("leanquill.characters", characterTreeProvider),
     researchWatcher,
     charactersWatcher,
+    threadsWatcher,
     startResearchCommand,
     newCharacterCommand,
+    newThreadCommand,
+    newThemeCommand,
     selectCharacterInPanelCommand,
   );
 

@@ -33,6 +33,7 @@ function renderProjectYaml(input: InitInput): string {
     "folders:",
     "  manuscript: manuscript/",
     "  characters: notes/characters/",
+    "  threads: notes/threads/",
     "  settings: notes/settings/",
     "  timeline: notes/timeline/",
     "  research: research/leanquill/",

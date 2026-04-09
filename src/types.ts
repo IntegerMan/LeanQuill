@@ -63,3 +63,30 @@ export interface CharacterProfile {
   customFields: Record<string, string>;
   body: string;                // freeform markdown body after frontmatter
 }
+
+// --- Threads & themes (Phase 6) ---
+
+export interface CentralThemeEntry {
+  id: string;
+  title: string;
+  summary: string;
+  notePath: string;
+  linkedChapters: string[];
+}
+
+export interface ThemesDocument {
+  schemaVersion: string;
+  centralQuestion: string;
+  bookSynopsis: string;
+  bookCustomFields: Record<string, string>;
+  centralThemes: CentralThemeEntry[];
+  bookLinkedChapters: string[];
+}
+
+export interface ThreadProfile {
+  fileName: string;
+  title: string;
+  touchesChapters: string[];
+  customFields: Record<string, string>;
+  body: string;
+}

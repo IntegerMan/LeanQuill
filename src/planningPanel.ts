@@ -1,12 +1,25 @@
 import * as crypto from "node:crypto";
 import * as path from "node:path";
 import type * as VSCode from "vscode";
+import { resolveChapterOrder } from "./chapterOrder";
+import { listCharacters, createCharacter, saveCharacter, deleteCharacter } from "./characterStore";
+import { buildChapterPickerOptions } from "./chapterPickerOptions";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml } from "./planningPanelHtml";
-import { SafeFileSystem } from "./safeFileSystem";
-import { OutlineNode, OutlineIndex, ChapterStatus, CharacterProfile } from "./types";
 import { readProjectConfigWithDefaults } from "./projectConfig";
-import { listCharacters, createCharacter, saveCharacter, deleteCharacter } from "./characterStore";
+import { SafeFileSystem } from "./safeFileSystem";
+import {
+  listThreads,
+  createThread,
+  saveThread,
+  deleteThread,
+} from "./threadStore";
+import {
+  readThemesDocument,
+  writeThemesDocument,
+  addCentralThemeEntry,
+} from "./themesStore";
+import { OutlineNode, OutlineIndex, ChapterStatus, CharacterProfile, ThemesDocument, ThreadProfile } from "./types";
 
 export class PlanningPanelProvider {
   private _panel: VSCode.WebviewPanel | undefined;
@@ -17,6 +30,14 @@ export class PlanningPanelProvider {
   private _pendingCharacter: CharacterProfile | undefined;
   private _charDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   private _charUpdateLock: Promise<void> = Promise.resolve();
+
+  private _pendingThemes: ThemesDocument | undefined;
+  private _themeDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  private _selectedThreadFileName: string | undefined;
+  private _pendingThread: ThreadProfile | undefined;
+  private _threadDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  private _threadUpdateLock: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly vscodeApi: typeof VSCode,
@@ -55,7 +76,9 @@ export class PlanningPanelProvider {
           await writeOutlineIndex(this.rootPath, this._pendingIndex, this.safeFs);
           this._pendingIndex = undefined;
         }
+        await this._flushPendingTheme();
         await this._flushPendingCharacter();
+        await this._flushPendingThread();
       })().catch((err: unknown) => {
         console.error('[LeanQuill] Failed to flush pending state on dispose', err);
       });
@@ -92,6 +115,27 @@ export class PlanningPanelProvider {
     }
   }
 
+  public async showThemes(): Promise<void> {
+    this._activeTab = "themes";
+    this._selectedThreadFileName = undefined;
+    if (this._panel) {
+      this._panel.reveal(this.vscodeApi.ViewColumn.One);
+      await this._renderPanel();
+    } else {
+      await this.show();
+    }
+  }
+
+  public async showThreads(): Promise<void> {
+    this._activeTab = "threads";
+    if (this._panel) {
+      this._panel.reveal(this.vscodeApi.ViewColumn.One);
+      await this._renderPanel();
+    } else {
+      await this.show();
+    }
+  }
+
   public async dispose(): Promise<void> {
     if (this._debounceTimer) {
       clearTimeout(this._debounceTimer);
@@ -101,11 +145,47 @@ export class PlanningPanelProvider {
       await writeOutlineIndex(this.rootPath, this._pendingIndex, this.safeFs);
       this._pendingIndex = undefined;
     }
+    await this._flushPendingTheme();
     await this._flushPendingCharacter();
+    await this._flushPendingThread();
     if (this._panel) {
       this._panel.dispose();
       this._panel = undefined;
     }
+  }
+
+  private async _flushPendingTheme(): Promise<void> {
+    if (this._themeDebounceTimer) {
+      clearTimeout(this._themeDebounceTimer);
+      this._themeDebounceTimer = undefined;
+    }
+    if (this._pendingThemes) {
+      try {
+        await writeThemesDocument(this.rootPath, this._pendingThemes, this.safeFs);
+      } catch (err: unknown) {
+        console.error("[LeanQuill] Failed to flush themes document", err);
+      }
+      this._pendingThemes = undefined;
+    }
+  }
+
+  private _scheduleThemeWrite(): void {
+    if (this._themeDebounceTimer) {
+      clearTimeout(this._themeDebounceTimer);
+    }
+    if (!this._pendingThemes) {
+      return;
+    }
+    this._themeDebounceTimer = setTimeout(() => {
+      this._themeDebounceTimer = undefined;
+      const latest = this._pendingThemes;
+      if (!latest) {
+        return;
+      }
+      writeThemesDocument(this.rootPath, latest, this.safeFs).catch((err: unknown) => {
+        console.error("[LeanQuill] Failed to save themes", err);
+      });
+    }, 300);
   }
 
   private async _flushPendingCharacter(): Promise<void> {
@@ -120,6 +200,18 @@ export class PlanningPanelProvider {
     }
   }
 
+  private async _flushPendingThread(): Promise<void> {
+    if (this._threadDebounceTimer) {
+      clearTimeout(this._threadDebounceTimer);
+      this._threadDebounceTimer = undefined;
+    }
+    if (this._pendingThread) {
+      const config = await readProjectConfigWithDefaults(this.rootPath);
+      await saveThread(this._pendingThread, this.rootPath, config, this.safeFs);
+      this._pendingThread = undefined;
+    }
+  }
+
   private async _renderPanel(): Promise<void> {
     if (!this._panel) {
       return;
@@ -128,6 +220,10 @@ export class PlanningPanelProvider {
     const index = await readOutlineIndex(this.rootPath);
     const config = await readProjectConfigWithDefaults(this.rootPath);
     const characters = await listCharacters(this.rootPath, config);
+    const chapterOrder = await resolveChapterOrder(this.rootPath);
+    const chapterPickerOptions = buildChapterPickerOptions(index, chapterOrder);
+    const themes = this._pendingThemes ?? await readThemesDocument(this.rootPath);
+    const threads = await listThreads(this.rootPath, config);
     // Reset selection if selected character was deleted
     if (
       this._selectedCharacterFileName &&
@@ -135,10 +231,25 @@ export class PlanningPanelProvider {
     ) {
       this._selectedCharacterFileName = undefined;
     }
+    if (
+      this._selectedThreadFileName &&
+      !threads.find((t) => t.fileName === this._selectedThreadFileName)
+    ) {
+      this._selectedThreadFileName = undefined;
+    }
     const nonce = crypto.randomBytes(16).toString("hex");
     const cspSource = this._panel.webview.cspSource;
     this._panel.webview.html = renderPlanningHtml(
-      index, characters, this._selectedCharacterFileName, nonce, cspSource, this._activeTab,
+      index,
+      characters,
+      this._selectedCharacterFileName,
+      themes,
+      threads,
+      this._selectedThreadFileName,
+      chapterPickerOptions,
+      nonce,
+      cspSource,
+      this._activeTab,
     );
   }
 
@@ -201,7 +312,315 @@ export class PlanningPanelProvider {
       case "character:openInEditor":
         await this._openCharacterInEditor(msg.fileName as string);
         break;
+
+      case "theme:updateBook":
+        await this._themeUpdateBook(msg as Record<string, unknown>);
+        break;
+
+      case "theme:updateBookCustom":
+        await this._themeUpdateBookCustom(msg.key as string, msg.value as string);
+        break;
+
+      case "theme:updateTheme":
+        await this._themeUpdateTheme(msg as Record<string, unknown>);
+        break;
+
+      case "theme:toggleBookChapter":
+        await this._themeToggleBookChapter(msg.path as string);
+        break;
+
+      case "theme:toggleThemeChapter":
+        await this._themeToggleThemeChapter(msg.themeId as string, msg.path as string);
+        break;
+
+      case "theme:addTheme":
+        await this._themeAddTheme();
+        break;
+
+      case "theme:removeTheme":
+        await this._themeRemoveTheme(msg.themeId as string);
+        break;
+
+      case "thread:select":
+        this._selectedThreadFileName = msg.fileName as string;
+        await this._renderPanel();
+        break;
+
+      case "thread:create":
+        await this._createThread();
+        break;
+
+      case "thread:updateField":
+        this._threadUpdateLock = this._threadUpdateLock.catch(() => {}).then(() =>
+          this._updateThreadField(
+            msg.fileName as string,
+            msg.field as string,
+            msg.value as string,
+          ),
+        );
+        await this._threadUpdateLock;
+        break;
+
+      case "thread:addCustomField":
+        await this._addThreadCustomField(msg.fileName as string, msg.fieldName as string);
+        break;
+
+      case "thread:delete":
+        await this._deleteThread(msg.fileName as string);
+        break;
+
+      case "thread:setTouchesChapters":
+        await this._setThreadTouchesChapters(msg.fileName as string, msg.paths as string[]);
+        break;
     }
+  }
+
+  private async _themeUpdateBook(raw: Record<string, unknown>): Promise<void> {
+    let doc = this._pendingThemes ?? await readThemesDocument(this.rootPath);
+    if (typeof raw.centralQuestion === "string") {
+      doc = { ...doc, centralQuestion: raw.centralQuestion };
+    }
+    if (typeof raw.bookSynopsis === "string") {
+      doc = { ...doc, bookSynopsis: raw.bookSynopsis };
+    }
+    this._pendingThemes = doc;
+    this._scheduleThemeWrite();
+  }
+
+  private async _themeUpdateBookCustom(key: string, value: string): Promise<void> {
+    let doc = this._pendingThemes ?? await readThemesDocument(this.rootPath);
+    doc = {
+      ...doc,
+      bookCustomFields: { ...doc.bookCustomFields, [key]: value },
+    };
+    this._pendingThemes = doc;
+    this._scheduleThemeWrite();
+    await this._renderPanel();
+  }
+
+  private async _themeUpdateTheme(raw: Record<string, unknown>): Promise<void> {
+    const themeId = raw.themeId as string;
+    if (!themeId) {
+      return;
+    }
+    let doc = this._pendingThemes ?? await readThemesDocument(this.rootPath);
+    const nextThemes = doc.centralThemes.map((t) => {
+      if (t.id !== themeId) {
+        return t;
+      }
+      let u = { ...t };
+      if (typeof raw.title === "string") {
+        u = { ...u, title: raw.title };
+      }
+      if (typeof raw.summary === "string") {
+        u = { ...u, summary: raw.summary };
+      }
+      if (typeof raw.notePath === "string") {
+        u = { ...u, notePath: raw.notePath };
+      }
+      return u;
+    });
+    doc = { ...doc, centralThemes: nextThemes };
+    this._pendingThemes = doc;
+    this._scheduleThemeWrite();
+  }
+
+  private async _themeToggleBookChapter(path: string): Promise<void> {
+    let doc = this._pendingThemes ?? await readThemesDocument(this.rootPath);
+    const set = new Set(doc.bookLinkedChapters);
+    if (set.has(path)) {
+      set.delete(path);
+    } else {
+      set.add(path);
+    }
+    doc = { ...doc, bookLinkedChapters: [...set] };
+    this._pendingThemes = doc;
+    this._scheduleThemeWrite();
+    await this._renderPanel();
+  }
+
+  private async _themeToggleThemeChapter(themeId: string, path: string): Promise<void> {
+    let doc = this._pendingThemes ?? await readThemesDocument(this.rootPath);
+    const nextThemes = doc.centralThemes.map((t) => {
+      if (t.id !== themeId) {
+        return t;
+      }
+      const set = new Set(t.linkedChapters);
+      if (set.has(path)) {
+        set.delete(path);
+      } else {
+        set.add(path);
+      }
+      return { ...t, linkedChapters: [...set] };
+    });
+    doc = { ...doc, centralThemes: nextThemes };
+    this._pendingThemes = doc;
+    this._scheduleThemeWrite();
+    await this._renderPanel();
+  }
+
+  private async _themeAddTheme(): Promise<void> {
+    if (this._themeDebounceTimer) {
+      clearTimeout(this._themeDebounceTimer);
+      this._themeDebounceTimer = undefined;
+    }
+    let doc = this._pendingThemes ?? await readThemesDocument(this.rootPath);
+    const { doc: updated } = addCentralThemeEntry(doc);
+    this._pendingThemes = updated;
+    try {
+      await writeThemesDocument(this.rootPath, updated, this.safeFs);
+    } catch (err: unknown) {
+      console.error("[LeanQuill] Failed to add theme", err);
+      await this.vscodeApi.window.showErrorMessage("Could not save themes document.");
+      return;
+    }
+    await this._renderPanel();
+  }
+
+  private async _themeRemoveTheme(themeId: string): Promise<void> {
+    if (this._themeDebounceTimer) {
+      clearTimeout(this._themeDebounceTimer);
+      this._themeDebounceTimer = undefined;
+    }
+    let doc = this._pendingThemes ?? await readThemesDocument(this.rootPath);
+    doc = { ...doc, centralThemes: doc.centralThemes.filter((t) => t.id !== themeId) };
+    this._pendingThemes = doc;
+    try {
+      await writeThemesDocument(this.rootPath, doc, this.safeFs);
+    } catch (err: unknown) {
+      console.error("[LeanQuill] Failed to remove theme", err);
+      await this.vscodeApi.window.showErrorMessage("Could not save themes document.");
+      return;
+    }
+    await this._renderPanel();
+  }
+
+  private async _createThread(): Promise<void> {
+    const title = await this.vscodeApi.window.showInputBox({
+      prompt: "Thread title",
+      placeHolder: "e.g. Main mystery arc",
+    });
+    if (!title?.trim()) {
+      return;
+    }
+    const config = await readProjectConfigWithDefaults(this.rootPath);
+    const profile = await createThread(title.trim(), this.rootPath, config, this.safeFs);
+    this._selectedThreadFileName = profile.fileName;
+    await this._renderPanel();
+  }
+
+  private async _updateThreadField(
+    fileName: string,
+    field: string,
+    value: string,
+  ): Promise<void> {
+    if (this._pendingThread && this._pendingThread.fileName !== fileName) {
+      await this._flushPendingThread();
+    }
+    if (!this._pendingThread || this._pendingThread.fileName !== fileName) {
+      const config = await readProjectConfigWithDefaults(this.rootPath);
+      const profiles = await listThreads(this.rootPath, config);
+      const found = profiles.find((p) => p.fileName === fileName);
+      if (!found) {
+        return;
+      }
+      this._pendingThread = { ...found };
+    }
+    if (field.startsWith("custom:")) {
+      const customKey = field.slice(7);
+      this._pendingThread.customFields[customKey] = value;
+    } else if (field === "title" || field === "body") {
+      (this._pendingThread as Record<string, unknown>)[field] = value;
+    }
+
+    if (this._threadDebounceTimer) {
+      clearTimeout(this._threadDebounceTimer);
+    }
+    const profileToWrite = this._pendingThread;
+    this._threadDebounceTimer = setTimeout(() => {
+      const doSave = async () => {
+        const config = await readProjectConfigWithDefaults(this.rootPath);
+        await saveThread(profileToWrite, this.rootPath, config, this.safeFs);
+        if (this._pendingThread?.fileName === profileToWrite.fileName) {
+          this._pendingThread = undefined;
+        }
+      };
+      doSave().catch((err: unknown) => {
+        console.error("[LeanQuill] Failed to save thread", err);
+      });
+    }, 300);
+  }
+
+  private async _addThreadCustomField(fileName: string, fieldName: string): Promise<void> {
+    if (this._pendingThread && this._pendingThread.fileName !== fileName) {
+      await this._flushPendingThread();
+    } else if (this._threadDebounceTimer) {
+      clearTimeout(this._threadDebounceTimer);
+      this._threadDebounceTimer = undefined;
+    }
+    const RESERVED = new Set(["title", "touchesChapters", "body"]);
+    const safeName = fieldName.trim().replace(/[^a-zA-Z0-9_]/g, "_");
+    if (!safeName || RESERVED.has(safeName)) {
+      const reason = !safeName
+        ? "Field names must contain at least one alphanumeric character or underscore."
+        : `"${fieldName}" is a reserved field name and cannot be used as a custom field.`;
+      await this.vscodeApi.window.showErrorMessage(reason);
+      return;
+    }
+    const config = await readProjectConfigWithDefaults(this.rootPath);
+    let profile: ThreadProfile;
+    if (this._pendingThread && this._pendingThread.fileName === fileName) {
+      profile = this._pendingThread;
+      this._pendingThread = undefined;
+    } else {
+      const profiles = await listThreads(this.rootPath, config);
+      const found = profiles.find((p) => p.fileName === fileName);
+      if (!found) {
+        return;
+      }
+      profile = found;
+    }
+    profile.customFields[safeName] = "";
+    await saveThread(profile, this.rootPath, config, this.safeFs);
+    await this._renderPanel();
+  }
+
+  private async _deleteThread(fileName: string): Promise<void> {
+    const config = await readProjectConfigWithDefaults(this.rootPath);
+    if (this._pendingThread && this._pendingThread.fileName !== fileName) {
+      await this._flushPendingThread();
+    } else if (this._threadDebounceTimer) {
+      clearTimeout(this._threadDebounceTimer);
+      this._threadDebounceTimer = undefined;
+    }
+    if (this._pendingThread && this._pendingThread.fileName === fileName) {
+      this._pendingThread = undefined;
+    }
+    await deleteThread(fileName, this.rootPath, config, this.safeFs);
+    if (this._selectedThreadFileName === fileName) {
+      this._selectedThreadFileName = undefined;
+    }
+    await this._renderPanel();
+  }
+
+  private async _setThreadTouchesChapters(fileName: string, paths: string[]): Promise<void> {
+    const config = await readProjectConfigWithDefaults(this.rootPath);
+    const profiles = await listThreads(this.rootPath, config);
+    const found = profiles.find((p) => p.fileName === fileName);
+    if (!found) {
+      return;
+    }
+    if (this._threadDebounceTimer) {
+      clearTimeout(this._threadDebounceTimer);
+      this._threadDebounceTimer = undefined;
+    }
+    if (this._pendingThread?.fileName === fileName) {
+      this._pendingThread = undefined;
+    }
+    const normalized = paths.map((p) => p.replace(/\\/g, "/"));
+    const next = { ...found, touchesChapters: normalized };
+    await saveThread(next, this.rootPath, config, this.safeFs);
+    await this._renderPanel();
   }
 
   private async _updateNodeField(nodeId: string, field: string, value: string): Promise<void> {

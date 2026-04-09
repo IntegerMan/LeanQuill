@@ -22,6 +22,7 @@ target_audience: string      # brief statement of intended readership
 folders:
   manuscript: manuscript/    # chapters live here — tool NEVER writes here
   characters: notes/characters/
+  threads: notes/threads/   # narrative thread profile markdown files
   settings:   notes/settings/
   timeline:   notes/timeline/
   research:   notes/research/

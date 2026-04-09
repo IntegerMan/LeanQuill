@@ -1,5 +1,6 @@
+import type { ChapterPickerOption } from "./chapterPickerOptions";
 import { escapeHtml } from "./htmlUtils";
-import { OutlineNode, OutlineIndex, CharacterProfile } from "./types";
+import { OutlineNode, OutlineIndex, CharacterProfile, ThemesDocument, ThreadProfile } from "./types";
 
 function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) {
@@ -164,15 +165,175 @@ function renderStubTab(name: string): string {
   return `<div class="stub-tab"><p>The <strong>${escapeHtml(name)}</strong> feature is coming in a future update.</p></div>`;
 }
 
-const TAB_IDS = ["outline", "cards", "characters", "places", "threads"] as const;
+const TAB_IDS = ["outline", "cards", "themes", "characters", "places", "threads"] as const;
 const TAB_LABELS: Record<string, string> = {
   outline: "Outline",
   cards: "Cards",
+  themes: "Themes",
   characters: "Characters",
   places: "Places",
   threads: "Threads",
 };
 
+// ---------------------------------------------------------------------------
+// Themes tab
+// ---------------------------------------------------------------------------
+
+function renderThemesTab(
+  themes: ThemesDocument,
+  chapterPickerOptions: ChapterPickerOption[],
+): string {
+  const bookChapterLines = chapterPickerOptions
+    .map((o) => {
+      const checked = themes.bookLinkedChapters.includes(o.path) ? " checked" : "";
+      return `<label class="theme-chapter-pick"><input type="checkbox" data-action="theme:toggleBookChapter" data-path="${escapeHtml(o.path)}"${checked}/><span>${escapeHtml(o.title)}</span><span class="theme-chapter-path">${escapeHtml(o.path)}</span></label>`;
+    })
+    .join("");
+
+  const bookCustomRows = Object.entries(themes.bookCustomFields)
+    .map(
+      ([k, v]) =>
+        `<div class="theme-field-row">
+      <label class="theme-field-label">${escapeHtml(k)}</label>
+      <input class="theme-field-input" data-action="theme:updateBookCustom" data-custom-key="${escapeHtml(k)}" value="${escapeHtml(v)}" />
+    </div>`,
+    )
+    .join("");
+
+  const centralBlocks = themes.centralThemes
+    .map((t) => {
+      const tChapters = chapterPickerOptions
+        .map((o) => {
+          const checked = t.linkedChapters.includes(o.path) ? " checked" : "";
+          return `<label class="theme-chapter-pick"><input type="checkbox" data-action="theme:toggleThemeChapter" data-theme-id="${escapeHtml(t.id)}" data-path="${escapeHtml(o.path)}"${checked}/><span>${escapeHtml(o.title)}</span></label>`;
+        })
+        .join("");
+      return `<section class="theme-central-block" data-theme-id="${escapeHtml(t.id)}">
+      <div class="theme-central-head">
+        <input class="theme-field-input theme-central-title" data-action="theme:updateThemeField" data-theme-id="${escapeHtml(t.id)}" data-field="title" value="${escapeHtml(t.title)}" placeholder="Central theme title" />
+        <button type="button" class="theme-btn-remove" data-action="theme:removeTheme" data-theme-id="${escapeHtml(t.id)}">Remove theme</button>
+      </div>
+      <label class="theme-field-label">Summary</label>
+      <textarea class="theme-field-textarea" data-action="theme:updateThemeField" data-theme-id="${escapeHtml(t.id)}" data-field="summary" placeholder="Theme summary">${escapeHtml(t.summary)}</textarea>
+      <label class="theme-field-label">Note path</label>
+      <input class="theme-field-input" data-action="theme:updateThemeField" data-theme-id="${escapeHtml(t.id)}" data-field="notePath" value="${escapeHtml(t.notePath)}" placeholder="notes/..." />
+      <div class="theme-field-label theme-subhead">Linked chapters</div>
+      <div class="theme-chapter-list">${tChapters || '<span class="theme-muted">No manuscript chapters in outline.</span>'}</div>
+    </section>`;
+    })
+    .join("");
+
+  return `<div class="theme-tab-scroll">
+    <div class="theme-section">
+      <div class="theme-field-label">Central question</div>
+      <textarea class="theme-field-textarea" data-action="theme:updateBookField" data-field="centralQuestion" placeholder="What is this book really about?">${escapeHtml(themes.centralQuestion)}</textarea>
+    </div>
+    <div class="theme-section">
+      <div class="theme-field-label">Book synopsis</div>
+      <textarea class="theme-field-textarea" data-action="theme:updateBookField" data-field="bookSynopsis" placeholder="High-level synopsis">${escapeHtml(themes.bookSynopsis)}</textarea>
+    </div>
+    <div class="theme-section">
+      <div class="theme-field-label">Book-level custom fields</div>
+      ${bookCustomRows}
+      <button type="button" class="theme-btn-add" data-action="theme:addBookField">+ Add book field</button>
+    </div>
+    <div class="theme-section">
+      <div class="theme-field-label">Book-level linked chapters</div>
+      <div class="theme-chapter-list">${bookChapterLines || '<span class="theme-muted">No manuscript chapters in outline.</span>'}</div>
+    </div>
+    <div class="theme-section">
+      <div class="theme-field-label">Central themes</div>
+      ${centralBlocks}
+      <button type="button" class="theme-btn-add" data-action="theme:addTheme">+ Add central theme</button>
+    </div>
+  </div>`;
+}
+
+function renderThreadDetail(
+  profile: ThreadProfile,
+  chapterPickerOptions: ChapterPickerOption[],
+): string {
+  const bodyId = `thread-body-${profile.fileName.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  const standard = `
+    <div class="thread-field-row">
+      <label class="thread-field-label">Title</label>
+      <input class="thread-field-input" data-action="thread:updateField" data-file="${escapeHtml(profile.fileName)}" data-field="title" value="${escapeHtml(profile.title)}" />
+    </div>`;
+  const customRows = Object.entries(profile.customFields)
+    .map(
+      ([key, val]) =>
+        `<div class="thread-field-row thread-field-custom">
+      <label class="thread-field-label thread-field-label--custom">${escapeHtml(key)}</label>
+      <input class="thread-field-input" data-action="thread:updateField" data-file="${escapeHtml(profile.fileName)}" data-field="custom:${escapeHtml(key)}" value="${escapeHtml(val)}" />
+    </div>`,
+    )
+    .join("");
+  const touches = chapterPickerOptions
+    .map((o) => {
+      const checked = profile.touchesChapters.includes(o.path) ? " checked" : "";
+      return `<label class="thread-chapter-pick"><input type="checkbox" class="thread-touch-cb" data-file="${escapeHtml(profile.fileName)}" data-path="${escapeHtml(o.path)}"${checked}/><span>${escapeHtml(o.title)}</span><span class="thread-chapter-path">${escapeHtml(o.path)}</span></label>`;
+    })
+    .join("");
+  return `
+    <div class="thread-detail-inner" data-file="${escapeHtml(profile.fileName)}">
+      ${standard}
+      ${customRows}
+      <div class="thread-field-row">
+        <button class="thread-btn-add-field" data-action="thread:addCustomField" data-file="${escapeHtml(profile.fileName)}">+ Add Field</button>
+      </div>
+      <div class="thread-field-row">
+        <label class="thread-field-label" for="${bodyId}">Notes</label>
+        <textarea id="${bodyId}" class="thread-field-textarea thread-field-textarea--body" data-action="thread:updateField" data-file="${escapeHtml(profile.fileName)}" data-field="body">${escapeHtml(profile.body)}</textarea>
+      </div>
+      <div class="thread-touches-section">
+        <div class="thread-field-label thread-touches-prominent">Touches chapters</div>
+        <div class="thread-chapter-list" data-thread-touches-for="${escapeHtml(profile.fileName)}">${touches || '<span class="thread-muted">No manuscript chapters in outline.</span>'}</div>
+      </div>
+      <div class="thread-detail-actions">
+        <button class="thread-btn-delete" data-action="thread:delete" data-file="${escapeHtml(profile.fileName)}">Delete Thread</button>
+      </div>
+    </div>`;
+}
+
+function renderThreadsTab(
+  threads: ThreadProfile[],
+  selectedFileName: string | undefined,
+  chapterPickerOptions: ChapterPickerOption[],
+): string {
+  const sorted = [...threads].sort((a, b) =>
+    (a.title || a.fileName).localeCompare(b.title || b.fileName, undefined, { sensitivity: "base" }),
+  );
+  const effectiveSelected = selectedFileName ?? sorted[0]?.fileName;
+  const labelsAttr = escapeHtml(JSON.stringify(Object.fromEntries(chapterPickerOptions.map((o) => [o.path, o.title]))));
+
+  const listItems = sorted
+    .map(
+      (p) =>
+        `<div class="thread-list-item${p.fileName === effectiveSelected ? " thread-list-item--selected" : ""}"
+           data-action="thread:select" data-file="${escapeHtml(p.fileName)}">
+        ${escapeHtml(p.title || "(untitled)")}
+      </div>`,
+    )
+    .join("");
+
+  const listPane = `<div class="thread-list">
+    <div class="thread-list-header">
+      <button class="thread-btn-new" data-action="thread:create">+ New Thread</button>
+    </div>
+    <div class="thread-list-body">
+      ${sorted.length === 0 ? '<div class="thread-empty-list">No threads yet. Click + New Thread to start.</div>' : listItems}
+    </div>
+  </div>`;
+
+  const selected = sorted.find((p) => p.fileName === effectiveSelected);
+  const detailPane = `<div class="thread-detail">
+    ${selected
+      ? renderThreadDetail(selected, chapterPickerOptions)
+      : '<div class="thread-empty-detail">Select a thread to view its profile.</div>'}
+  </div>`;
+
+  return `<div class="thread-container" data-chapter-labels="${labelsAttr}">${listPane}${detailPane}</div>`;
+}
 
 // ---------------------------------------------------------------------------
 // Characters tab rendering
@@ -318,6 +479,10 @@ export function renderPlanningHtml(
   index: OutlineIndex,
   characters: CharacterProfile[],
   selectedCharacterFileName: string | undefined,
+  themes: ThemesDocument,
+  threads: ThreadProfile[],
+  selectedThreadFileName: string | undefined,
+  chapterPickerOptions: ChapterPickerOption[],
   nonce: string,
   cspSource: string,
   activeTab: string,
@@ -333,8 +498,12 @@ export function renderPlanningHtml(
       content = renderOutlineTab(index);
     } else if (id === "cards") {
       content = renderCardsTab(index);
+    } else if (id === "themes") {
+      content = renderThemesTab(themes, chapterPickerOptions);
     } else if (id === "characters") {
       content = renderCharactersTab(characters, selectedCharacterFileName);
+    } else if (id === "threads") {
+      content = renderThreadsTab(threads, selectedThreadFileName, chapterPickerOptions);
     } else {
       content = renderStubTab(TAB_LABELS[id]);
     }
@@ -862,6 +1031,184 @@ export function renderPlanningHtml(
     .char-btn-delete:hover {
       background: var(--vscode-inputValidation-errorBackground, rgba(244,68,68,0.1));
     }
+
+    /* --- Themes tab --- */
+    .theme-tab-scroll {
+      padding: 12px 16px;
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
+    }
+    .theme-section { margin-bottom: 20px; }
+    .theme-field-label {
+      font-size: 11px;
+      font-weight: 600;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 4px;
+      display: block;
+    }
+    .theme-subhead { margin-top: 8px; }
+    .theme-field-input, .theme-field-textarea {
+      width: 100%;
+      padding: 4px 8px;
+      border-radius: 3px;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+      font-family: var(--vscode-font-family);
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    .theme-field-textarea { min-height: 64px; resize: vertical; }
+    .theme-central-head { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .theme-central-title { flex: 1; }
+    .theme-btn-remove, .theme-btn-add {
+      padding: 4px 10px;
+      font-size: 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      border: 1px solid var(--vscode-panel-border);
+    }
+    .theme-btn-remove:hover, .theme-btn-add:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+    .theme-central-block {
+      border: 1px solid var(--vscode-panel-border);
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .theme-chapter-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+    .theme-chapter-pick {
+      display: flex; align-items: flex-start; gap: 6px;
+      font-size: 12px; cursor: pointer;
+    }
+    .theme-chapter-path { opacity: 0.55; font-family: var(--vscode-editor-font-family, monospace); font-size: 11px; }
+    .theme-muted { font-size: 12px; opacity: 0.55; font-style: italic; }
+
+    /* --- Threads tab (mirror characters layout) --- */
+    .thread-container {
+      display: flex;
+      height: 100%;
+      min-height: 400px;
+    }
+    .thread-list {
+      width: 220px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--vscode-panel-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .thread-list-header {
+      padding: 8px;
+      border-bottom: 1px solid var(--vscode-panel-border);
+      flex-shrink: 0;
+    }
+    .thread-btn-new {
+      width: 100%;
+      padding: 4px 8px;
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      text-align: left;
+    }
+    .thread-btn-new:hover { background: var(--vscode-button-hoverBackground); }
+    .thread-list-body { flex: 1; overflow-y: auto; padding: 4px 0; }
+    .thread-list-item {
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .thread-list-item:hover { background: var(--vscode-list-hoverBackground); }
+    .thread-list-item--selected {
+      background: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
+    }
+    .thread-empty-list {
+      padding: 16px 12px;
+      font-size: 12px;
+      opacity: 0.6;
+      font-style: italic;
+    }
+    .thread-detail { flex: 1; overflow-y: auto; min-width: 0; }
+    .thread-detail-inner { padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+    .thread-empty-detail {
+      padding: 32px 16px;
+      font-size: 13px;
+      opacity: 0.6;
+      font-style: italic;
+      text-align: center;
+    }
+    .thread-field-row { display: flex; flex-direction: column; gap: 2px; }
+    .thread-field-label {
+      font-size: 11px;
+      font-weight: 600;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .thread-touches-prominent { font-size: 12px; opacity: 0.9; margin-top: 8px; }
+    .thread-field-label--custom { color: var(--vscode-descriptionForeground); }
+    .thread-field-input, .thread-field-textarea {
+      padding: 4px 8px;
+      border-radius: 3px;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+      font-family: var(--vscode-font-family);
+      font-size: 13px;
+    }
+    .thread-field-textarea { resize: vertical; min-height: 56px; }
+    .thread-field-textarea--body { min-height: 120px; }
+    .thread-btn-add-field {
+      padding: 3px 8px;
+      background: none;
+      border: 1px dashed var(--vscode-panel-border);
+      border-radius: 3px;
+      color: var(--vscode-descriptionForeground);
+      cursor: pointer;
+      font-size: 12px;
+      align-self: flex-start;
+    }
+    .thread-touches-section {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--vscode-panel-border);
+    }
+    .thread-chapter-list { display: flex; flex-direction: column; gap: 4px; }
+    .thread-chapter-pick {
+      display: flex; align-items: flex-start; gap: 6px;
+      font-size: 12px; cursor: pointer;
+    }
+    .thread-chapter-path { opacity: 0.55; font-family: var(--vscode-editor-font-family, monospace); font-size: 11px; }
+    .thread-muted { font-size: 12px; opacity: 0.55; font-style: italic; }
+    .thread-detail-actions {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--vscode-panel-border);
+    }
+    .thread-btn-delete {
+      padding: 4px 10px;
+      background: none;
+      border: 1px solid var(--vscode-inputValidation-errorBorder, #f44);
+      border-radius: 3px;
+      color: var(--vscode-inputValidation-errorForeground, #f44);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .thread-btn-delete:hover {
+      background: var(--vscode-inputValidation-errorBackground, rgba(244,68,68,0.1));
+    }
   </style>
 </head>
 <body>
@@ -1124,6 +1471,129 @@ export function renderPlanningHtml(
           charDebounceTimers[key] = setTimeout(() => {
             vscode.postMessage({ type: 'character:updateField', fileName: fileName, field: field, value: value });
           }, 300);
+        });
+      }
+
+      // --- Themes tab ---
+      const themeScroll = document.querySelector('.theme-tab-scroll');
+      if (themeScroll) {
+        const themeDebounceTimers = {};
+        themeScroll.addEventListener('input', (e) => {
+          const t = e.target;
+          if (!t) return;
+          const act = t.getAttribute('data-action');
+          if (act === 'theme:updateBookField') {
+            const field = t.getAttribute('data-field');
+            if (!field) return;
+            const key = 'book:' + field;
+            if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
+            themeDebounceTimers[key] = setTimeout(() => {
+              const msg = { type: 'theme:updateBook' };
+              msg[field] = t.value;
+              vscode.postMessage(msg);
+            }, 300);
+          } else if (act === 'theme:updateThemeField') {
+            const themeId = t.getAttribute('data-theme-id');
+            const field = t.getAttribute('data-field');
+            if (!themeId || !field) return;
+            const dk = themeId + ':' + field;
+            if (themeDebounceTimers[dk]) clearTimeout(themeDebounceTimers[dk]);
+            themeDebounceTimers[dk] = setTimeout(() => {
+              const msg = { type: 'theme:updateTheme', themeId: themeId };
+              msg[field] = t.value;
+              vscode.postMessage(msg);
+            }, 300);
+          } else if (act === 'theme:updateBookCustom') {
+            const ck = t.getAttribute('data-custom-key');
+            if (!ck) return;
+            const key = 'bcustom:' + ck;
+            if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
+            themeDebounceTimers[key] = setTimeout(() => {
+              vscode.postMessage({ type: 'theme:updateBookCustom', key: ck, value: t.value });
+            }, 300);
+          }
+        });
+        themeScroll.addEventListener('change', (e) => {
+          const t = e.target;
+          if (!t || t.type !== 'checkbox') return;
+          const act = t.getAttribute('data-action');
+          const path = t.getAttribute('data-path');
+          if (act === 'theme:toggleBookChapter' && path) {
+            vscode.postMessage({ type: 'theme:toggleBookChapter', path: path });
+          } else if (act === 'theme:toggleThemeChapter') {
+            const themeId = t.getAttribute('data-theme-id');
+            if (themeId && path) {
+              vscode.postMessage({ type: 'theme:toggleThemeChapter', themeId: themeId, path: path });
+            }
+          }
+        });
+        themeScroll.addEventListener('click', (e) => {
+          const el = e.target && e.target.closest('[data-action]');
+          if (!el) return;
+          const act = el.getAttribute('data-action');
+          if (act === 'theme:addTheme') {
+            vscode.postMessage({ type: 'theme:addTheme' });
+          } else if (act === 'theme:addBookField') {
+            const name = prompt('Book-level field name:');
+            if (name && name.trim()) {
+              vscode.postMessage({ type: 'theme:updateBookCustom', key: name.trim(), value: '' });
+            }
+          } else if (act === 'theme:removeTheme') {
+            const themeId = el.getAttribute('data-theme-id');
+            if (themeId && confirm('Remove this central theme?')) {
+              vscode.postMessage({ type: 'theme:removeTheme', themeId: themeId });
+            }
+          }
+        });
+      }
+
+      // --- Threads tab ---
+      const threadContainer = document.querySelector('.thread-container');
+      if (threadContainer) {
+        const threadDebounceTimers = {};
+        threadContainer.addEventListener('click', (e) => {
+          const el = e.target && e.target.closest('[data-action]');
+          if (!el) return;
+          const act = el.getAttribute('data-action');
+          const fileName = el.getAttribute('data-file');
+          if (act === 'thread:select' && fileName) {
+            vscode.postMessage({ type: 'thread:select', fileName: fileName });
+          } else if (act === 'thread:create') {
+            vscode.postMessage({ type: 'thread:create' });
+          } else if (act === 'thread:addCustomField' && fileName) {
+            const fieldName = prompt('Field name:');
+            if (fieldName && fieldName.trim()) {
+              vscode.postMessage({ type: 'thread:addCustomField', fileName: fileName, fieldName: fieldName.trim() });
+            }
+          } else if (act === 'thread:delete' && fileName) {
+            if (confirm('Delete this thread? This cannot be undone.')) {
+              vscode.postMessage({ type: 'thread:delete', fileName: fileName });
+            }
+          }
+        });
+        threadContainer.addEventListener('input', (e) => {
+          const t = e.target;
+          if (!t || t.getAttribute('data-action') !== 'thread:updateField') return;
+          const fileName = t.getAttribute('data-file');
+          const field = t.getAttribute('data-field');
+          if (!fileName || !field) return;
+          const key = fileName + ':' + field;
+          if (threadDebounceTimers[key]) clearTimeout(threadDebounceTimers[key]);
+          threadDebounceTimers[key] = setTimeout(() => {
+            vscode.postMessage({ type: 'thread:updateField', fileName: fileName, field: field, value: t.value });
+          }, 300);
+        });
+        threadContainer.addEventListener('change', (e) => {
+          const t = e.target;
+          if (!t || !t.classList || !t.classList.contains('thread-touch-cb')) return;
+          const file = t.getAttribute('data-file');
+          if (!file) return;
+          const listEl = threadContainer.querySelector('.thread-chapter-list[data-thread-touches-for="' + CSS.escape(file) + '"]');
+          if (!listEl) return;
+          const paths = Array.from(listEl.querySelectorAll('.thread-touch-cb:checked'))
+            .map((x) => x.getAttribute('data-path'))
+            .filter(Boolean);
+          vscode.postMessage({ type: 'thread:setTouchesChapters', fileName: file, paths: paths });
         });
       }
 

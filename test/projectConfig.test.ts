@@ -127,6 +127,24 @@ test("parseProjectConfig parses custom characters folder path", () => {
   assert.equal(result.folders.characters, "custom/chars/");
 });
 
+test("parseProjectConfig parses threads folder from YAML", () => {
+  const content = 'schema_version: "2"\nfolders:\n  research: research/leanquill/\n  threads: notes/threads/\n';
+  const result = parseProjectConfig(content);
+  assert.equal(result.folders.threads, "notes/threads/");
+});
+
+test("parseProjectConfig defaults threads to notes/threads/ when missing", () => {
+  const content = 'schema_version: "2"\nfolders:\n  research: research/leanquill/\n';
+  const result = parseProjectConfig(content);
+  assert.equal(result.folders.threads, "notes/threads/");
+});
+
+test("parseProjectConfig parses custom threads folder path", () => {
+  const content = 'schema_version: "2"\nfolders:\n  research: research/leanquill/\n  threads: custom/t/\n';
+  const result = parseProjectConfig(content);
+  assert.equal(result.folders.threads, "custom/t/");
+});
+
 const minimalValidSetupYaml = [
   'schema_version: "2"',
   'project_id: "my-book"',
