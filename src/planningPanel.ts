@@ -191,9 +191,15 @@ export class PlanningPanelProvider {
       if (!latest) {
         return;
       }
-      writeThemesDocument(this.rootPath, latest, this.safeFs).catch((err: unknown) => {
-        console.error("[LeanQuill] Failed to save themes", err);
-      });
+      writeThemesDocument(this.rootPath, latest, this.safeFs)
+        .then(() => {
+          if (this._pendingThemes === latest) {
+            this._pendingThemes = undefined;
+          }
+        })
+        .catch((err: unknown) => {
+          console.error("[LeanQuill] Failed to save themes", err);
+        });
     }, 300);
   }
 
