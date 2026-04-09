@@ -181,7 +181,7 @@
     "viewsWelcome": [
       {
         "view": "leanquill.actions",
-        "contents": "Welcome to LeanQuill \u2014 your LeanPub-style authoring assistant.\n\nLeanQuill works in any folder: add a LeanPub-style `manuscript/` tree (including `manuscript/Book.txt`) or let Initialize create it.\n\n[Initialize Repository](command:leanquill.initialize)\n\nOpen a folder in VS Code, then initialize when you are ready.",
+        "contents": "Welcome to LeanQuill \u2014 your LeanPub-style authoring assistant.\n\nLeanQuill works in any folder: add a LeanPub-style `manuscript/` tree (including `manuscript/Book.txt`) or let Initialize create it.\n\n[Initialize Book](command:leanquill.initialize)\n\nOpen a folder in VS Code, then initialize when you are ready.",
         "when": "leanquill.setupNeedsAttention && !leanquill.hasManuscriptMarkers"
       },
       {

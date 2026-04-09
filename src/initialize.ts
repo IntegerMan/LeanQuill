@@ -6,7 +6,8 @@ import { applyLeanpubManuscriptScaffold } from "./leanpubScaffold";
 import type { PlanningPanelProvider } from "./planningPanel";
 import { validateProjectYamlForSetup } from "./projectConfig";
 import { SafeFileSystem } from "./safeFileSystem";
-import { InitInput } from "./types";
+import { bootstrapOutline, readOutlineIndex, writeOutlineIndex } from "./outlineStore";
+import { InitInput, ChapterOrderResult } from "./types";
 
 function toKebabCase(input: string): string {
   return input
@@ -333,6 +334,8 @@ async function initializeProject(rootPath: string, input: InitInput): Promise<{ 
 
 export interface RunInitializeFlowOptions {
   planningPanel?: PlanningPanelProvider;
+  /** Refresh Outline webview after outline index is updated (e.g. post-scaffold bootstrap). */
+  refreshOutline?: () => void | Promise<void>;
 }
 
 async function manuscriptLayoutComplete(rootPath: string): Promise<{ hasManuscript: boolean; hasBookTxt: boolean }> {
@@ -341,13 +344,18 @@ async function manuscriptLayoutComplete(rootPath: string): Promise<{ hasManuscri
   return { hasManuscript, hasBookTxt };
 }
 
-async function persistChapterOrder(rootPath: string, safeFs: SafeFileSystem, log?: vscode.LogOutputChannel): Promise<void> {
+async function persistChapterOrder(
+  rootPath: string,
+  safeFs: SafeFileSystem,
+  log?: vscode.LogOutputChannel,
+): Promise<ChapterOrderResult> {
   const chapterOrder = await resolveChapterOrder(rootPath);
   const target = path.join(rootPath, ".leanquill", "chapter-order.json");
   await safeFs.writeFile(target, JSON.stringify(chapterOrder, null, 2));
   if (chapterOrder.warnings.length > 0) {
     log?.warn(`Chapter order has ${chapterOrder.warnings.length} warning(s)`);
   }
+  return chapterOrder;
 }
 
 async function runScaffoldAndFinish(
@@ -357,6 +365,7 @@ async function runScaffoldAndFinish(
   planningPanel: PlanningPanelProvider | undefined,
   context: vscode.ExtensionContext,
   chapterWarnings: string[],
+  options?: RunInitializeFlowOptions,
 ): Promise<boolean> {
   const result = await applyLeanpubManuscriptScaffold(rootPath, { safeFs });
   for (const p of result.created) {
@@ -380,7 +389,15 @@ async function runScaffoldAndFinish(
   }
 
   await context.workspaceState.update("leanquill.initPromptDismissed", false);
-  await persistChapterOrder(rootPath, safeFs, log);
+  const chapterOrder = await persistChapterOrder(rootPath, safeFs, log);
+
+  const existingOutline = await readOutlineIndex(rootPath);
+  if (existingOutline.nodes.length === 0 && chapterOrder.chapterPaths.length > 0) {
+    const index = bootstrapOutline(chapterOrder.chapterPaths);
+    await writeOutlineIndex(rootPath, index, safeFs);
+    log?.info("Bootstrapped outline from Book.txt after scaffold");
+    await options?.refreshOutline?.();
+  }
 
   if (chapterWarnings.length > 0) {
     await vscode.window.showWarningMessage(`LeanQuill initialized with ${chapterWarnings.length} chapter-order warning(s).`);
@@ -454,7 +471,7 @@ export async function runInitializeFlow(
       }
 
       const result = await initializeProject(rootPath, input);
-      const ok = await runScaffoldAndFinish(rootPath, safeFs, log, planningPanel, context, result.warnings);
+      const ok = await runScaffoldAndFinish(rootPath, safeFs, log, planningPanel, context, result.warnings, options);
       if (!ok) {
         return;
       }
@@ -463,7 +480,7 @@ export async function runInitializeFlow(
 
     // Valid yaml — manuscript scaffold only (no title/genre prompts).
     log?.info("Valid project.yaml — applying manuscript scaffold if needed");
-    await runScaffoldAndFinish(rootPath, safeFs, log, planningPanel, context, []);
+    await runScaffoldAndFinish(rootPath, safeFs, log, planningPanel, context, [], options);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await vscode.window.showErrorMessage(`LeanQuill initialization failed: ${message}`);

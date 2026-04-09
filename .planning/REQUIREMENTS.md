@@ -33,7 +33,7 @@
 
 ### Character Reference
 
-- [ ] **CHAR-01**: Author can manage character profiles within the planning workspace Characters tab — creating, editing, and organizing character entries with author-defined fields, with visibility into which chapters and beats reference each character
+- [x] **CHAR-01**: Author can manage character profiles within the planning workspace Characters tab — creating, editing, and organizing character entries with author-defined fields, with visibility into which chapters and beats reference each character
 
 ### Place and Setting Reference
 
@@ -129,7 +129,7 @@ Which phases cover which requirements. To be populated during roadmap creation.
 | PLAN-01 | 3 | Pending |
 | PLAN-02 | 3 | Pending |
 | PLAN-03 | 8 | Pending |
-| CHAR-01 | 4 | Pending |
+| CHAR-01 | 4 | Complete |
 | PLACE-01 | 5 | Pending |
 | THREAD-01 | 6 | Pending |
 | KNOW-01 | 7 | Pending |

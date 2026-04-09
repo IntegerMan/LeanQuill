@@ -48,6 +48,21 @@ async function setWorkspaceContext(rootPath: string): Promise<void> {
   await vscode.commands.executeCommand("setContext", "leanquill.setupNeedsAttention", setupNeedsAttention);
 }
 
+/** Paths whose presence or removal affect Setup / viewsWelcome context keys. */
+function pathAffectsLeanQuillSetupContext(rootPath: string, fsPath: string): boolean {
+  const rel = path.relative(rootPath, fsPath).split(path.sep).join("/");
+  if (rel === "" || rel.startsWith("..")) {
+    return false;
+  }
+  if (rel === ".leanquill/project.yaml") {
+    return true;
+  }
+  if (rel === "manuscript/Book.txt" || rel === "manuscript") {
+    return true;
+  }
+  return false;
+}
+
 const log = vscode.window.createOutputChannel("LeanQuill", { log: true });
 
 const STATUS_CHOICES: Array<{ status: ChapterStatus; icon: string }> = [
@@ -90,12 +105,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   log.show(true);
 
   let planningPanel: PlanningPanelProvider | undefined;
+  const outlineWebviewRef: { current?: OutlineWebviewProvider } = {};
 
   const initializeCommand = vscode.commands.registerCommand("leanquill.initialize", async () => {
     console.log("[LeanQuill] Initialize command fired");
     log.info("Initialize command fired");
     try {
-      await runInitializeFlow(context, log, { planningPanel });
+      await runInitializeFlow(context, log, {
+        planningPanel,
+        refreshOutline: () => outlineWebviewRef.current?.refresh(),
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       log.error(`Initialize command error: ${message}`);
@@ -117,6 +136,42 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   const safeFileSystem = new SafeFileSystem(rootPath);
+
+  let workspaceContextRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+  const WORKSPACE_CONTEXT_REFRESH_DEBOUNCE_MS = 150;
+  const scheduleWorkspaceContextRefresh = (): void => {
+    if (workspaceContextRefreshTimer) {
+      clearTimeout(workspaceContextRefreshTimer);
+    }
+    workspaceContextRefreshTimer = setTimeout(() => {
+      workspaceContextRefreshTimer = undefined;
+      void setWorkspaceContext(rootPath);
+    }, WORKSPACE_CONTEXT_REFRESH_DEBOUNCE_MS);
+  };
+
+  context.subscriptions.push(
+    vscode.workspace.onDidCreateFiles((e) => {
+      if (e.files.some((u) => pathAffectsLeanQuillSetupContext(rootPath, u.fsPath))) {
+        scheduleWorkspaceContextRefresh();
+      }
+    }),
+    vscode.workspace.onDidDeleteFiles((e) => {
+      if (e.files.some((u) => pathAffectsLeanQuillSetupContext(rootPath, u.fsPath))) {
+        scheduleWorkspaceContextRefresh();
+      }
+    }),
+    vscode.workspace.onDidRenameFiles((e) => {
+      for (const { oldUri, newUri } of e.files) {
+        if (
+          pathAffectsLeanQuillSetupContext(rootPath, oldUri.fsPath)
+          || pathAffectsLeanQuillSetupContext(rootPath, newUri.fsPath)
+        ) {
+          scheduleWorkspaceContextRefresh();
+          break;
+        }
+      }
+    }),
+  );
 
   // Load project config and configure research folder access
   let config = await readProjectConfig(rootPath);
@@ -173,6 +228,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       // No-op: the outline file watcher handles refresh and Book.txt sync
     },
   );
+  outlineWebviewRef.current = outlineWebviewProvider;
 
   planningPanel = new PlanningPanelProvider(vscode, context.extensionUri, rootPath, safeFileSystem);
 
@@ -627,6 +683,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const outlineWatcher = vscode.workspace.createFileSystemWatcher("**/.leanquill/outline-index.json");
   const manuscriptFileWatcher = vscode.workspace.createFileSystemWatcher("**/manuscript/**/*.md");
   const bookTxtWatcher = vscode.workspace.createFileSystemWatcher("**/manuscript/Book.txt");
+  const projectYamlSetupWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(rootPath, ".leanquill/project.yaml"),
+  );
 
   // Manuscript file changes trigger outline webview refresh (for Not Included group)
   const triggerOutlineRefresh = () => {
@@ -647,8 +706,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     void planningPanel.refresh();
   });
 
-  // Book.txt watcher — detect external edits
+  // Book.txt watcher — refresh Setup context when scaffold appears/disappears; detect external edits
+  bookTxtWatcher.onDidCreate(() => scheduleWorkspaceContextRefresh());
+  bookTxtWatcher.onDidDelete(() => scheduleWorkspaceContextRefresh());
   bookTxtWatcher.onDidChange(async () => {
+    scheduleWorkspaceContextRefresh();
     if (_selfEditingBookTxt) {
       return;
     }
@@ -670,6 +732,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       // Ignore if outline doesn't exist yet
     }
   });
+
+  projectYamlSetupWatcher.onDidCreate(() => scheduleWorkspaceContextRefresh());
+  projectYamlSetupWatcher.onDidChange(() => scheduleWorkspaceContextRefresh());
+  projectYamlSetupWatcher.onDidDelete(() => scheduleWorkspaceContextRefresh());
 
   // Manuscript scan listeners — update character references when manuscript files are saved/opened
   const scanManuscriptFile = async (filePath: string): Promise<void> => {
@@ -712,6 +778,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outlineWatcher,
     manuscriptFileWatcher,
     bookTxtWatcher,
+    projectYamlSetupWatcher,
     onManuscriptSave,
     onManuscriptOpen,
   );
