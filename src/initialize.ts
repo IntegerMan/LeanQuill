@@ -2,8 +2,12 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { resolveChapterOrder } from "./chapterOrder";
+import { applyLeanpubManuscriptScaffold } from "./leanpubScaffold";
+import type { PlanningPanelProvider } from "./planningPanel";
+import { validateProjectYamlForSetup } from "./projectConfig";
 import { SafeFileSystem } from "./safeFileSystem";
-import { InitInput } from "./types";
+import { bootstrapOutline, readOutlineIndex, writeOutlineIndex } from "./outlineStore";
+import { InitInput, ChapterOrderResult } from "./types";
 
 function toKebabCase(input: string): string {
   return input
@@ -89,6 +93,18 @@ async function ensureOverwriteIfNeeded(rootPath: string): Promise<boolean> {
 
   if (!hasProjectYaml && !hasLeanquill) {
     return true;
+  }
+
+  // Valid project.yaml: extend with manuscript scaffold without wiping .leanquill (Phase 13).
+  if (hasProjectYaml) {
+    try {
+      const content = await fs.readFile(projectYamlPath, "utf8");
+      if (validateProjectYamlForSetup(content).ok) {
+        return true;
+      }
+    } catch {
+      // Fall through to destructive overwrite prompt.
+    }
   }
 
   const choice = await vscode.window.showWarningMessage(
@@ -316,7 +332,100 @@ async function initializeProject(rootPath: string, input: InitInput): Promise<{ 
   return { warnings: chapterOrder.warnings, projectYamlPath };
 }
 
-export async function runInitializeFlow(context: vscode.ExtensionContext, log?: vscode.LogOutputChannel): Promise<void> {
+export interface RunInitializeFlowOptions {
+  planningPanel?: PlanningPanelProvider;
+  /** Refresh Outline webview after outline index is updated (e.g. post-scaffold bootstrap). */
+  refreshOutline?: () => void | Promise<void>;
+}
+
+async function manuscriptLayoutComplete(rootPath: string): Promise<{ hasManuscript: boolean; hasBookTxt: boolean }> {
+  const hasManuscript = await fs.stat(path.join(rootPath, "manuscript")).then(() => true).catch(() => false);
+  const hasBookTxt = await fs.stat(path.join(rootPath, "manuscript", "Book.txt")).then(() => true).catch(() => false);
+  return { hasManuscript, hasBookTxt };
+}
+
+async function persistChapterOrder(
+  rootPath: string,
+  safeFs: SafeFileSystem,
+  log?: vscode.LogOutputChannel,
+): Promise<ChapterOrderResult> {
+  const chapterOrder = await resolveChapterOrder(rootPath);
+  const target = path.join(rootPath, ".leanquill", "chapter-order.json");
+  await safeFs.writeFile(target, JSON.stringify(chapterOrder, null, 2));
+  if (chapterOrder.warnings.length > 0) {
+    log?.warn(`Chapter order has ${chapterOrder.warnings.length} warning(s)`);
+  }
+  return chapterOrder;
+}
+
+async function runScaffoldAndFinish(
+  rootPath: string,
+  safeFs: SafeFileSystem,
+  log: vscode.LogOutputChannel | undefined,
+  planningPanel: PlanningPanelProvider | undefined,
+  context: vscode.ExtensionContext,
+  chapterWarnings: string[],
+  options?: RunInitializeFlowOptions,
+): Promise<boolean> {
+  // Allow scaffold to create the default chapter .md under manuscript/ (one-time init only).
+  safeFs.allowPath("manuscript", ".md");
+  const result = await applyLeanpubManuscriptScaffold(rootPath, { safeFs });
+  for (const p of result.created) {
+    log?.info(`Scaffold created: ${p}`);
+  }
+  for (const p of result.skipped) {
+    log?.info(`Scaffold skipped (unchanged): ${p}`);
+  }
+
+  if (result.status === "blocked") {
+    log?.error(result.message);
+    const openBook = "Open Book.txt";
+    const choice = await vscode.window.showErrorMessage(
+      `${result.message} You can run the command LeanQuill: Open Book.txt to fix Book.txt.`,
+      openBook,
+    );
+    if (choice === openBook) {
+      await vscode.commands.executeCommand("leanquill.openBookTxt");
+    }
+    return false;
+  }
+
+  await context.workspaceState.update("leanquill.initPromptDismissed", false);
+  const chapterOrder = await persistChapterOrder(rootPath, safeFs, log);
+
+  const existingOutline = await readOutlineIndex(rootPath);
+  if (existingOutline.nodes.length === 0 && chapterOrder.chapterPaths.length > 0) {
+    const index = bootstrapOutline(chapterOrder.chapterPaths);
+    await writeOutlineIndex(rootPath, index, safeFs);
+    log?.info("Bootstrapped outline from Book.txt after scaffold");
+    await options?.refreshOutline?.();
+  }
+
+  if (chapterWarnings.length > 0) {
+    await vscode.window.showWarningMessage(`LeanQuill initialized with ${chapterWarnings.length} chapter-order warning(s).`);
+    const output = vscode.window.createOutputChannel("LeanQuill");
+    output.appendLine("Chapter-order warnings:");
+    for (const warning of chapterWarnings) {
+      output.appendLine(`- ${warning}`);
+    }
+    output.show(true);
+  } else if (result.status === "noop") {
+    await vscode.window.showInformationMessage(result.message);
+  } else {
+    await vscode.window.showInformationMessage("LeanQuill initialized successfully.");
+  }
+
+  if (planningPanel) {
+    await planningPanel.showCards();
+  }
+  return true;
+}
+
+export async function runInitializeFlow(
+  context: vscode.ExtensionContext,
+  log?: vscode.LogOutputChannel,
+  options?: RunInitializeFlowOptions,
+): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
     await vscode.window.showErrorMessage("Open a workspace folder before running LeanQuill initialize.");
@@ -324,6 +433,7 @@ export async function runInitializeFlow(context: vscode.ExtensionContext, log?: 
   }
 
   const rootPath = folder.uri.fsPath;
+  const planningPanel = options?.planningPanel;
   log?.info(`Root path: ${rootPath}`);
 
   const shouldContinue = await ensureOverwriteIfNeeded(rootPath);
@@ -331,33 +441,48 @@ export async function runInitializeFlow(context: vscode.ExtensionContext, log?: 
     log?.info("User cancelled overwrite prompt");
     return;
   }
-  log?.info("Overwrite check passed, gathering input...");
+  log?.info("Overwrite check passed");
 
-  const input = await gatherInitInput(log ?? vscode.window.createOutputChannel("LeanQuill", { log: true }));
-  if (!input) {
-    log?.info("User cancelled input gathering");
+  const projectYamlPath = path.join(rootPath, ".leanquill", "project.yaml");
+  let yamlText: string | undefined;
+  try {
+    yamlText = await fs.readFile(projectYamlPath, "utf8");
+  } catch {
+    yamlText = undefined;
+  }
+  const yamlValid = yamlText !== undefined && validateProjectYamlForSetup(yamlText).ok;
+  const { hasManuscript, hasBookTxt } = await manuscriptLayoutComplete(rootPath);
+  const manuscriptScaffoldComplete = hasManuscript && hasBookTxt;
+
+  const safeFs = new SafeFileSystem(rootPath);
+
+  if (yamlValid && manuscriptScaffoldComplete) {
+    await vscode.window.showInformationMessage(
+      "This folder already has a valid LeanQuill project.yaml and manuscript layout (manuscript/Book.txt).",
+    );
     return;
   }
 
   try {
-    const result = await initializeProject(rootPath, input);
-
-    await context.workspaceState.update("leanquill.initPromptDismissed", false);
-
-    if (result.warnings.length > 0) {
-      await vscode.window.showWarningMessage(`LeanQuill initialized with ${result.warnings.length} warning(s).`);
-      const output = vscode.window.createOutputChannel("LeanQuill");
-      output.appendLine("Chapter-order warnings:");
-      for (const warning of result.warnings) {
-        output.appendLine(`- ${warning}`);
+    if (!yamlValid) {
+      log?.info("Gathering input for full initialize...");
+      const input = await gatherInitInput(log ?? vscode.window.createOutputChannel("LeanQuill", { log: true }));
+      if (!input) {
+        log?.info("User cancelled input gathering");
+        return;
       }
-      output.show(true);
-    } else {
-      await vscode.window.showInformationMessage("LeanQuill initialized successfully.");
+
+      const result = await initializeProject(rootPath, input);
+      const ok = await runScaffoldAndFinish(rootPath, safeFs, log, planningPanel, context, result.warnings, options);
+      if (!ok) {
+        return;
+      }
+      return;
     }
 
-    const doc = await vscode.workspace.openTextDocument(result.projectYamlPath);
-    await vscode.window.showTextDocument(doc);
+    // Valid yaml — manuscript scaffold only (no title/genre prompts).
+    log?.info("Valid project.yaml — applying manuscript scaffold if needed");
+    await runScaffoldAndFinish(rootPath, safeFs, log, planningPanel, context, [], options);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await vscode.window.showErrorMessage(`LeanQuill initialization failed: ${message}`);
@@ -365,7 +490,7 @@ export async function runInitializeFlow(context: vscode.ExtensionContext, log?: 
 }
 
 export function shouldPromptInitialize(folderPath: string): Promise<boolean> {
-  const hasBookTxt = fs.stat(path.join(folderPath, "Book.txt")).then(() => true).catch(() => false);
+  const hasBookTxt = fs.stat(path.join(folderPath, "manuscript", "Book.txt")).then(() => true).catch(() => false);
   const hasManuscript = fs.stat(path.join(folderPath, "manuscript")).then(() => true).catch(() => false);
   const hasLeanquill = fs.stat(path.join(folderPath, ".leanquill")).then(() => true).catch(() => false);
 

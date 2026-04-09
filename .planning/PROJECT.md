@@ -12,12 +12,12 @@ An author working in a LeanPub markdown repo can see the status of every chapter
 
 ### Validated
 
-(None yet — ship to validate)
+- **INIT-01** — Validated in Phase 13: LeanPub Workspace Initialization (unified command: full init + manuscript scaffold when `project.yaml` already valid).
+- **INIT-02** — Validated in Phase 13: chapter order refresh after scaffold; `Book.txt` under `manuscript/`.
 
 ### Active
 
 <!-- Track 1: Author Workflow (MVP) -->
-- [ ] **INIT-01**: Author can initialize a LeanPub repo with `.leanquill/` structure and `project.yaml` via a single command
 - [ ] **CHAP-01**: Author can view all chapters in project-defined order with per-chapter status and open issue count
 - [ ] **CHAP-02**: Author can change chapter status from the chapter tree or context pane
 - [ ] **CHAP-03**: Opening a chapter file auto-populates a context pane with that chapter's status, open issues, and last session notes
@@ -105,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after initialization*
+*Last updated: 2026-04-08 — Phase 13 complete; INIT-01/INIT-02 moved to Validated*

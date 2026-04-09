@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
-import { parseProjectConfig, readProjectConfig } from "../src/projectConfig";
+import { parseProjectConfig, readProjectConfig, validateProjectYamlForSetup } from "../src/projectConfig";
 
 async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "leanquill-config-"));
@@ -125,4 +125,44 @@ test("parseProjectConfig parses custom characters folder path", () => {
   const content = 'schema_version: "2"\nfolders:\n  research: research/leanquill/\n  characters: custom/chars/\n';
   const result = parseProjectConfig(content);
   assert.equal(result.folders.characters, "custom/chars/");
+});
+
+const minimalValidSetupYaml = [
+  'schema_version: "2"',
+  'project_id: "my-book"',
+  'working_title: "My Book"',
+  "genre:",
+  '  - "fiction"',
+  "folders:",
+  "  manuscript: manuscript/",
+  "  research: research/leanquill/",
+].join("\n");
+
+test("validateProjectYamlForSetup ok for minimal valid v2-shaped yaml", () => {
+  const v = validateProjectYamlForSetup(minimalValidSetupYaml);
+  assert.equal(v.ok, true);
+});
+
+test("validateProjectYamlForSetup not ok for empty string", () => {
+  const v = validateProjectYamlForSetup("");
+  assert.equal(v.ok, false);
+});
+
+test("validateProjectYamlForSetup not ok when project_id missing", () => {
+  const content = minimalValidSetupYaml.replace(/^project_id:.*\n/m, "");
+  const v = validateProjectYamlForSetup(content);
+  assert.equal(v.ok, false);
+});
+
+test("validateProjectYamlForSetup not ok for schema_version 9", () => {
+  const content = minimalValidSetupYaml.replace('schema_version: "2"', 'schema_version: "9"');
+  const v = validateProjectYamlForSetup(content);
+  assert.equal(v.ok, false);
+});
+
+test("validateProjectYamlForSetup not ok when schema_version missing", () => {
+  const content = minimalValidSetupYaml.replace(/^schema_version:.*\n/m, "");
+  const v = validateProjectYamlForSetup(content);
+  assert.equal(v.ok, false);
+  assert.equal(v.reason, "missing_schema_version");
 });

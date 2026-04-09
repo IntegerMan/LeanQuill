@@ -9,8 +9,8 @@
 
 ### Project Setup
 
-- [ ] **INIT-01**: Author can initialize a LeanPub repo with a single "LeanQuill: Initialize" command that scaffolds the `.leanquill/` folder structure and creates a `project.yaml` from a sensible template
-- [ ] **INIT-02**: On initialization, LeanQuill auto-detects `Book.txt` for chapter ordering; falls back to alphabetical sort of manuscript files if not present
+- [x] **INIT-01**: Author can initialize a LeanPub repo with a single "LeanQuill: Initialize" command that scaffolds the `.leanquill/` folder structure and creates a `project.yaml` from a sensible template
+- [x] **INIT-02**: On initialization, LeanQuill auto-detects `Book.txt` for chapter ordering; falls back to alphabetical sort of manuscript files if not present
 
 ### Chapter Management
 
@@ -33,7 +33,7 @@
 
 ### Character Reference
 
-- [ ] **CHAR-01**: Author can manage character profiles within the planning workspace Characters tab — creating, editing, and organizing character entries with author-defined fields, with visibility into which chapters and beats reference each character
+- [x] **CHAR-01**: Author can manage character profiles within the planning workspace Characters tab — creating, editing, and organizing character entries with author-defined fields, with visibility into which chapters and beats reference each character
 
 ### Place and Setting Reference
 
@@ -120,8 +120,8 @@ Which phases cover which requirements. To be populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INIT-01 | 1 | Pending |
-| INIT-02 | 1 | Pending |
+| INIT-01 | 1 | Complete |
+| INIT-02 | 1 | Complete |
 | CHAP-01 | 2 | Pending |
 | CHAP-02 | 2 | Pending |
 | CHAP-03 | 2 | Pending |
@@ -129,7 +129,7 @@ Which phases cover which requirements. To be populated during roadmap creation.
 | PLAN-01 | 3 | Pending |
 | PLAN-02 | 3 | Pending |
 | PLAN-03 | 8 | Pending |
-| CHAR-01 | 4 | Pending |
+| CHAR-01 | 4 | Complete |
 | PLACE-01 | 5 | Pending |
 | THREAD-01 | 6 | Pending |
 | KNOW-01 | 7 | Pending |
