@@ -20,7 +20,7 @@
 | 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
 | 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
 | 12 | Standardized Research Workflow and Results Repository | Author can capture standardized research findings and store them in a consistent project repository for later planning and drafting use | RES-01, RES-02 | 2 criteria |
-| 13 | LeanPub Workspace Initialization | Author can scaffold LeanPub manuscript layout from the sidebar when the workspace is not yet initialized | TBD | 3 criteria |
+| 13 | LeanPub Workspace Initialization | Author can scaffold LeanPub manuscript layout from the sidebar when the workspace is not yet initialized | INIT-01, INIT-02 | 3 criteria |
 
 ## Phases
 
@@ -256,11 +256,14 @@ Plans:
 **Goal:** Author can initialize a workspace for LeanPub publishing if it is not yet initialized — create the `manuscript/` directory, `Book.txt`, and a placeholder chapter — using a button on the sidebar.
 **UI hint:** yes
 **Depends on:** Phase 1
-**Requirements:** TBD
-**Plans:** 0 plans
+**Requirements:** INIT-01, INIT-02
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 13 to break down)
+- [ ] 13-01-PLAN.md — Project.yaml Setup validation + `leanpubScaffold` module (Book.txt/ch1 rules, D-05/D-07/D-11/D-18).
+- [ ] 13-02-PLAN.md — `setWorkspaceContext` keys + `package.json` viewsWelcome readiness gating (D-02/D-04, copy partial D-03).
+- [ ] 13-03-PLAN.md — `showCards`, unified `runInitializeFlow` (scaffold-only vs full init), extension wiring, chapter-order refresh (D-08–D-17, INIT-01/02).
+- [ ] 13-04-PLAN.md — Unit tests (`leanpubScaffold`, `validateProjectYamlForSetup`) + D-03 copy audit.
 
 **Success criteria:**
 1. When the workspace lacks LeanPub manuscript scaffolding, the author can trigger initialization from the sidebar.
@@ -285,6 +288,6 @@ Plans:
 | 10. AI Review and Advisory Workflows | 0/0 | Not started | - |
 | 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
 | 12. Standardized Research Workflow and Results Repository | 2/2 | Completed | 2026-04-05 |
-| 13. LeanPub Workspace Initialization | 0/0 | Not started | - |
+| 13. LeanPub Workspace Initialization | 0/4 | Not started | - |
 
 ## Backlog
