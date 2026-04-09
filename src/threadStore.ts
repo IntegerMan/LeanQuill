@@ -4,6 +4,16 @@ import type { ThreadProfile } from "./types";
 import type { ProjectConfig } from "./projectConfig";
 import type { SafeFileSystem } from "./safeFileSystem";
 
+function escapeYamlString(s: string): string {
+  if (s === "") {
+    return '""';
+  }
+  if (/[\n:#"'\[\]{}]/.test(s) || s.includes("\\")) {
+    return JSON.stringify(s);
+  }
+  return s;
+}
+
 export function slugifyThreadTitle(name: string): string {
   const slug = name
     .trim()
@@ -109,7 +119,7 @@ export function parseThreadFile(fileName: string, content: string): ThreadProfil
 export function serializeThreadFile(profile: ThreadProfile): string {
   const lines: string[] = ["---"];
 
-  lines.push(`title: ${profile.title}`);
+  lines.push(`title: ${escapeYamlString(profile.title)}`);
 
   if (profile.touchesChapters.length === 0) {
     lines.push("touchesChapters: []");
@@ -126,10 +136,8 @@ export function serializeThreadFile(profile: ThreadProfile): string {
       for (const valLine of val.split("\n")) {
         lines.push(`  ${valLine}`);
       }
-    } else if (val === "|" || val === "|-") {
-      lines.push(`${key}: "${val}"`);
     } else {
-      lines.push(`${key}: ${val}`);
+      lines.push(`${key}: ${escapeYamlString(val)}`);
     }
   }
 

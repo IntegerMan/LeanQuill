@@ -179,10 +179,6 @@ export function patchProjectIdentityInYaml(
           end++;
           continue;
         }
-        if (l.trim() === "") {
-          end++;
-          continue;
-        }
         break;
       }
       lines.splice(gi, end - gi, ...gLines);
