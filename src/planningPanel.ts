@@ -315,7 +315,9 @@ export class PlanningPanelProvider {
           folders: { research: "research/leanquill/", characters: "notes/characters/" },
         };
         await saveCharacter(profileToWrite, this.rootPath, config, this.safeFs);
-        this._pendingCharacter = undefined;
+        if (this._pendingCharacter?.fileName === profileToWrite.fileName) {
+          this._pendingCharacter = undefined;
+        }
       };
       doSave().catch((err: unknown) => {
         console.error("[LeanQuill] Failed to save character", err);
