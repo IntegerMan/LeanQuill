@@ -70,3 +70,58 @@ export async function readProjectConfig(rootPath: string): Promise<ProjectConfig
 export async function readProjectConfigWithDefaults(rootPath: string): Promise<ProjectConfig> {
   return await readProjectConfig(rootPath) ?? DEFAULT_PROJECT_CONFIG;
 }
+
+export interface ProjectYamlSetupValidation {
+  ok: boolean;
+  reason?: string;
+}
+
+/**
+ * Minimal validity for Setup / initialize eligibility (D-02).
+ * No YAML parser dependency — mirrors `renderProjectYaml` shape checks.
+ */
+export function validateProjectYamlForSetup(content: string): ProjectYamlSetupValidation {
+  if (content.trim().length === 0) {
+    return { ok: false, reason: "empty" };
+  }
+
+  const normalized = content.replace(/\r\n/g, "\n");
+
+  if (!/^project_id:\s+/m.test(normalized)) {
+    return { ok: false, reason: "missing_project_id" };
+  }
+  if (!/^working_title:\s+/m.test(normalized)) {
+    return { ok: false, reason: "missing_working_title" };
+  }
+
+  const parsed = parseProjectConfig(content);
+  const schemaVersion = parsed.schemaVersion.trim();
+  if (schemaVersion !== "1" && schemaVersion !== "2") {
+    return { ok: false, reason: "invalid_schema_version" };
+  }
+
+  const lines = normalized.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^folders:\s*$/.test(lines[i])) {
+      continue;
+    }
+    let hasManuscript = false;
+    i++;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (line.length > 0 && !/^\s/.test(line)) {
+        i--;
+        break;
+      }
+      if (/^\s+manuscript:\s*/.test(line)) {
+        hasManuscript = true;
+      }
+      i++;
+    }
+    if (!hasManuscript) {
+      return { ok: false, reason: "folders_missing_manuscript" };
+    }
+  }
+
+  return { ok: true };
+}
