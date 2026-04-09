@@ -27,7 +27,8 @@
 - [x] **Phase 1: Foundation and Safe Init** - Scaffold LeanQuill files, chapter ordering detection, and safe IO boundaries.
 - [x] **Phase 2: Core Chapter Workflow** - Deliver chapter tree navigation and chapter context basics.
 - [x] **Phase 3: Outline and Beat Planning** - Deliver standalone Scrivener-style planning webview.
-- [x] **Phase 4: Character Reference** - Populate Characters tab with character profile management. (completed 2026-04-09)
+- [x] **Phase 4: Character Reference** - Populate Characters tab with character profile management.
+ (completed 2026-04-09)
 - [ ] **Phase 5: Place and Setting Reference** - Populate Places tab with location/setting management.
 - [ ] **Phase 6: Threads and Themes** - Populate Threads tab with narrative thread and thematic arc tracking.
 - [ ] **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
@@ -36,7 +37,8 @@
 - [ ] **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
 - [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
 - [x] **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
-- [x] **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing. (completed 2026-04-09)
+- [x] **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing.
+ (completed 2026-04-09)
 
 ## Phase Details
 
@@ -277,7 +279,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation and Safe Init | 0/0 | Completed | 2026-03-29 |
-| 2. Core Chapter Workflow | 4/4 | Completed | 2026-03-30 |
+| 4. Character Reference | 0/0 | Completed | 2026-04-09 |
 | 3. Outline and Beat Planning | 3/3 | Completed | 2026-04-05 |
 | 4. Character Reference | 0/0 | Not started | - |
 | 5. Place and Setting Reference | 0/0 | Not started | - |
