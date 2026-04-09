@@ -3,16 +3,7 @@ import * as path from "node:path";
 import type { ThreadProfile } from "./types";
 import type { ProjectConfig } from "./projectConfig";
 import type { SafeFileSystem } from "./safeFileSystem";
-
-function escapeYamlString(s: string): string {
-  if (s === "") {
-    return '""';
-  }
-  if (/[\n:#"'\[\]{}]/.test(s) || s.includes("\\")) {
-    return JSON.stringify(s);
-  }
-  return s;
-}
+import { escapeYamlString } from "./yamlUtils";
 
 export function slugifyThreadTitle(name: string): string {
   const slug = name

@@ -101,19 +101,35 @@ export function parseProjectIdentity(content: string): ProjectIdentity {
 
   const genres: string[] = [];
   const lines = normalized.split("\n");
-  const gi = lines.findIndex((l) => /^genre:\s*$/.test(l));
+  const gi = lines.findIndex((l) => /^genre:\s*/.test(l));
   if (gi !== -1) {
-    let i = gi + 1;
-    while (i < lines.length) {
-      const l = lines[i];
-      if (l.length > 0 && !/^\s/.test(l)) {
-        break;
+    const genreLine = lines[gi];
+    const inlineMatch = /^genre:\s*(.+)$/.exec(genreLine);
+    if (inlineMatch) {
+      const inlineVal = inlineMatch[1].trim();
+      if (inlineVal.startsWith("[") && inlineVal.endsWith("]")) {
+        const inner = inlineVal.slice(1, -1).trim();
+        if (inner) {
+          for (const item of inner.split(",")) {
+            genres.push(stripYamlQuotes(item.trim()));
+          }
+        }
+      } else {
+        genres.push(stripYamlQuotes(inlineVal));
       }
-      const m = /^\s*-\s+(.+)$/.exec(l);
-      if (m) {
-        genres.push(stripYamlQuotes(m[1]));
+    } else {
+      let i = gi + 1;
+      while (i < lines.length) {
+        const l = lines[i];
+        if (l.length > 0 && !/^\s/.test(l)) {
+          break;
+        }
+        const m = /^\s*-\s+(.+)$/.exec(l);
+        if (m) {
+          genres.push(stripYamlQuotes(m[1]));
+        }
+        i++;
       }
-      i++;
     }
   }
 
@@ -170,18 +186,24 @@ export function patchProjectIdentityInYaml(
 
   if (patch.genres !== undefined) {
     const gLines = genreBlock(patch.genres);
-    const gi = lines.findIndex((l) => /^genre:\s*$/.test(l));
+    const gi = lines.findIndex((l) => /^genre:\s*/.test(l));
     if (gi >= 0) {
-      let end = gi + 1;
-      while (end < lines.length) {
-        const l = lines[end];
-        if (/^\s*-\s+/.test(l)) {
-          end++;
-          continue;
+      const genreLine = lines[gi];
+      const isInline = /^genre:\s*.+$/.test(genreLine);
+      if (isInline) {
+        lines.splice(gi, 1, ...gLines);
+      } else {
+        let end = gi + 1;
+        while (end < lines.length) {
+          const l = lines[end];
+          if (/^\s*-\s+/.test(l)) {
+            end++;
+            continue;
+          }
+          break;
         }
-        break;
+        lines.splice(gi, end - gi, ...gLines);
       }
-      lines.splice(gi, end - gi, ...gLines);
     } else {
       const wti = lines.findIndex((l) => /^working_title:\s*/.test(l));
       if (wti >= 0) {

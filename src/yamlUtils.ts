@@ -22,3 +22,18 @@ export function stripYamlQuotes(s: string): string {
   }
   return t;
 }
+
+/**
+ * Escape a string for safe YAML serialization.
+ * Returns JSON-stringified form for strings containing special characters,
+ * empty string as "", otherwise returns the raw string.
+ */
+export function escapeYamlString(s: string): string {
+  if (s === "") {
+    return '""';
+  }
+  if (/[\n:#"'\[\]{}]/.test(s) || s.includes("\\")) {
+    return JSON.stringify(s);
+  }
+  return s;
+}

@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as crypto from "node:crypto";
 import type { CentralThemeEntry, ThemesDocument } from "./types";
 import type { SafeFileSystem } from "./safeFileSystem";
-import { stripYamlQuotes } from "./yamlUtils";
+import { stripYamlQuotes, escapeYamlString } from "./yamlUtils";
 
 export const THEMES_FILE_NAME = "themes.yaml";
 
@@ -234,16 +234,6 @@ export function parseThemesYaml(content: string): ThemesDocument {
   } catch {
     return defaultThemesDocument();
   }
-}
-
-function escapeYamlString(s: string): string {
-  if (s === "") {
-    return '""';
-  }
-  if (/[\n:#"'\[\]{}]/.test(s) || s.includes("\\")) {
-    return JSON.stringify(s);
-  }
-  return s;
 }
 
 export function serializeThemesYaml(doc: ThemesDocument): string {
