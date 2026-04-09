@@ -169,7 +169,7 @@ export class PlanningPanelProvider {
         break;
 
       case "character:updateField":
-        this._charUpdateLock = this._charUpdateLock.then(() =>
+        this._charUpdateLock = this._charUpdateLock.catch(() => {}).then(() =>
           this._updateCharacterField(
             msg.fileName as string,
             msg.field as string,

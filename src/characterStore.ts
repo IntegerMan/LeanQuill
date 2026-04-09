@@ -79,10 +79,10 @@ export function parseCharacterFile(fileName: string, content: string): Character
 
   const lines = frontmatter.split("\n");
   for (const line of lines) {
-    // Block scalar continuation (indented lines)
+    // Block scalar continuation (indented lines or empty lines)
     if (currentBlockKey !== null) {
-      if (line.startsWith("  ")) {
-        currentBlockLines.push(line.slice(2));
+      if (line.startsWith("  ") || line === "") {
+        currentBlockLines.push(line.startsWith("  ") ? line.slice(2) : "");
         continue;
       } else {
         flushBlock();
