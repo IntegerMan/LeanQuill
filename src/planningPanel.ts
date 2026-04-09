@@ -54,18 +54,7 @@ export class PlanningPanelProvider {
           await writeOutlineIndex(this.rootPath, this._pendingIndex, this.safeFs);
           this._pendingIndex = undefined;
         }
-        if (this._charDebounceTimer) {
-          clearTimeout(this._charDebounceTimer);
-          this._charDebounceTimer = undefined;
-        }
-        if (this._pendingCharacter) {
-          const config = await readProjectConfig(this.rootPath) ?? {
-            schemaVersion: '1',
-            folders: { research: 'research/leanquill/', characters: 'notes/characters/' },
-          };
-          await saveCharacter(this._pendingCharacter, this.rootPath, config, this.safeFs);
-          this._pendingCharacter = undefined;
-        }
+        await this._flushPendingCharacter();
       })().catch((err: unknown) => {
         console.error('[LeanQuill] Failed to flush pending state on dispose', err);
       });
@@ -100,18 +89,7 @@ export class PlanningPanelProvider {
       await writeOutlineIndex(this.rootPath, this._pendingIndex, this.safeFs);
       this._pendingIndex = undefined;
     }
-    if (this._charDebounceTimer) {
-      clearTimeout(this._charDebounceTimer);
-      this._charDebounceTimer = undefined;
-    }
-    if (this._pendingCharacter) {
-      const config = await readProjectConfig(this.rootPath) ?? {
-        schemaVersion: '1',
-        folders: { research: 'research/leanquill/', characters: 'notes/characters/' },
-      };
-      await saveCharacter(this._pendingCharacter, this.rootPath, config, this.safeFs);
-      this._pendingCharacter = undefined;
-    }
+    await this._flushPendingCharacter();
     if (this._panel) {
       this._panel.dispose();
       this._panel = undefined;

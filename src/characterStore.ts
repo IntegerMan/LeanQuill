@@ -128,8 +128,8 @@ export function parseCharacterFile(fileName: string, content: string): Character
     } else if (key === "referencedByNameIn") {
       currentKey = "referencedByNameIn";
       currentList = referencedByNameIn;
-    } else if (val !== "") {
-      // Any other key with a value → customFields
+    } else {
+      // Any other key → customFields (including empty values)
       customFields[key] = val;
     }
   }
