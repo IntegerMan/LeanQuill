@@ -11,6 +11,7 @@ import {
   createPlace,
   savePlace,
   deletePlace,
+  scanManuscriptFileForPlaces,
 } from "../src/placeStore";
 import { SafeFileSystem } from "../src/safeFileSystem";
 import { PlaceProfile } from "../src/types";
@@ -222,6 +223,52 @@ test("deletePlace throws when SafeFileSystem cannot write target path", async ()
     await assert.rejects(
       () => deletePlace(profile.fileName, dir, config, blocked),
       /Blocked delete outside LeanQuill boundary/,
+    );
+  });
+});
+
+test("scanManuscriptFileForPlaces adds manuscript path when place name matches", async () => {
+  await withTempDir(async (dir) => {
+    const config = makeConfig();
+    const safeFs = makeSafeFs(dir);
+
+    await createPlace("Red Inn", dir, config, safeFs);
+
+    const msDir = path.join(dir, "manuscript");
+    await fs.mkdir(msDir, { recursive: true });
+    const msPath = path.join(msDir, "ch1.md");
+    await fs.writeFile(msPath, "They met at the Red Inn at dusk.", "utf8");
+
+    await scanManuscriptFileForPlaces(msPath, dir, config, safeFs);
+
+    const [updated] = await listPlaces(dir, config);
+    assert.ok(
+      updated.referencedByNameIn.includes("manuscript/ch1.md"),
+      "should include manuscript path",
+    );
+  });
+});
+
+test("scanManuscriptFileForPlaces removes stale entry when name no longer matches", async () => {
+  await withTempDir(async (dir) => {
+    const config = makeConfig();
+    const safeFs = makeSafeFs(dir);
+
+    const profile = await createPlace("Red Inn", dir, config, safeFs);
+    profile.referencedByNameIn = ["manuscript/ch1.md"];
+    await savePlace(profile, dir, config, safeFs);
+
+    const msDir = path.join(dir, "manuscript");
+    await fs.mkdir(msDir, { recursive: true });
+    const msPath = path.join(msDir, "ch1.md");
+    await fs.writeFile(msPath, "This chapter has no setting mentions.", "utf8");
+
+    await scanManuscriptFileForPlaces(msPath, dir, config, safeFs);
+
+    const [updated] = await listPlaces(dir, config);
+    assert.ok(
+      !updated.referencedByNameIn.includes("manuscript/ch1.md"),
+      "stale reference should be removed",
     );
   });
 });
