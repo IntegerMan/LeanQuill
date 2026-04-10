@@ -15,6 +15,7 @@ import {
   collectBeatCandidateNodeIds,
   outlineTextMatchesPlace,
   scanOutlineIndexForPlaces,
+  buildPlaceTree,
 } from "../src/placeStore";
 import { SafeFileSystem } from "../src/safeFileSystem";
 import { OutlineIndex, OutlineNode, PlaceProfile } from "../src/types";
@@ -54,8 +55,7 @@ function makePlace(overrides?: Partial<PlaceProfile>): PlaceProfile {
     fileName: "old-mill.md",
     name: "The Old Mill",
     aliases: ["Mill"],
-    category: "landmark",
-    region: "North",
+    parentFileName: "",
     description: "A ruin by the river",
     referencedByNameIn: ["manuscript/ch1.md"],
     referencedInBeats: ["beat-a", "beat-b"],
@@ -82,8 +82,7 @@ test("parsePlaceFile extracts standard and reference fields", () => {
 name: The Old Mill
 aliases:
   - Mill
-category: landmark
-region: North
+parentFileName: north-region.md
 description: Short blurb
 referencedByNameIn:
   - manuscript/ch1.md
@@ -96,8 +95,7 @@ Body line.
   const p = parsePlaceFile("old-mill.md", content);
   assert.equal(p.name, "The Old Mill");
   assert.deepEqual(p.aliases, ["Mill"]);
-  assert.equal(p.category, "landmark");
-  assert.equal(p.region, "North");
+  assert.equal(p.parentFileName, "north-region.md");
   assert.equal(p.description, "Short blurb");
   assert.deepEqual(p.referencedByNameIn, ["manuscript/ch1.md"]);
   assert.deepEqual(p.referencedInBeats, ["node-1", "node-2"]);
@@ -108,11 +106,26 @@ test("parsePlaceFile applies defaults when frontmatter missing", () => {
   const p = parsePlaceFile("x.md", "no frontmatter");
   assert.equal(p.name, "");
   assert.deepEqual(p.aliases, []);
-  assert.equal(p.category, "");
-  assert.equal(p.region, "");
+  assert.equal(p.parentFileName, "");
   assert.deepEqual(p.referencedByNameIn, []);
   assert.deepEqual(p.referencedInBeats, []);
   assert.deepEqual(p.customFields, {});
+});
+
+test("parsePlaceFile migrates legacy category/region fields silently", () => {
+  const content = `---
+name: Old Town
+category: city
+region: West
+description: A city
+---
+`;
+  const p = parsePlaceFile("old-town.md", content);
+  assert.equal(p.name, "Old Town");
+  assert.equal(p.parentFileName, "");
+  assert.equal(p.description, "A city");
+  assert.equal(p.customFields["category"], undefined);
+  assert.equal(p.customFields["region"], undefined);
 });
 
 test("parsePlaceFile reads custom scalar keys into customFields", () => {
@@ -137,6 +150,7 @@ test("serializePlaceFile emits referencedInBeats list and empty-array syntax", (
 test("round-trip parsePlaceFile(serializePlaceFile(p)) preserves logical fields", () => {
   const profile = makePlace({
     aliases: ["Mill", "Ruin"],
+    parentFileName: "north-region.md",
     description: "Multi\nline",
     customFields: { climate: "wet" },
     body: "Extended.",
@@ -145,8 +159,7 @@ test("round-trip parsePlaceFile(serializePlaceFile(p)) preserves logical fields"
   const parsed = parsePlaceFile(profile.fileName, serialized);
   assert.equal(parsed.name, profile.name);
   assert.deepEqual(parsed.aliases, profile.aliases);
-  assert.equal(parsed.category, profile.category);
-  assert.equal(parsed.region, profile.region);
+  assert.equal(parsed.parentFileName, profile.parentFileName);
   assert.equal(parsed.description, profile.description);
   assert.deepEqual(parsed.referencedByNameIn, profile.referencedByNameIn);
   assert.deepEqual(parsed.referencedInBeats, profile.referencedInBeats);
@@ -389,4 +402,27 @@ test("scanManuscriptFileForPlaces removes stale entry when name no longer matche
       "stale reference should be removed",
     );
   });
+});
+
+test("buildPlaceTree nests children under parent and sorts alphabetically", () => {
+  const galaxy = makePlace({ fileName: "galaxy.md", name: "Galaxy", parentFileName: "" });
+  const planet = makePlace({ fileName: "planet.md", name: "Planet", parentFileName: "galaxy.md" });
+  const city = makePlace({ fileName: "city.md", name: "City", parentFileName: "planet.md" });
+  const moon = makePlace({ fileName: "moon.md", name: "Moon", parentFileName: "galaxy.md" });
+
+  const tree = buildPlaceTree([city, galaxy, moon, planet]);
+  assert.equal(tree.length, 1, "one root");
+  assert.equal(tree[0].profile.name, "Galaxy");
+  assert.equal(tree[0].children.length, 2, "two children of galaxy");
+  assert.equal(tree[0].children[0].profile.name, "Moon");
+  assert.equal(tree[0].children[1].profile.name, "Planet");
+  assert.equal(tree[0].children[1].children.length, 1, "planet has one child");
+  assert.equal(tree[0].children[1].children[0].profile.name, "City");
+});
+
+test("buildPlaceTree orphaned parent reference falls back to root", () => {
+  const orphan = makePlace({ fileName: "orphan.md", name: "Orphan", parentFileName: "missing.md" });
+  const tree = buildPlaceTree([orphan]);
+  assert.equal(tree.length, 1);
+  assert.equal(tree[0].profile.name, "Orphan");
 });

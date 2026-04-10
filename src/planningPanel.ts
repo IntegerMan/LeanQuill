@@ -1022,8 +1022,7 @@ export class PlanningPanelProvider {
       this._pendingPlace.customFields[customKey] = value;
     } else if (
       field === "name" ||
-      field === "category" ||
-      field === "region" ||
+      field === "parentFileName" ||
       field === "description" ||
       field === "body"
     ) {
@@ -1058,8 +1057,7 @@ export class PlanningPanelProvider {
     const RESERVED_KEYS = new Set([
       "name",
       "aliases",
-      "category",
-      "region",
+      "parentFileName",
       "description",
       "referencedByNameIn",
       "referencedInBeats",

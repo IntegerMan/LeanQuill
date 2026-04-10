@@ -73,8 +73,7 @@ export function parsePlaceFile(fileName: string, content: string): PlaceProfile 
       fileName,
       name: "",
       aliases: [],
-      category: "",
-      region: "",
+      parentFileName: "",
       description: "",
       referencedByNameIn: [],
       referencedInBeats: [],
@@ -87,8 +86,7 @@ export function parsePlaceFile(fileName: string, content: string): PlaceProfile 
   const body = normalized.slice(fmMatch[0].length).replace(/^\n/, "").replace(/\n$/, "");
 
   let name = "";
-  let category = "";
-  let region = "";
+  let parentFileName = "";
   let description = "";
   const aliases: string[] = [];
   const referencedByNameIn: string[] = [];
@@ -152,10 +150,8 @@ export function parsePlaceFile(fileName: string, content: string): PlaceProfile 
 
     if (key === "name") {
       name = val;
-    } else if (key === "category") {
-      category = val;
-    } else if (key === "region") {
-      region = val;
+    } else if (key === "parentFileName") {
+      parentFileName = val;
     } else if (key === "description") {
       description = val;
     } else if (key === "aliases") {
@@ -167,6 +163,8 @@ export function parsePlaceFile(fileName: string, content: string): PlaceProfile 
     } else if (key === "referencedInBeats") {
       currentKey = "referencedInBeats";
       currentList = referencedInBeats;
+    } else if (key === "category" || key === "region") {
+      // Legacy fields — silently skip during migration
     } else {
       customFields[key] = val;
     }
@@ -178,8 +176,7 @@ export function parsePlaceFile(fileName: string, content: string): PlaceProfile 
     fileName,
     name,
     aliases,
-    category,
-    region,
+    parentFileName,
     description,
     referencedByNameIn,
     referencedInBeats,
@@ -202,8 +199,7 @@ export function serializePlaceFile(profile: PlaceProfile): string {
     }
   }
 
-  lines.push(`category: ${profile.category}`);
-  lines.push(`region: ${profile.region}`);
+  lines.push(`parentFileName: ${profile.parentFileName}`);
 
   if (profile.description.includes("\n")) {
     lines.push("description: |");
@@ -306,8 +302,7 @@ export async function createPlace(
     fileName: slug,
     name,
     aliases: [],
-    category: "",
-    region: "",
+    parentFileName: "",
     description: "",
     referencedByNameIn: [],
     referencedInBeats: [],
@@ -415,4 +410,46 @@ export async function scanOutlineIndexForPlaces(
       await savePlace(profile, rootPath, config, safeFs);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Tree helpers — build hierarchical view from flat profiles
+// ---------------------------------------------------------------------------
+
+export interface PlaceTreeNode {
+  profile: PlaceProfile;
+  children: PlaceTreeNode[];
+}
+
+export function buildPlaceTree(profiles: PlaceProfile[]): PlaceTreeNode[] {
+  const byFileName = new Map<string, PlaceTreeNode>();
+  for (const p of profiles) {
+    byFileName.set(p.fileName, { profile: p, children: [] });
+  }
+
+  const roots: PlaceTreeNode[] = [];
+  for (const node of byFileName.values()) {
+    const parentFn = node.profile.parentFileName;
+    if (parentFn && byFileName.has(parentFn)) {
+      byFileName.get(parentFn)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const sortNodes = (nodes: PlaceTreeNode[]) => {
+    nodes.sort((a, b) =>
+      (a.profile.name || a.profile.fileName).localeCompare(
+        b.profile.name || b.profile.fileName,
+        undefined,
+        { sensitivity: "base" },
+      ),
+    );
+    for (const n of nodes) {
+      sortNodes(n.children);
+    }
+  };
+  sortNodes(roots);
+
+  return roots;
 }

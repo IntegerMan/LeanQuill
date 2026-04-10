@@ -17,6 +17,7 @@ import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlFo
 import { migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
 import { ResearchTreeProvider } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
+import { PlaceTreeProvider } from "./placeTree";
 import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
 import { createCharacter, scanManuscriptFileForCharacters } from "./characterStore";
 import {
@@ -245,6 +246,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const researchDir = path.join(rootPath, ...researchFolder.split("/"));
   const researchTreeProvider = new ResearchTreeProvider(vscode, researchDir);
   const characterTreeProvider = new CharacterTreeProvider(vscode, rootPath);
+  const placeTreeProvider = new PlaceTreeProvider(vscode, rootPath);
 
   const setupViewProvider = new LeanQuillActionsProvider();
   const outlineContextProvider = new OutlineContextPaneProvider(vscode);
@@ -311,9 +313,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const settingsWatcher = vscode.workspace.createFileSystemWatcher(
     new vscode.RelativePattern(rootPath, `${safeSettingsFolder}/**/*.md`),
   );
-  settingsWatcher.onDidCreate(() => void planningPanel.refresh());
-  settingsWatcher.onDidChange(() => void planningPanel.refresh());
-  settingsWatcher.onDidDelete(() => void planningPanel.refresh());
+  settingsWatcher.onDidCreate(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
+  settingsWatcher.onDidChange(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
+  settingsWatcher.onDidDelete(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
 
   const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
     const appName = vscode.env.appName ?? "";
@@ -366,6 +368,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const selectPlaceInPanelCommand = vscode.commands.registerCommand(
+    "leanquill.selectPlaceInPanel",
+    async (fileName: string) => {
+      await planningPanel.showPlace(fileName);
+    },
+  );
+
   const newPlaceCommand = vscode.commands.registerCommand("leanquill.newPlace", async () => {
     const name = await vscode.window.showInputBox({ prompt: "Place name", placeHolder: "e.g. The Old Mill" });
     if (!name?.trim()) {
@@ -374,6 +383,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const latestConfig = await readProjectConfigWithDefaults(rootPath);
     try {
       const profile = await createPlace(name.trim(), rootPath, latestConfig, safeFileSystem);
+      placeTreeProvider.refresh();
       await planningPanel.show();
       await planningPanel.showPlace(profile.fileName);
     } catch (error: unknown) {
@@ -422,6 +432,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.window.registerTreeDataProvider("leanquill.research", researchTreeProvider),
     vscode.window.registerTreeDataProvider("leanquill.characters", characterTreeProvider),
+    vscode.window.registerTreeDataProvider("leanquill.places", placeTreeProvider),
     researchWatcher,
     charactersWatcher,
     threadsWatcher,
@@ -432,6 +443,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     newThreadCommand,
     newThemeCommand,
     selectCharacterInPanelCommand,
+    selectPlaceInPanelCommand,
   );
 
   const updateNodeStatus = async (nodeId: string): Promise<void> => {
@@ -853,6 +865,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await scanManuscriptFileForPlaces(filePath, rootPath, latestConfig, safeFileSystem);
       await planningPanel.refresh();
       characterTreeProvider.refresh();
+      placeTreeProvider.refresh();
     } catch {
       // Never surface errors from background scanning
     }

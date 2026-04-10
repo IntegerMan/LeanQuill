@@ -481,27 +481,23 @@ function renderCharactersTab(
   return `<div class="char-container">${listPane}${detailPane}</div>`;
 }
 
-function renderPlaceDetail(profile: PlaceProfile): string {
+function renderPlaceDetail(profile: PlaceProfile, allPlaces: PlaceProfile[]): string {
   const bodyId = `place-body-${profile.fileName.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+
+  const parentOptions = allPlaces
+    .filter((p) => p.fileName !== profile.fileName)
+    .map((p) => {
+      const selected = p.fileName === profile.parentFileName ? " selected" : "";
+      return `<option value="${escapeHtml(p.fileName)}"${selected}>${escapeHtml(p.name || p.fileName)}</option>`;
+    })
+    .join("");
+
   const standardFields = `
     <div class="char-field-row">
       <label class="char-field-label">Name</label>
       <input class="char-field-input" data-action="place:updateField"
         data-file="${escapeHtml(profile.fileName)}" data-field="name"
         value="${escapeHtml(profile.name)}" />
-    </div>
-    <div class="char-field-row">
-      <label class="char-field-label">Category</label>
-      <input class="char-field-input" list="place-categories-datalist"
-        data-action="place:updateField"
-        data-file="${escapeHtml(profile.fileName)}" data-field="category"
-        value="${escapeHtml(profile.category)}" />
-      <datalist id="place-categories-datalist">
-        <option value="interior"/>
-        <option value="city"/>
-        <option value="landmark"/>
-        <option value="recurring"/>
-      </datalist>
     </div>
     <div class="char-field-row">
       <label class="char-field-label">Aliases</label>
@@ -511,10 +507,12 @@ function renderPlaceDetail(profile: PlaceProfile): string {
         placeholder="Comma-separated aliases" />
     </div>
     <div class="char-field-row">
-      <label class="char-field-label">Region</label>
-      <input class="char-field-input" data-action="place:updateField"
-        data-file="${escapeHtml(profile.fileName)}" data-field="region"
-        value="${escapeHtml(profile.region)}" />
+      <label class="char-field-label">Parent Place</label>
+      <select class="char-field-input" data-action="place:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="parentFileName">
+        <option value=""${!profile.parentFileName ? " selected" : ""}>(none — top level)</option>
+        ${parentOptions}
+      </select>
     </div>
     <div class="char-field-row">
       <label class="char-field-label">Description</label>
@@ -573,42 +571,17 @@ function renderPlaceDetail(profile: PlaceProfile): string {
 function renderPlacesTab(places: PlaceProfile[], selectedFileName: string | undefined): string {
   const effectiveSelected = selectedFileName ?? places[0]?.fileName;
 
-  const regionGroups = new Map<string, PlaceProfile[]>();
-  for (const p of places) {
-    const regionKey = p.region.trim() || "Uncategorized";
-    if (!regionGroups.has(regionKey)) {
-      regionGroups.set(regionKey, []);
-    }
-    regionGroups.get(regionKey)!.push(p);
-  }
-  for (const list of regionGroups.values()) {
-    list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
-  }
-  const sortedRegions = [...regionGroups.keys()].sort((a, b) => {
-    if (a === "Uncategorized") {
-      return 1;
-    }
-    if (b === "Uncategorized") {
-      return -1;
-    }
-    return a.localeCompare(b, undefined, { sensitivity: "base" });
-  });
+  const sorted = [...places].sort((a, b) =>
+    (a.name || a.fileName).localeCompare(b.name || b.fileName, undefined, { sensitivity: "base" }),
+  );
 
-  let listItems = "";
-  for (const region of sortedRegions) {
-    const regionPlaces = regionGroups.get(region)!;
-    const groupItems = regionPlaces.map((p) =>
-      `<div class="char-list-item${p.fileName === effectiveSelected ? " char-list-item--selected" : ""}"
-           data-action="place:select"
-           data-file="${escapeHtml(p.fileName)}">
-        ${escapeHtml(p.name || "(untitled)")}
-      </div>`
-    ).join("");
-    listItems += `<div class="char-role-group">
-      <div class="char-role-label">${escapeHtml(region)}</div>
-      ${groupItems}
-    </div>`;
-  }
+  const listItems = sorted.map((p) =>
+    `<div class="char-list-item${p.fileName === effectiveSelected ? " char-list-item--selected" : ""}"
+         data-action="place:select"
+         data-file="${escapeHtml(p.fileName)}">
+      ${escapeHtml(p.name || "(untitled)")}
+    </div>`
+  ).join("");
 
   const listPane = `<div class="char-list">
     <div class="char-list-header">
@@ -624,7 +597,7 @@ function renderPlacesTab(places: PlaceProfile[], selectedFileName: string | unde
   const selected = places.find((p) => p.fileName === effectiveSelected);
   const detailPane = `<div class="char-detail">
     ${selected
-      ? renderPlaceDetail(selected)
+      ? renderPlaceDetail(selected, places)
       : '<div class="char-empty-detail">Select a place to view its profile.</div>'}
   </div>`;
 
@@ -1676,6 +1649,14 @@ export function renderPlanningHtml(
           placeDebounceTimers[key] = setTimeout(() => {
             vscode.postMessage({ type: 'place:updateField', fileName: fileName, field: field, value: value });
           }, 300);
+        });
+        placeContainer.addEventListener('change', (e) => {
+          const target = e.target;
+          if (!target || target.tagName !== 'SELECT' || target.getAttribute('data-action') !== 'place:updateField') return;
+          const fileName = target.getAttribute('data-file');
+          const field = target.getAttribute('data-field');
+          if (!fileName || !field) return;
+          vscode.postMessage({ type: 'place:updateField', fileName: fileName, field: field, value: target.value });
         });
       }
 
