@@ -64,7 +64,7 @@ Each task was committed atomically:
 1. **Task 1: Render Places tab HTML, CSS, and webview script handlers** — `f9dce14` (feat) — includes minimal `planningPanel.ts` render wiring so the project builds (see Deviations).
 2. **Task 2: PlanningPanelProvider state, _renderPanel wiring, message handlers** — `ea88ca5` (feat)
 
-**Plan metadata:** _(pending — docs commit after state tools)_
+**Plan metadata:** _(hash recorded in follow-up docs commit after STATE/PROJECT sync)_
 
 _Note: Task 1 plan file listed only `planningPanelHtml.ts`; the first commit also updates `planningPanel.ts` minimally for TypeScript/build._
 

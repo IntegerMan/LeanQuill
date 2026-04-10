@@ -10,7 +10,7 @@ progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 25
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Project State: LeanQuill
@@ -31,9 +31,9 @@ Phase: 05 (place-and-setting-reference) — EXECUTING
 Plan: 4 of 4
 
 - Previous phase: 6 — Threads and Themes **complete** (2026-04-09)
-- Phase 5 in progress: plans 01–02 complete (05-01-SUMMARY.md, 05-02-SUMMARY.md); next 05-03-PLAN.md
+- Phase 5 in progress: plans 01–03 complete (05-01–05-03 SUMMARY); next **05-04-PLAN.md** (commands / wiring)
 - Overall progress: 7/13 roadmap phases complete (1–4, 6, 12–13); Phase 5 active
-- Plan summaries (milestone): [█████████░] 88%
+- Plan summaries (milestone): [█████████░] 92%
 
 ## Phase Status
 
@@ -79,6 +79,8 @@ Plan: 4 of 4
 | 2026-03-30 | Character, Place, and Thread phases inserted after Phase 3 | Phase 3 discuss-phase: user wants dedicated planning workspace tabs per domain |
 | 2026-04-09 | PLACE-01 not marked complete after 05-01 | Data layer only; UI, scans, and extension wiring remain in 05-02–05-04 |
 | 2026-04-10 | PLACE-01 still open after 05-02 | Hybrid scans landed; Places webview and extension wiring remain in 05-03–05-04 |
+| 2026-04-10 | Scoped character webview listeners to the Characters tab panel | Places tab reuses `char-*` layout; avoids duplicate `.char-container` capturing clicks |
+| 2026-04-10 | Split 05-03 commits: minimal `_renderPanel` wiring in task 1 | `renderPlanningHtml` signature needs TS call site so `npm run build` stays green |
 
 ## Accumulated Context
 
@@ -95,7 +97,7 @@ Plan: 4 of 4
 ## Session Continuity
 
 - Last updated: 2026-04-10
-- Next checkpoint: execute **05-03-PLAN.md** (Places webview) or `/gsd-plan-phase` if replanning
+- Next checkpoint: execute **05-04-PLAN.md** (new-place command and integration) or `/gsd-plan-phase` if replanning
 
 Last session: 2026-04-10T00:17:09.894Z
 Stopped at: Completed 05-03-PLAN.md
