@@ -105,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 — PLACE-01 validated (05-03 Places webview + panel handlers)*
+*Last updated: 2026-04-10 — PLACE-01 validated in Phase 5 (Places tab, hybrid manuscript/outline linking, extension wiring + `leanquill.newPlace`)*

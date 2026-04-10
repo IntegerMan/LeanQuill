@@ -292,7 +292,7 @@ Plans:
 | 1. Foundation and Safe Init | 0/0 | Completed | 2026-03-29 |
 | 3. Outline and Beat Planning | 3/3 | Completed | 2026-04-05 |
 | 4. Character Reference | 3/3 | Completed | 2026-04-09 |
-| 5. Place and Setting Reference | 0/4 | Not started | - |
+| 5. Place and Setting Reference | 4/4 | Completed | 2026-04-09 |
 | 6. Threads and Themes | 3/3 | Completed | 2026-04-09 |
 | 7. Global Knowledge Reference | 0/0 | Not started | - |
 | 8. Issue Capture, Triage, and Editor Signals | 0/0 | Not started | - |
