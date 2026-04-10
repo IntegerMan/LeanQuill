@@ -12,9 +12,12 @@ import {
   savePlace,
   deletePlace,
   scanManuscriptFileForPlaces,
+  collectBeatCandidateNodeIds,
+  outlineTextMatchesPlace,
+  scanOutlineIndexForPlaces,
 } from "../src/placeStore";
 import { SafeFileSystem } from "../src/safeFileSystem";
-import { PlaceProfile } from "../src/types";
+import { OutlineIndex, OutlineNode, PlaceProfile } from "../src/types";
 import { DEFAULT_PROJECT_CONFIG, ProjectConfig } from "../src/projectConfig";
 
 async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
@@ -247,6 +250,63 @@ test("scanManuscriptFileForPlaces adds manuscript path when place name matches",
       "should include manuscript path",
     );
   });
+});
+
+test("outlineTextMatchesPlace matches whole words only (case-insensitive)", () => {
+  assert.equal(outlineTextMatchesPlace("Scene at Red Inn tonight", "Red Inn", []), true);
+  assert.equal(outlineTextMatchesPlace("RedInn is one word", "Red Inn", []), false);
+  assert.equal(outlineTextMatchesPlace("red inn lower", "Red Inn", []), true);
+});
+
+test("outlineTextMatchesPlace considers aliases", () => {
+  assert.equal(outlineTextMatchesPlace("They returned to The Mill.", "Elsewhere", ["The Mill"]), true);
+});
+
+test("collectBeatCandidateNodeIds excludes chapter-linked manuscript nodes", () => {
+  const chapterNode: OutlineNode = {
+    id: "chap-1",
+    title: "Red Inn",
+    fileName: "manuscript/ch01.md",
+    active: true,
+    status: "not-started",
+    description: "Red Inn appears in chapter hook",
+    customFields: {},
+    traits: [],
+    children: [],
+  };
+  const beatNode: OutlineNode = {
+    id: "beat-1",
+    title: "Arrival",
+    fileName: "",
+    active: true,
+    status: "not-started",
+    description: "",
+    customFields: {},
+    traits: [],
+    children: [],
+  };
+  const index: OutlineIndex = { schemaVersion: 2, nodes: [chapterNode, beatNode] };
+  const candidates = collectBeatCandidateNodeIds(index);
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].id, "beat-1");
+});
+
+test("collectBeatCandidateNodeIds includes inactive beat candidates", () => {
+  const inactiveBeat: OutlineNode = {
+    id: "beat-z",
+    title: "Cut scene",
+    fileName: " ",
+    active: false,
+    status: "not-started",
+    description: "Mentions Red Inn",
+    customFields: {},
+    traits: [],
+    children: [],
+  };
+  const index: OutlineIndex = { schemaVersion: 2, nodes: [inactiveBeat] };
+  const candidates = collectBeatCandidateNodeIds(index);
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].id, "beat-z");
 });
 
 test("scanManuscriptFileForPlaces removes stale entry when name no longer matches", async () => {
