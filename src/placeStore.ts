@@ -17,6 +17,10 @@ export function slugifyPlaceName(name: string): string {
   return `${slug || "place"}.md`;
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function settingsDir(rootPath: string, config: ProjectConfig): string {
   const rel = config.folders.settings.replace(/\/+$/, "");
   return path.join(rootPath, ...rel.split("/"));
@@ -307,6 +311,44 @@ export async function deletePlace(
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
       throw err;
+    }
+  }
+}
+
+export async function scanManuscriptFileForPlaces(
+  manuscriptFilePath: string,
+  rootPath: string,
+  config: ProjectConfig,
+  safeFs: SafeFileSystem,
+): Promise<void> {
+  const text = await fs.readFile(manuscriptFilePath, "utf8");
+  const relativeManuscriptPath = path
+    .relative(rootPath, manuscriptFilePath)
+    .replace(/\\/g, "/");
+
+  const profiles = await listPlaces(rootPath, config);
+
+  for (const profile of profiles) {
+    const terms = [profile.name, ...profile.aliases].filter(Boolean);
+    const matched = terms.some((term) =>
+      new RegExp(`\\b${escapeRegex(term)}\\b`, "i").test(text),
+    );
+
+    const alreadyIn = profile.referencedByNameIn.includes(relativeManuscriptPath);
+    let changed = false;
+
+    if (matched && !alreadyIn) {
+      profile.referencedByNameIn = [...profile.referencedByNameIn, relativeManuscriptPath];
+      changed = true;
+    } else if (!matched && alreadyIn) {
+      profile.referencedByNameIn = profile.referencedByNameIn.filter(
+        (r) => r !== relativeManuscriptPath,
+      );
+      changed = true;
+    }
+
+    if (changed) {
+      await savePlace(profile, rootPath, config, safeFs);
     }
   }
 }
