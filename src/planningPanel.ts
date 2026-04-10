@@ -1097,7 +1097,6 @@ export class PlanningPanelProvider {
       "parentFileName",
       "description",
       "referencedByNameIn",
-      "referencedInBeats",
       "body",
     ]);
     const safeName = fieldName.trim().replace(/[^a-zA-Z0-9_]/g, "_");

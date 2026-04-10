@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { OutlineIndex, OutlineNode, PlaceProfile } from "./types";
+import { PlaceProfile } from "./types";
 import { ProjectConfig } from "./projectConfig";
 import { SafeFileSystem } from "./safeFileSystem";
 
@@ -19,40 +19,6 @@ export function slugifyPlaceName(name: string): string {
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function isChapterManuscriptNode(node: OutlineNode): boolean {
-  const fn = node.fileName.trim().replace(/\\/g, "/");
-  // Chapter-linked outline rows point at manuscript/*.md (same convention as referencedByNameIn paths).
-  return fn !== "" && /^manuscript\/.+\.md$/i.test(fn);
-}
-
-function outlineNodeSearchableText(node: OutlineNode): string {
-  return [node.title, node.description, ...Object.values(node.customFields)].join("\n");
-}
-
-/** Beat candidates: outline nodes that are not chapter-linked manuscript files under manuscript/. */
-export function collectBeatCandidateNodeIds(index: OutlineIndex): OutlineNode[] {
-  const out: OutlineNode[] = [];
-  const walk = (nodes: OutlineNode[]) => {
-    for (const node of nodes) {
-      if (!isChapterManuscriptNode(node)) {
-        out.push(node);
-      }
-      walk(node.children);
-    }
-  };
-  walk(index.nodes);
-  return out;
-}
-
-export function outlineTextMatchesPlace(
-  searchableText: string,
-  name: string,
-  aliases: string[],
-): boolean {
-  const terms = [name, ...aliases].filter(Boolean);
-  return terms.some((term) => new RegExp(`\\b${escapeRegex(term)}\\b`, "i").test(searchableText));
 }
 
 function settingsDir(rootPath: string, config: ProjectConfig): string {
@@ -76,7 +42,6 @@ export function parsePlaceFile(fileName: string, content: string): PlaceProfile 
       parentFileName: "",
       description: "",
       referencedByNameIn: [],
-      referencedInBeats: [],
       customFields: {},
       body: normalized,
     };
@@ -90,7 +55,8 @@ export function parsePlaceFile(fileName: string, content: string): PlaceProfile 
   let description = "";
   const aliases: string[] = [];
   const referencedByNameIn: string[] = [];
-  const referencedInBeats: string[] = [];
+  /** Legacy frontmatter list — parsed only so old files stay readable; not stored on `PlaceProfile`. */
+  const _legacyReferencedInBeats: string[] = [];
   const customFields: Record<string, string> = {};
 
   let currentKey: string | null = null;
@@ -162,9 +128,7 @@ export function parsePlaceFile(fileName: string, content: string): PlaceProfile 
       currentList = referencedByNameIn;
     } else if (key === "referencedInBeats") {
       currentKey = "referencedInBeats";
-      currentList = referencedInBeats;
-    } else if (key === "category" || key === "region") {
-      // Legacy fields — silently skip during migration
+      currentList = _legacyReferencedInBeats;
     } else {
       customFields[key] = val;
     }
@@ -179,7 +143,6 @@ export function parsePlaceFile(fileName: string, content: string): PlaceProfile 
     parentFileName,
     description,
     referencedByNameIn,
-    referencedInBeats,
     customFields,
     body,
   };
@@ -218,15 +181,6 @@ export function serializePlaceFile(profile: PlaceProfile): string {
     lines.push("referencedByNameIn:");
     for (const r of profile.referencedByNameIn) {
       lines.push(`  - ${r.replace(/\\/g, "/")}`);
-    }
-  }
-
-  if (profile.referencedInBeats.length === 0) {
-    lines.push("referencedInBeats: []");
-  } else {
-    lines.push("referencedInBeats:");
-    for (const id of profile.referencedInBeats) {
-      lines.push(`  - ${id}`);
     }
   }
 
@@ -305,7 +259,6 @@ export async function createPlace(
     parentFileName: "",
     description: "",
     referencedByNameIn: [],
-    referencedInBeats: [],
     customFields: {},
     body: "",
   };
@@ -377,36 +330,6 @@ export async function scanManuscriptFileForPlaces(
     }
 
     if (changed) {
-      await savePlace(profile, rootPath, config, safeFs);
-    }
-  }
-}
-
-export async function scanOutlineIndexForPlaces(
-  index: OutlineIndex,
-  rootPath: string,
-  config: ProjectConfig,
-  safeFs: SafeFileSystem,
-): Promise<void> {
-  const candidates = collectBeatCandidateNodeIds(index);
-  const profiles = await listPlaces(rootPath, config);
-
-  for (const profile of profiles) {
-    const matched = new Set<string>();
-    for (const node of candidates) {
-      const text = outlineNodeSearchableText(node);
-      if (outlineTextMatchesPlace(text, profile.name, profile.aliases)) {
-        matched.add(node.id);
-      }
-    }
-
-    const desired = Array.from(matched).sort((a, b) => a.localeCompare(b));
-    const prevSorted = [...profile.referencedInBeats].sort((a, b) => a.localeCompare(b));
-    const same =
-      desired.length === prevSorted.length && desired.every((id, i) => id === prevSorted[i]);
-
-    if (!same) {
-      profile.referencedInBeats = desired;
       await savePlace(profile, rootPath, config, safeFs);
     }
   }

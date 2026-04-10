@@ -20,11 +20,7 @@ import { CharacterTreeProvider } from "./characterTree";
 import { PlaceTreeProvider } from "./placeTree";
 import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
 import { createCharacter, scanManuscriptFileForCharacters } from "./characterStore";
-import {
-  createPlace,
-  scanManuscriptFileForPlaces,
-  scanOutlineIndexForPlaces,
-} from "./placeStore";
+import { createPlace, scanManuscriptFileForPlaces } from "./placeStore";
 import { createThread } from "./threadStore";
 import { addCentralThemeEntry, readThemesDocument, writeThemesDocument } from "./themesStore";
 
@@ -813,14 +809,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const onOutlineChanged = () => {
     void (async () => {
       void outlineWebviewProvider.refresh();
-      try {
-        const index = await readOutlineIndex(rootPath);
-        const latestConfig = await readProjectConfigWithDefaults(rootPath);
-        await scanOutlineIndexForPlaces(index, rootPath, latestConfig, safeFileSystem);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        log.error(`Outline place scan failed: ${message}`);
-      }
       void planningPanel.refresh();
       void syncBookTxt();
     })();

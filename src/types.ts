@@ -71,7 +71,6 @@ export interface PlaceProfile {
   parentFileName: string; // fileName of parent place ("" = root-level)
   description: string;
   referencedByNameIn: string[]; // manuscript paths relative to workspace root, forward slashes
-  referencedInBeats: string[]; // outline node ids (scan writers)
   customFields: Record<string, string>;
   body: string;
 }

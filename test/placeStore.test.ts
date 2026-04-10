@@ -12,22 +12,12 @@ import {
   savePlace,
   deletePlace,
   scanManuscriptFileForPlaces,
-  collectBeatCandidateNodeIds,
-  outlineTextMatchesPlace,
-  scanOutlineIndexForPlaces,
   buildPlaceTree,
   placeReparentWouldCycle,
 } from "../src/placeStore";
 import { SafeFileSystem } from "../src/safeFileSystem";
-import { OutlineIndex, OutlineNode, PlaceProfile } from "../src/types";
+import { PlaceProfile } from "../src/types";
 import { DEFAULT_PROJECT_CONFIG, ProjectConfig } from "../src/projectConfig";
-
-const OUTLINE_PLACE_SCAN_FIXTURE = path.join(
-  process.cwd(),
-  "test",
-  "fixtures",
-  "outline-place-scan.json",
-);
 
 async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "leanquill-places-"));
@@ -59,7 +49,6 @@ function makePlace(overrides?: Partial<PlaceProfile>): PlaceProfile {
     parentFileName: "",
     description: "A ruin by the river",
     referencedByNameIn: ["manuscript/ch1.md"],
-    referencedInBeats: ["beat-a", "beat-b"],
     customFields: {},
     body: "Notes here.",
     ...overrides,
@@ -99,8 +88,8 @@ Body line.
   assert.equal(p.parentFileName, "north-region.md");
   assert.equal(p.description, "Short blurb");
   assert.deepEqual(p.referencedByNameIn, ["manuscript/ch1.md"]);
-  assert.deepEqual(p.referencedInBeats, ["node-1", "node-2"]);
   assert.equal(p.body, "Body line.");
+  assert.ok(!("referencedInBeats" in p), "legacy referencedInBeats must not be on PlaceProfile");
 });
 
 test("parsePlaceFile applies defaults when frontmatter missing", () => {
@@ -109,11 +98,10 @@ test("parsePlaceFile applies defaults when frontmatter missing", () => {
   assert.deepEqual(p.aliases, []);
   assert.equal(p.parentFileName, "");
   assert.deepEqual(p.referencedByNameIn, []);
-  assert.deepEqual(p.referencedInBeats, []);
   assert.deepEqual(p.customFields, {});
 });
 
-test("parsePlaceFile migrates legacy category/region fields silently", () => {
+test("parsePlaceFile preserves category and region in customFields", () => {
   const content = `---
 name: Old Town
 category: city
@@ -125,8 +113,8 @@ description: A city
   assert.equal(p.name, "Old Town");
   assert.equal(p.parentFileName, "");
   assert.equal(p.description, "A city");
-  assert.equal(p.customFields["category"], undefined);
-  assert.equal(p.customFields["region"], undefined);
+  assert.equal(p.customFields["category"], "city");
+  assert.equal(p.customFields["region"], "West");
 });
 
 test("parsePlaceFile reads custom scalar keys into customFields", () => {
@@ -139,13 +127,10 @@ climate: rainy
   assert.equal(p.customFields["climate"], "rainy");
 });
 
-test("serializePlaceFile emits referencedInBeats list and empty-array syntax", () => {
-  const profile = makePlace({ referencedInBeats: ["a", "b"], referencedByNameIn: [] });
+test("serializePlaceFile does not emit referencedInBeats", () => {
+  const profile = makePlace({ referencedByNameIn: [] });
   const out = serializePlaceFile(profile);
-  assert.ok(out.includes("referencedInBeats:\n"), "list header");
-  assert.ok(out.includes("  - a\n"), "beat a");
-  assert.ok(out.includes("  - b\n"), "beat b");
-  assert.ok(out.includes("referencedByNameIn: []\n"), "empty refs");
+  assert.ok(!out.includes("referencedInBeats"), "beat ids removed from model and serialization");
 });
 
 test("round-trip parsePlaceFile(serializePlaceFile(p)) preserves logical fields", () => {
@@ -153,7 +138,7 @@ test("round-trip parsePlaceFile(serializePlaceFile(p)) preserves logical fields"
     aliases: ["Mill", "Ruin"],
     parentFileName: "north-region.md",
     description: "Multi\nline",
-    customFields: { climate: "wet" },
+    customFields: { climate: "wet", category: "city", region: "West" },
     body: "Extended.",
   });
   const serialized = serializePlaceFile(profile);
@@ -163,7 +148,6 @@ test("round-trip parsePlaceFile(serializePlaceFile(p)) preserves logical fields"
   assert.equal(parsed.parentFileName, profile.parentFileName);
   assert.equal(parsed.description, profile.description);
   assert.deepEqual(parsed.referencedByNameIn, profile.referencedByNameIn);
-  assert.deepEqual(parsed.referencedInBeats, profile.referencedInBeats);
   assert.deepEqual(parsed.customFields, profile.customFields);
   assert.equal(parsed.body.trim(), profile.body.trim());
 });
@@ -271,114 +255,6 @@ test("scanManuscriptFileForPlaces adds manuscript path when place name matches",
       "should include manuscript path",
     );
   });
-});
-
-test("outlineTextMatchesPlace matches whole words only (case-insensitive)", () => {
-  assert.equal(outlineTextMatchesPlace("Scene at Red Inn tonight", "Red Inn", []), true);
-  assert.equal(outlineTextMatchesPlace("RedInn is one word", "Red Inn", []), false);
-  assert.equal(outlineTextMatchesPlace("red inn lower", "Red Inn", []), true);
-});
-
-test("outlineTextMatchesPlace considers aliases", () => {
-  assert.equal(outlineTextMatchesPlace("They returned to The Mill.", "Elsewhere", ["The Mill"]), true);
-});
-
-test("collectBeatCandidateNodeIds excludes chapter-linked manuscript nodes", () => {
-  const chapterNode: OutlineNode = {
-    id: "chap-1",
-    title: "Red Inn",
-    fileName: "manuscript/ch01.md",
-    active: true,
-    status: "not-started",
-    description: "Red Inn appears in chapter hook",
-    customFields: {},
-    traits: [],
-    children: [],
-  };
-  const beatNode: OutlineNode = {
-    id: "beat-1",
-    title: "Arrival",
-    fileName: "",
-    active: true,
-    status: "not-started",
-    description: "",
-    customFields: {},
-    traits: [],
-    children: [],
-  };
-  const index: OutlineIndex = { schemaVersion: 2, nodes: [chapterNode, beatNode] };
-  const candidates = collectBeatCandidateNodeIds(index);
-  assert.equal(candidates.length, 1);
-  assert.equal(candidates[0].id, "beat-1");
-});
-
-test("scanOutlineIndexForPlaces sets referencedInBeats from outline-place-scan fixture", async () => {
-  const raw = await fs.readFile(OUTLINE_PLACE_SCAN_FIXTURE, "utf8");
-  const index = JSON.parse(raw) as OutlineIndex;
-
-  await withTempDir(async (dir) => {
-    const config = makeConfig();
-    const safeFs = makeSafeFs(dir);
-    await createPlace("Red Inn", dir, config, safeFs);
-
-    await scanOutlineIndexForPlaces(index, dir, config, safeFs);
-
-    const [p] = await listPlaces(dir, config);
-    assert.deepEqual(p.referencedInBeats, [
-      "outline-beat-active-red-inn",
-      "outline-beat-inactive-red-inn",
-    ]);
-    assert.ok(
-      !p.referencedInBeats.includes("outline-chapter-place-scan-ch01"),
-      "chapter-linked node must not appear in beat refs",
-    );
-  });
-});
-
-test("scanOutlineIndexForPlaces ignores chapter node title match (not a beat candidate)", async () => {
-  const index: OutlineIndex = {
-    schemaVersion: 2,
-    nodes: [
-      {
-        id: "ch-only-title-red-inn",
-        title: "Red Inn",
-        fileName: "manuscript/prologue.md",
-        active: true,
-        status: "not-started",
-        description: "",
-        customFields: {},
-        traits: [],
-        children: [],
-      },
-    ],
-  };
-
-  await withTempDir(async (dir) => {
-    const config = makeConfig();
-    const safeFs = makeSafeFs(dir);
-    await createPlace("Red Inn", dir, config, safeFs);
-    await scanOutlineIndexForPlaces(index, dir, config, safeFs);
-    const [p] = await listPlaces(dir, config);
-    assert.deepEqual(p.referencedInBeats, []);
-  });
-});
-
-test("collectBeatCandidateNodeIds includes inactive beat candidates", () => {
-  const inactiveBeat: OutlineNode = {
-    id: "beat-z",
-    title: "Cut scene",
-    fileName: " ",
-    active: false,
-    status: "not-started",
-    description: "Mentions Red Inn",
-    customFields: {},
-    traits: [],
-    children: [],
-  };
-  const index: OutlineIndex = { schemaVersion: 2, nodes: [inactiveBeat] };
-  const candidates = collectBeatCandidateNodeIds(index);
-  assert.equal(candidates.length, 1);
-  assert.equal(candidates[0].id, "beat-z");
 });
 
 test("scanManuscriptFileForPlaces removes stale entry when name no longer matches", async () => {
