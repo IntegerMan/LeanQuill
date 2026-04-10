@@ -130,11 +130,11 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 3
 **Requirements:** PLACE-01
-**Plans:** 4 plans (1/4 summaries complete)
+**Plans:** 4 plans (2/4 summaries complete)
 
 Plans:
 - [x] 05-01-PLAN.md — PlaceProfile, `folders.settings`, `placeStore` CRUD + tests (no scans).
-- [ ] 05-02-PLAN.md — Hybrid linking: `scanManuscriptFileForPlaces` + `scanOutlineIndexForPlaces` + fixture tests (05-RESEARCH Option C).
+- [x] 05-02-PLAN.md — Hybrid linking: `scanManuscriptFileForPlaces` + `scanOutlineIndexForPlaces` + fixture tests (05-RESEARCH Option C).
 - [ ] 05-03-PLAN.md — Places tab webview + `PlanningPanel` `place:*` handlers + `showPlace` (Characters-tab parity + beat id list).
 - [ ] 05-04-PLAN.md — Extension wiring: SafeFs allowPath, watcher, outline/manuscript hooks, `leanquill.newPlace`.
 
