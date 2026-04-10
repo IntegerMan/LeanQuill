@@ -37,7 +37,7 @@
 
 ### Place and Setting Reference
 
-- [ ] **PLACE-01**: Author can manage place and setting profiles within the planning workspace Places tab — creating, editing, and organizing location entries with author-defined fields, linking places to the beats and chapters where scenes occur
+- [x] **PLACE-01**: Author can manage place and setting profiles within the planning workspace Places tab — creating, editing, and organizing location entries with author-defined fields, linking places to the beats and chapters where scenes occur
 
 ### Threads and Themes
 
@@ -130,7 +130,7 @@ Which phases cover which requirements. To be populated during roadmap creation.
 | PLAN-02 | 3 | Pending |
 | PLAN-03 | 8 | Pending |
 | CHAR-01 | 4 | Complete |
-| PLACE-01 | 5 | Pending |
+| PLACE-01 | 5 | Complete |
 | THREAD-01 | 6 | Complete |
 | KNOW-01 | 7 | Pending |
 | KNOW-02 | 7 | Pending |

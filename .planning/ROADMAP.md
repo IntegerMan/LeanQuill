@@ -135,7 +135,7 @@ Plans:
 Plans:
 - [x] 05-01-PLAN.md — PlaceProfile, `folders.settings`, `placeStore` CRUD + tests (no scans).
 - [x] 05-02-PLAN.md — Hybrid linking: `scanManuscriptFileForPlaces` + `scanOutlineIndexForPlaces` + fixture tests (05-RESEARCH Option C).
-- [ ] 05-03-PLAN.md — Places tab webview + `PlanningPanel` `place:*` handlers + `showPlace` (Characters-tab parity + beat id list).
+- [x] 05-03-PLAN.md — Places tab webview + `PlanningPanel` `place:*` handlers + `showPlace` (Characters-tab parity + beat id list).
 - [ ] 05-04-PLAN.md — Extension wiring: SafeFs allowPath, watcher, outline/manuscript hooks, `leanquill.newPlace`.
 
 **Success criteria:**
