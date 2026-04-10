@@ -270,10 +270,15 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 2, Phase 4, Phase 5, Phase 6
 **Requirements:** ISSUE-01 (partial), ISSUE-02 (partial)
-**Plans:** 0 plans
+**Plans:** 6 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 14 to break down)
+- [ ] 14-01-PLAN.md — Wave 0 tests: `openQuestionStore` + chapter open-count helpers (ISSUE-01/02 partial, D-03).
+- [ ] 14-02-PLAN.md — Types, `openQuestionStore`, `writeChapterStatusEntry` pitfall fix, green unit tests.
+- [ ] 14-03-PLAN.md — Shared `openQuestionsHtml` (14-UI-SPEC, D-02 protocol).
+- [ ] 14-04-PLAN.md — Planning workspace Open questions tab + handlers (D-01, D-02).
+- [ ] 14-05-PLAN.md — Panel `WebviewViewProvider` + `package.json` panel container (D-02).
+- [ ] 14-06-PLAN.md — Commands, context menus, outline row counts (D-03/D-04), navigation (D-05), watchers.
 
 **Success criteria:**
 1. Author can create open-question notes and associate them with nothing (book-wide), a character, a thread, a place, a manuscript file, or a specific text selection from a manuscript file.
@@ -322,6 +327,6 @@ Plans:
 | 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
 | 12. Standardized Research Workflow and Results Repository | 2/2 | Completed | 2026-04-05 |
 | 13. LeanPub Workspace Initialization | 4/4 | Completed | 2026-04-09 |
-| 14. Open Questions | 0/0 | Not started | - |
+| 14. Open Questions | 0/6 | Not started | - |
 
 ## Backlog
