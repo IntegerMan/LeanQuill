@@ -1,6 +1,13 @@
 import type { ChapterPickerOption } from "./chapterPickerOptions";
 import { escapeHtml } from "./htmlUtils";
-import { OutlineNode, OutlineIndex, CharacterProfile, ThemesDocument, ThreadProfile } from "./types";
+import {
+  OutlineNode,
+  OutlineIndex,
+  CharacterProfile,
+  PlaceProfile,
+  ThemesDocument,
+  ThreadProfile,
+} from "./types";
 
 function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) {
@@ -474,10 +481,162 @@ function renderCharactersTab(
   return `<div class="char-container">${listPane}${detailPane}</div>`;
 }
 
+function renderPlaceDetail(profile: PlaceProfile): string {
+  const bodyId = `place-body-${profile.fileName.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  const standardFields = `
+    <div class="char-field-row">
+      <label class="char-field-label">Name</label>
+      <input class="char-field-input" data-action="place:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="name"
+        value="${escapeHtml(profile.name)}" />
+    </div>
+    <div class="char-field-row">
+      <label class="char-field-label">Category</label>
+      <input class="char-field-input" list="place-categories-datalist"
+        data-action="place:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="category"
+        value="${escapeHtml(profile.category)}" />
+      <datalist id="place-categories-datalist">
+        <option value="interior"/>
+        <option value="city"/>
+        <option value="landmark"/>
+        <option value="recurring"/>
+      </datalist>
+    </div>
+    <div class="char-field-row">
+      <label class="char-field-label">Aliases</label>
+      <input class="char-field-input" data-action="place:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="aliases"
+        value="${escapeHtml(profile.aliases.join(", "))}"
+        placeholder="Comma-separated aliases" />
+    </div>
+    <div class="char-field-row">
+      <label class="char-field-label">Region</label>
+      <input class="char-field-input" data-action="place:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="region"
+        value="${escapeHtml(profile.region)}" />
+    </div>
+    <div class="char-field-row">
+      <label class="char-field-label">Description</label>
+      <textarea class="char-field-textarea" data-action="place:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="description">${escapeHtml(profile.description)}</textarea>
+    </div>`;
+
+  const customFieldRows = Object.entries(profile.customFields).map(([key, val]) =>
+    `<div class="char-field-row char-field-custom">
+      <label class="char-field-label char-field-label--custom">${escapeHtml(key)}</label>
+      <input class="char-field-input" data-action="place:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="custom:${escapeHtml(key)}"
+        value="${escapeHtml(val)}" />
+    </div>`
+  ).join("");
+
+  const refs = profile.referencedByNameIn.length > 0
+    ? profile.referencedByNameIn.map((r) => `<li class="char-ref-item">${escapeHtml(r)}</li>`).join("")
+    : '<li class="char-ref-empty">No manuscript references detected yet.</li>';
+
+  const beatRefs = profile.referencedInBeats.length > 0
+    ? profile.referencedInBeats.map((id) => `<li class="char-ref-item">${escapeHtml(id)}</li>`).join("")
+    : '<li class="char-ref-empty">No outline beat references detected yet.</li>';
+
+  return `
+    <div class="char-detail-inner" data-file="${escapeHtml(profile.fileName)}">
+      ${standardFields}
+      ${customFieldRows}
+      <div class="char-field-row">
+        <button class="char-btn-add-field" data-action="place:addCustomField"
+          data-file="${escapeHtml(profile.fileName)}">+ Add Field</button>
+      </div>
+      <div class="char-field-row">
+        <label class="char-field-label" for="${bodyId}">Notes</label>
+        <textarea id="${bodyId}" class="char-field-textarea char-field-textarea--body" data-action="place:updateField"
+          data-file="${escapeHtml(profile.fileName)}" data-field="body"
+          placeholder="Extended notes about this place...">${escapeHtml(profile.body)}</textarea>
+      </div>
+      <div class="char-refs-section">
+        <div class="char-refs-label">Appears in manuscript</div>
+        <ul class="char-refs-list">${refs}</ul>
+      </div>
+      <div class="char-refs-section">
+        <div class="char-refs-label">Referenced in outline (beats)</div>
+        <ul class="char-refs-list">${beatRefs}</ul>
+      </div>
+      <div class="char-detail-actions">
+        <button class="char-btn-editor" data-action="place:openInEditor"
+          data-file="${escapeHtml(profile.fileName)}">Open in Editor</button>
+        <button class="char-btn-delete" data-action="place:delete"
+          data-file="${escapeHtml(profile.fileName)}">Delete Place</button>
+      </div>
+    </div>`;
+}
+
+function renderPlacesTab(places: PlaceProfile[], selectedFileName: string | undefined): string {
+  const effectiveSelected = selectedFileName ?? places[0]?.fileName;
+
+  const regionGroups = new Map<string, PlaceProfile[]>();
+  for (const p of places) {
+    const regionKey = p.region.trim() || "Uncategorized";
+    if (!regionGroups.has(regionKey)) {
+      regionGroups.set(regionKey, []);
+    }
+    regionGroups.get(regionKey)!.push(p);
+  }
+  for (const list of regionGroups.values()) {
+    list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  }
+  const sortedRegions = [...regionGroups.keys()].sort((a, b) => {
+    if (a === "Uncategorized") {
+      return 1;
+    }
+    if (b === "Uncategorized") {
+      return -1;
+    }
+    return a.localeCompare(b, undefined, { sensitivity: "base" });
+  });
+
+  let listItems = "";
+  for (const region of sortedRegions) {
+    const regionPlaces = regionGroups.get(region)!;
+    const groupItems = regionPlaces.map((p) =>
+      `<div class="char-list-item${p.fileName === effectiveSelected ? " char-list-item--selected" : ""}"
+           data-action="place:select"
+           data-file="${escapeHtml(p.fileName)}">
+        ${escapeHtml(p.name || "(untitled)")}
+      </div>`
+    ).join("");
+    listItems += `<div class="char-role-group">
+      <div class="char-role-label">${escapeHtml(region)}</div>
+      ${groupItems}
+    </div>`;
+  }
+
+  const listPane = `<div class="char-list">
+    <div class="char-list-header">
+      <button class="char-btn-new" data-action="place:create">+ New Place</button>
+    </div>
+    <div class="char-list-body">
+      ${places.length === 0
+        ? '<div class="char-empty-list">No places yet. Click + New Place to start.</div>'
+        : listItems}
+    </div>
+  </div>`;
+
+  const selected = places.find((p) => p.fileName === effectiveSelected);
+  const detailPane = `<div class="char-detail">
+    ${selected
+      ? renderPlaceDetail(selected)
+      : '<div class="char-empty-detail">Select a place to view its profile.</div>'}
+  </div>`;
+
+  return `<div class="char-container">${listPane}${detailPane}</div>`;
+}
+
 export function renderPlanningHtml(
   index: OutlineIndex,
   characters: CharacterProfile[],
   selectedCharacterFileName: string | undefined,
+  places: PlaceProfile[],
+  selectedPlaceFileName: string | undefined,
   themes: ThemesDocument,
   threads: ThreadProfile[],
   selectedThreadFileName: string | undefined,
@@ -503,6 +662,8 @@ export function renderPlanningHtml(
       content = renderThemesTab(themes, chapterPickerOptions, projectBookTitle, projectGenresDisplay);
     } else if (id === "characters") {
       content = renderCharactersTab(characters, selectedCharacterFileName);
+    } else if (id === "places") {
+      content = renderPlacesTab(places, selectedPlaceFileName);
     } else if (id === "threads") {
       content = renderThreadsTab(threads, selectedThreadFileName, chapterPickerOptions);
     } else {
@@ -1434,8 +1595,9 @@ export function renderPlanningHtml(
       });
 
 
-      // --- Character event delegation ---
-      const charContainer = document.querySelector('.char-container');
+      // --- Character event delegation (scoped to Characters tab panel) ---
+      const charactersPanel = document.querySelector('.tab-panel[data-panel-id="characters"]');
+      const charContainer = charactersPanel && charactersPanel.querySelector('.char-container');
       if (charContainer) {
         const charDebounceTimers = {};
         charContainer.addEventListener('click', (e) => {
@@ -1471,6 +1633,48 @@ export function renderPlanningHtml(
           if (charDebounceTimers[key]) clearTimeout(charDebounceTimers[key]);
           charDebounceTimers[key] = setTimeout(() => {
             vscode.postMessage({ type: 'character:updateField', fileName: fileName, field: field, value: value });
+          }, 300);
+        });
+      }
+
+      // --- Places tab (same layout classes as characters; scoped panel) ---
+      const placesPanel = document.querySelector('.tab-panel[data-panel-id="places"]');
+      const placeContainer = placesPanel && placesPanel.querySelector('.char-container');
+      if (placeContainer) {
+        const placeDebounceTimers = {};
+        placeContainer.addEventListener('click', (e) => {
+          const target = e.target;
+          if (!target) return;
+          const el = target.closest('[data-action]');
+          if (!el) return;
+          const action = el.getAttribute('data-action');
+          const fileName = el.getAttribute('data-file');
+          if (action === 'place:select' && fileName) {
+            vscode.postMessage({ type: 'place:select', fileName: fileName });
+          } else if (action === 'place:create') {
+            vscode.postMessage({ type: 'place:create' });
+          } else if (action === 'place:addCustomField' && fileName) {
+            const fieldName = prompt('Field name:');
+            if (fieldName && fieldName.trim()) {
+              vscode.postMessage({ type: 'place:addCustomField', fileName: fileName, fieldName: fieldName.trim() });
+            }
+          } else if (action === 'place:delete' && fileName) {
+            vscode.postMessage({ type: 'place:delete', fileName: fileName });
+          } else if (action === 'place:openInEditor' && fileName) {
+            vscode.postMessage({ type: 'place:openInEditor', fileName: fileName });
+          }
+        });
+        placeContainer.addEventListener('input', (e) => {
+          const target = e.target;
+          if (!target || target.getAttribute('data-action') !== 'place:updateField') return;
+          const fileName = target.getAttribute('data-file');
+          const field = target.getAttribute('data-field');
+          if (!fileName || !field) return;
+          const value = target.value;
+          const key = fileName + ':' + field;
+          if (placeDebounceTimers[key]) clearTimeout(placeDebounceTimers[key]);
+          placeDebounceTimers[key] = setTimeout(() => {
+            vscode.postMessage({ type: 'place:updateField', fileName: fileName, field: field, value: value });
           }, 300);
         });
       }

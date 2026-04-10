@@ -3,6 +3,7 @@ import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { resolveChapterOrder } from "./chapterOrder";
 import { listCharacters, createCharacter, saveCharacter, deleteCharacter } from "./characterStore";
+import { listPlaces } from "./placeStore";
 import { buildChapterPickerOptions } from "./chapterPickerOptions";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml } from "./planningPanelHtml";
@@ -35,6 +36,8 @@ export class PlanningPanelProvider {
   private _pendingCharacter: CharacterProfile | undefined;
   private _charDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   private _charUpdateLock: Promise<void> = Promise.resolve();
+
+  private _selectedPlaceFileName: string | undefined;
 
   private _pendingThemes: ThemesDocument | undefined;
   private _themeDebounceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -287,6 +290,7 @@ export class PlanningPanelProvider {
     const index = await readOutlineIndex(this.rootPath);
     const config = await readProjectConfigWithDefaults(this.rootPath);
     const characters = await listCharacters(this.rootPath, config);
+    const places = await listPlaces(this.rootPath, config);
     const chapterOrder = await resolveChapterOrder(this.rootPath);
     const chapterPickerOptions = buildChapterPickerOptions(index, chapterOrder);
     const themes = this._pendingThemes ?? await readThemesDocument(this.rootPath);
@@ -305,12 +309,20 @@ export class PlanningPanelProvider {
     ) {
       this._selectedThreadFileName = undefined;
     }
+    if (
+      this._selectedPlaceFileName &&
+      !places.find((p) => p.fileName === this._selectedPlaceFileName)
+    ) {
+      this._selectedPlaceFileName = undefined;
+    }
     const nonce = crypto.randomBytes(16).toString("hex");
     const cspSource = this._panel.webview.cspSource;
     this._panel.webview.html = renderPlanningHtml(
       index,
       characters,
       this._selectedCharacterFileName,
+      places,
+      this._selectedPlaceFileName,
       themes,
       threads,
       this._selectedThreadFileName,
