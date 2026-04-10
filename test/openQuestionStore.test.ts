@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseOpenQuestionFile, serializeOpenQuestionFile } from "../src/openQuestionStore";
+import {
+  countOpenQuestionsLinkedToChapterRef,
+  countOpenQuestionsLinkedToEntity,
+  parseOpenQuestionFile,
+  serializeOpenQuestionFile,
+} from "../src/openQuestionStore";
 import type { OpenQuestionRecord } from "../src/types";
 
 /**
@@ -16,6 +21,7 @@ function baseRecord(partial: Partial<OpenQuestionRecord> & Pick<OpenQuestionReco
   return {
     fileName: `${partial.id}.md`,
     id: partial.id,
+    issueSchemaType: partial.issueSchemaType ?? "author-note",
     title: partial.title,
     body: partial.body ?? "",
     status: partial.status ?? "open",
@@ -77,6 +83,19 @@ test("round-trip thread-linked question uses lq_thread_file", () => {
   }
 });
 
+test("round-trip research-linked question uses lq_research_file", () => {
+  const orig = baseRecord({
+    id: "oq-res",
+    title: "Research question",
+    association: { kind: "research", fileName: "nodules.md" },
+  });
+  const back = parseOpenQuestionFile(orig.fileName, serializeOpenQuestionFile(orig));
+  assert.equal(back.association.kind, "research");
+  if (back.association.kind === "research") {
+    assert.equal(back.association.fileName, "nodules.md");
+  }
+});
+
 test("round-trip chapter-only association uses manuscript chapter_ref", () => {
   const orig = baseRecord({
     id: "oq-ch",
@@ -101,6 +120,33 @@ test("round-trip selection association keeps span_hint for D-05 anchoring", () =
   if (back.association.kind === "selection") {
     assert.equal(back.association.spanHint, '"…the door was ajar."');
   }
+});
+
+test("countOpenQuestionsLinkedToEntity uses basename match", () => {
+  const qs = [
+    baseRecord({ id: "a", title: "t", association: { kind: "character", fileName: "hero.md" } }),
+    baseRecord({ id: "b", title: "t2", association: { kind: "place", fileName: "inn.md" } }),
+  ];
+  assert.equal(countOpenQuestionsLinkedToEntity(qs, "character", "notes/characters/hero.md"), 1);
+  assert.equal(countOpenQuestionsLinkedToEntity(qs, "character", "hero.md"), 1);
+  assert.equal(countOpenQuestionsLinkedToEntity(qs, "place", "inn.md"), 1);
+});
+
+test("countOpenQuestionsLinkedToChapterRef matches chapter and selection", () => {
+  const qs = [
+    baseRecord({
+      id: "c",
+      title: "t",
+      association: { kind: "chapter", chapterRef: "manuscript/ch1.md" },
+    }),
+    baseRecord({
+      id: "s",
+      title: "t2",
+      association: { kind: "selection", chapterRef: "manuscript/ch1.md", spanHint: "x" },
+    }),
+  ];
+  assert.equal(countOpenQuestionsLinkedToChapterRef(qs, "manuscript/ch1.md"), 2);
+  assert.equal(countOpenQuestionsLinkedToChapterRef(qs, "manuscript/other.md"), 0);
 });
 
 test("Phase 14 statuses: open deferred resolved only (no dismissed in Phase 14)", () => {

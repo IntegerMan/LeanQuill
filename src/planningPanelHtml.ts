@@ -177,7 +177,9 @@ function renderStubTab(name: string): string {
 }
 
 const TAB_IDS = ["themes", "outline", "cards", "characters", "places", "threads", "openQuestions"] as const;
-const TAB_LABELS: Record<string, string> = {
+
+/** Panel/window title segment for each planning tab (`LeanQuill - …`). */
+export const PLANNING_TAB_LABELS: Record<string, string> = {
   outline: "Outline",
   cards: "Cards",
   themes: "Themes",
@@ -186,6 +188,8 @@ const TAB_LABELS: Record<string, string> = {
   threads: "Threads",
   openQuestions: "Open questions",
 };
+
+const TAB_LABELS = PLANNING_TAB_LABELS;
 
 // ---------------------------------------------------------------------------
 // Themes tab
@@ -612,7 +616,6 @@ export function renderPlanningHtml(
   threads: ThreadProfile[],
   selectedThreadFileName: string | undefined,
   openQuestions: SerializableOpenQuestionRow[],
-  selectedOpenQuestionId: string | undefined,
   chapterPickerOptions: ChapterPickerOption[],
   projectBookTitle: string,
   projectGenresDisplay: string,
@@ -640,7 +643,7 @@ export function renderPlanningHtml(
     } else if (id === "threads") {
       content = renderThreadsTab(threads, selectedThreadFileName, chapterPickerOptions);
     } else if (id === "openQuestions") {
-      content = renderOpenQuestionsHtml(openQuestions, selectedOpenQuestionId, "planning", nonce, cspSource, false);
+      content = renderOpenQuestionsHtml(openQuestions, "planning", nonce, cspSource, false);
     } else {
       content = renderStubTab(TAB_LABELS[id]);
     }

@@ -8,6 +8,19 @@ export const OPEN_QUESTIONS_DIR = ".leanquill/open-questions";
 
 const VALID_STATUSES: OpenQuestionStatus[] = ["open", "deferred", "resolved"];
 
+/** Human-readable label for issue-schema `type` (list UI). */
+export function displayIssueTypeLabel(issueSchemaType: string): string {
+  const t = (issueSchemaType || "").trim() || "author-note";
+  if (t === "author-note") {
+    return "Question";
+  }
+  return t
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function openQuestionsAbs(rootPath: string): string {
   return path.join(rootPath, ...OPEN_QUESTIONS_DIR.split("/"));
 }
@@ -38,6 +51,8 @@ function associationFromFrontmatter(fields: Record<string, string>): OpenQuestio
       return { kind: "place", fileName: fields.lq_place_file || "" };
     case "thread":
       return { kind: "thread", fileName: fields.lq_thread_file || "" };
+    case "research":
+      return { kind: "research", fileName: fields.lq_research_file || "" };
     case "chapter":
       return { kind: "chapter", chapterRef: normalizePathSeparators(fields.chapter_ref || "") };
     case "selection":
@@ -80,6 +95,13 @@ function frontmatterFieldsForAssociation(association: OpenQuestionAssociation): 
         chapter_ref: "project-wide",
         lq_assoc_kind: "thread",
         lq_thread_file: association.fileName,
+        span_hint: "",
+      };
+    case "research":
+      return {
+        chapter_ref: "project-wide",
+        lq_assoc_kind: "research",
+        lq_research_file: association.fileName,
         span_hint: "",
       };
     case "chapter":
@@ -135,10 +157,12 @@ export function parseOpenQuestionFile(fileName: string, content: string): OpenQu
   const createdAt = scalars.created_at || new Date().toISOString();
   const updatedAt = scalars.updated_at || createdAt;
   const association = associationFromFrontmatter(scalars);
+  const issueSchemaType = (scalars.type || "author-note").trim() || "author-note";
 
   return {
     fileName,
     id,
+    issueSchemaType,
     title,
     body,
     status: statusRaw,
@@ -156,7 +180,7 @@ export function serializeOpenQuestionFile(record: OpenQuestionRecord): string {
   const lines: string[] = ["---"];
 
   lines.push(`id: ${escapeYamlString(record.id)}`);
-  lines.push("type: author-note");
+  lines.push(`type: ${escapeYamlString(record.issueSchemaType)}`);
   lines.push(`status: ${record.status}`);
   lines.push("priority: 3");
   lines.push(`title: ${escapeYamlString(record.title)}`);
@@ -189,6 +213,9 @@ export function serializeOpenQuestionFile(record: OpenQuestionRecord): string {
   }
   if (assocFm.lq_thread_file) {
     lines.push(`lq_thread_file: ${escapeYamlString(assocFm.lq_thread_file)}`);
+  }
+  if (assocFm.lq_research_file) {
+    lines.push(`lq_research_file: ${escapeYamlString(assocFm.lq_research_file)}`);
   }
 
   lines.push("---");
@@ -302,6 +329,7 @@ export async function createOpenQuestion(
   const record: OpenQuestionRecord = {
     fileName: slug,
     id,
+    issueSchemaType: "author-note",
     title: input.title.trim(),
     body: "",
     status: "open",
@@ -335,4 +363,117 @@ export async function deleteOpenQuestion(fileName: string, rootPath: string, saf
       throw err;
     }
   }
+}
+
+export function countOpenQuestionsLinkedToEntity(
+  questions: OpenQuestionRecord[],
+  kind: "character" | "place" | "thread" | "research",
+  fileName: string,
+): number {
+  const base = path.basename(fileName);
+  return questions.filter((q) => q.association.kind === kind && q.association.fileName === base).length;
+}
+
+export function countOpenQuestionsLinkedToChapterRef(questions: OpenQuestionRecord[], chapterRef: string): number {
+  const norm = normalizePathSeparators(chapterRef);
+  return questions.filter((q) => {
+    if (q.association.kind === "chapter") {
+      return normalizePathSeparators(q.association.chapterRef) === norm;
+    }
+    if (q.association.kind === "selection") {
+      return normalizePathSeparators(q.association.chapterRef) === norm;
+    }
+    return false;
+  }).length;
+}
+
+export async function deleteOpenQuestionsForEntity(
+  rootPath: string,
+  safeFs: SafeFileSystem,
+  kind: "character" | "place" | "thread" | "research",
+  fileName: string,
+): Promise<number> {
+  const base = path.basename(fileName);
+  const list = await listOpenQuestions(rootPath);
+  const targets = list.filter((q) => q.association.kind === kind && q.association.fileName === base).map((q) => q.fileName);
+  for (const fn of targets) {
+    await deleteOpenQuestion(fn, rootPath, safeFs);
+  }
+  return targets.length;
+}
+
+export async function deleteOpenQuestionsForChapterRef(
+  rootPath: string,
+  safeFs: SafeFileSystem,
+  chapterRef: string,
+): Promise<number> {
+  const norm = normalizePathSeparators(chapterRef);
+  const list = await listOpenQuestions(rootPath);
+  const targets = list
+    .filter((q) => {
+      if (q.association.kind === "chapter") {
+        return normalizePathSeparators(q.association.chapterRef) === norm;
+      }
+      if (q.association.kind === "selection") {
+        return normalizePathSeparators(q.association.chapterRef) === norm;
+      }
+      return false;
+    })
+    .map((q) => q.fileName);
+  for (const fn of targets) {
+    await deleteOpenQuestion(fn, rootPath, safeFs);
+  }
+  return targets.length;
+}
+
+export async function patchEntityFileNameInOpenQuestions(
+  rootPath: string,
+  safeFs: SafeFileSystem,
+  kind: "character" | "place" | "thread" | "research",
+  oldFileName: string,
+  newFileName: string,
+): Promise<number> {
+  const oldB = path.basename(oldFileName);
+  const newB = path.basename(newFileName);
+  if (oldB === newB) {
+    return 0;
+  }
+  const list = await listOpenQuestions(rootPath);
+  let n = 0;
+  for (const q of list) {
+    if (q.association.kind === kind && q.association.fileName === oldB) {
+      await saveOpenQuestion({ ...q, association: { kind, fileName: newB } }, rootPath, safeFs);
+      n++;
+    }
+  }
+  return n;
+}
+
+export async function patchChapterRefInOpenQuestions(
+  rootPath: string,
+  safeFs: SafeFileSystem,
+  oldRef: string,
+  newRef: string,
+): Promise<number> {
+  const o = normalizePathSeparators(oldRef);
+  const ne = normalizePathSeparators(newRef);
+  if (o === ne) {
+    return 0;
+  }
+  const list = await listOpenQuestions(rootPath);
+  let n = 0;
+  for (const q of list) {
+    if (q.association.kind === "chapter" && normalizePathSeparators(q.association.chapterRef) === o) {
+      await saveOpenQuestion({ ...q, association: { kind: "chapter", chapterRef: ne } }, rootPath, safeFs);
+      n++;
+    } else if (q.association.kind === "selection" && normalizePathSeparators(q.association.chapterRef) === o) {
+      await saveOpenQuestion(
+        { ...q, association: { kind: "selection", chapterRef: ne, spanHint: q.association.spanHint } },
+        rootPath,
+        safeFs,
+      );
+      n++;
+    }
+  }
+  return n;
 }

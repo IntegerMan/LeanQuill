@@ -14,10 +14,11 @@ import { OutlineWebviewProvider } from "./outlineWebviewPanel";
 import { PlanningPanelProvider } from "./planningPanel";
 import { OpenQuestionsPanelViewProvider } from "./openQuestionsPanel";
 import { createOpenQuestion, getOpenQuestion, OPEN_QUESTIONS_DIR } from "./openQuestionStore";
+import { handleOpenQuestionWorkspaceDelete, handleOpenQuestionWorkspaceRename } from "./openQuestionWorkspaceSync";
 import { SafeFileSystem } from "./safeFileSystem";
 import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlForSetup } from "./projectConfig";
 import { migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
-import { ResearchTreeProvider } from "./researchTree";
+import { ResearchTreeProvider, type ResearchItem } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
 import { PlaceTreeProvider } from "./placeTree";
 import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
@@ -262,18 +263,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   planningPanel = new PlanningPanelProvider(vscode, context.extensionUri, rootPath, safeFileSystem);
 
-  const openQuestionsPanelProvider = new OpenQuestionsPanelViewProvider(
-    vscode,
-    context.extensionUri,
-    rootPath,
-    safeFileSystem,
-  );
+  const openQuestionsPanelProvider = new OpenQuestionsPanelViewProvider(vscode, context.extensionUri, rootPath);
 
   const refreshOpenQuestionSurfaces = async (): Promise<void> => {
     await planningPanel.refresh();
     await openQuestionsPanelProvider.refresh();
     await outlineWebviewRef.current?.refresh();
   };
+
+  context.subscriptions.push(
+    vscode.workspace.onDidRenameFiles(async (e) => {
+      for (const { oldUri, newUri } of e.files) {
+        await handleOpenQuestionWorkspaceRename(rootPath, safeFileSystem, oldUri.fsPath, newUri.fsPath);
+      }
+      await refreshOpenQuestionSurfaces();
+    }),
+    vscode.workspace.onDidDeleteFiles(async (e) => {
+      for (const uri of e.files) {
+        await handleOpenQuestionWorkspaceDelete(rootPath, safeFileSystem, uri.fsPath);
+      }
+      await refreshOpenQuestionSurfaces();
+    }),
+  );
 
   const placeTreeProvider = new PlaceTreeProvider(vscode, rootPath, safeFileSystem, () => {
     void planningPanel.refresh();
@@ -461,6 +472,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const newOpenQuestionFromOutlineCommand = vscode.commands.registerCommand(
+    "leanquill.newOpenQuestionFromOutline",
+    async () => {
+      await outlineWebviewProvider.newOpenQuestionFromOutlineRow();
+    },
+  );
+
   const newOpenQuestionFromChapterCommand = vscode.commands.registerCommand(
     "leanquill.newOpenQuestionFromChapter",
     async (args: { chapterPath?: string } | undefined) => {
@@ -527,7 +545,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   const newOpenQuestionFromEntity = async (
-    kind: "character" | "place" | "thread",
+    kind: "character" | "place" | "thread" | "research",
     fileName: string | undefined,
   ): Promise<void> => {
     if (!fileName?.trim()) {
@@ -542,7 +560,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         ? ({ kind: "character" as const, fileName: fileName.trim() })
         : kind === "place"
           ? ({ kind: "place" as const, fileName: fileName.trim() })
-          : ({ kind: "thread" as const, fileName: fileName.trim() });
+          : kind === "research"
+            ? ({ kind: "research" as const, fileName: fileName.trim() })
+            : ({ kind: "thread" as const, fileName: fileName.trim() });
     try {
       const rec = await createOpenQuestion(safeFileSystem, rootPath, { title: title.trim(), association });
       await planningPanel.showOpenQuestion(rec.id);
@@ -566,6 +586,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const newOpenQuestionFromThreadCommand = vscode.commands.registerCommand(
     "leanquill.newOpenQuestionFromThread",
     async (args: { fileName?: string } | undefined) => newOpenQuestionFromEntity("thread", args?.fileName),
+  );
+
+  const newOpenQuestionFromResearchCommand = vscode.commands.registerCommand(
+    "leanquill.newOpenQuestionFromResearch",
+    async (item?: ResearchItem) => {
+      const base = item?.filePath ? path.basename(item.filePath) : undefined;
+      await newOpenQuestionFromEntity("research", base);
+    },
   );
 
   const openQuestionTargetCommand = vscode.commands.registerCommand(
@@ -609,6 +637,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const lq_thread_file = question.association.fileName;
         const relBase = pc.folders.threads.replace(/\/+$/g, "");
         const absPath = path.join(rootPath, ...relBase.split("/"), lq_thread_file);
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(absPath));
+        await vscode.window.showTextDocument(doc);
+        return;
+      }
+      if (lq_assoc_kind === "research") {
+        const lq_research_file = question.association.fileName;
+        const relBase = pc.folders.research.replace(/\/+$/g, "");
+        const absPath = path.join(rootPath, ...relBase.split("/"), lq_research_file);
         const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(absPath));
         await vscode.window.showTextDocument(doc);
         return;
@@ -671,11 +707,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     selectCharacterInPanelCommand,
     selectPlaceInPanelCommand,
     newOpenQuestionCommand,
+    newOpenQuestionFromOutlineCommand,
     newOpenQuestionFromChapterCommand,
     newOpenQuestionFromSelectionCommand,
     newOpenQuestionFromCharacterCommand,
     newOpenQuestionFromPlaceCommand,
     newOpenQuestionFromThreadCommand,
+    newOpenQuestionFromResearchCommand,
     openQuestionTargetCommand,
   );
 
@@ -738,7 +776,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (arg && typeof arg === "object" && "kind" in arg && arg.kind === "node") {
       return arg.data.id;
     }
-    return undefined;
+    return outlineWebviewProvider.getOutlineInteractionNodeId();
   };
 
   // --- Outline Status Command ---

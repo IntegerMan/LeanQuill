@@ -6,9 +6,15 @@ import { listCharacters, createCharacter, saveCharacter, deleteCharacter } from 
 import { listPlaces, createPlace, placeReparentWouldCycle, savePlace, deletePlace } from "./placeStore";
 import { buildChapterPickerOptions } from "./chapterPickerOptions";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
-import { renderPlanningHtml } from "./planningPanelHtml";
+import { renderPlanningHtml, PLANNING_TAB_LABELS } from "./planningPanelHtml";
 import type { SerializableOpenQuestionRow } from "./openQuestionsHtml";
-import { deleteOpenQuestion, listOpenQuestions, saveOpenQuestion } from "./openQuestionStore";
+import {
+  countOpenQuestionsLinkedToEntity,
+  deleteOpenQuestionsForEntity,
+  displayIssueTypeLabel,
+  listOpenQuestions,
+  OPEN_QUESTIONS_DIR,
+} from "./openQuestionStore";
 import {
   readProjectConfigWithDefaults,
   readProjectIdentity,
@@ -36,7 +42,6 @@ import {
   ThemesDocument,
   ThreadProfile,
   OpenQuestionRecord,
-  OpenQuestionStatus,
 } from "./types";
 
 export class PlanningPanelProvider {
@@ -64,10 +69,6 @@ export class PlanningPanelProvider {
   private _threadDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   private _threadUpdateLock: Promise<void> = Promise.resolve();
 
-  private _selectedOpenQuestionId: string | undefined;
-  private _pendingOpenQuestion: OpenQuestionRecord | undefined;
-  private _oqDebounceTimer: ReturnType<typeof setTimeout> | undefined;
-
   constructor(
     private readonly vscodeApi: typeof VSCode,
     private readonly extensionUri: VSCode.Uri,
@@ -80,12 +81,13 @@ export class PlanningPanelProvider {
 
     if (this._panel) {
       this._panel.reveal(vscode.ViewColumn.One);
+      this._syncPlanningPanelTitle();
       return;
     }
 
     this._panel = vscode.window.createWebviewPanel(
       "leanquill.planningWorkspace",
-      "Planning Workspace",
+      this._planningWorkspaceTitle(),
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -110,7 +112,6 @@ export class PlanningPanelProvider {
         await this._flushPendingCharacter();
         await this._flushPendingPlace();
         await this._flushPendingThread();
-        await this._flushPendingOpenQuestion();
       })().catch((err: unknown) => {
         console.error('[LeanQuill] Failed to flush pending state on dispose', err);
       });
@@ -181,19 +182,17 @@ export class PlanningPanelProvider {
 
   public async showOpenQuestion(id: string): Promise<void> {
     this._activeTab = "openQuestions";
-    this._selectedOpenQuestionId = id;
-    if (this._panel) {
+    if (!this._panel) {
+      await this.show();
+    } else {
       this._panel.reveal(this.vscodeApi.ViewColumn.One);
       await this._renderPanel();
-    } else {
-      await this.show();
     }
+    await this._openOpenQuestionMarkdownInEditor(id);
   }
 
   public async revealOpenQuestionRow(questionId: string): Promise<void> {
-    this._activeTab = "openQuestions";
-    this._selectedOpenQuestionId = questionId;
-    await this._renderPanel();
+    await this.showOpenQuestion(questionId);
   }
 
   public async dispose(): Promise<void> {
@@ -210,7 +209,6 @@ export class PlanningPanelProvider {
     await this._flushPendingCharacter();
     await this._flushPendingPlace();
     await this._flushPendingThread();
-    await this._flushPendingOpenQuestion();
     if (this._panel) {
       this._panel.dispose();
       this._panel = undefined;
@@ -379,12 +377,6 @@ export class PlanningPanelProvider {
       this._selectedPlaceFileName = undefined;
     }
     const openQuestionRecords = await listOpenQuestions(this.rootPath);
-    if (
-      this._selectedOpenQuestionId &&
-      !openQuestionRecords.find((q) => q.id === this._selectedOpenQuestionId)
-    ) {
-      this._selectedOpenQuestionId = undefined;
-    }
     const openQuestionRows = this._openQuestionSerializableRows(openQuestionRecords);
     const nonce = crypto.randomBytes(16).toString("hex");
     const cspSource = this._panel.webview.cspSource;
@@ -398,7 +390,6 @@ export class PlanningPanelProvider {
       threads,
       this._selectedThreadFileName,
       openQuestionRows,
-      this._selectedOpenQuestionId,
       chapterPickerOptions,
       projectIdentity.workingTitle,
       projectIdentity.genres.join(", "),
@@ -406,6 +397,7 @@ export class PlanningPanelProvider {
       cspSource,
       this._activeTab,
     );
+    this._syncPlanningPanelTitle();
   }
 
   private async _handleMessage(msg: Record<string, unknown>): Promise<void> {
@@ -414,6 +406,7 @@ export class PlanningPanelProvider {
     switch (type) {
       case "tab:switch":
         this._activeTab = msg.tabId as string;
+        this._syncPlanningPanelTitle();
         break;
 
       case "node:updateField":
@@ -597,33 +590,8 @@ export class PlanningPanelProvider {
         await this._setThreadTouchesChapters(msg.fileName as string, msg.paths as string[]);
         break;
 
-      case "openQuestion:select": {
-        await this._flushPendingOpenQuestion();
-        this._selectedOpenQuestionId = String(msg.id ?? "");
-        this._pendingOpenQuestion = undefined;
-        await this._renderPanel();
-        break;
-      }
-
-      case "openQuestion:fieldChange":
-        await this._updateOpenQuestionField(String(msg.id ?? ""), String(msg.field ?? ""), String(msg.value ?? ""));
-        break;
-
-      case "openQuestion:save":
-        await this._flushPendingOpenQuestion();
-        await this._renderPanel();
-        break;
-
-      case "openQuestion:delete":
-        await this._handleOpenQuestionDelete(String(msg.id ?? ""));
-        break;
-
-      case "openQuestion:navigate":
-        try {
-          await this.vscodeApi.commands.executeCommand("leanquill.openQuestionTarget", String(msg.id ?? ""));
-        } catch {
-          /* Command registers in phase 14-06 */
-        }
+      case "openQuestion:openEditor":
+        await this._openOpenQuestionMarkdownInEditor(String(msg.id ?? ""));
         break;
 
       case "openQuestion:refresh":
@@ -854,6 +822,19 @@ export class PlanningPanelProvider {
 
   private async _deleteThread(fileName: string): Promise<void> {
     const config = await readProjectConfigWithDefaults(this.rootPath);
+    const profiles = await listThreads(this.rootPath, config);
+    const profile = profiles.find((p) => p.fileName === fileName);
+    const label = profile?.title || fileName.replace(/\.md$/, "");
+    const oq = await listOpenQuestions(this.rootPath);
+    const issueCount = countOpenQuestionsLinkedToEntity(oq, "thread", fileName);
+    const prompt =
+      issueCount > 0
+        ? `Delete thread "${label}" and ${issueCount} associated issue${issueCount === 1 ? "" : "s"}? This cannot be undone.`
+        : `Delete thread "${label}"? This cannot be undone.`;
+    const choice = await this.vscodeApi.window.showWarningMessage(prompt, { modal: true }, "Delete");
+    if (choice !== "Delete") {
+      return;
+    }
     if (this._pendingThread && this._pendingThread.fileName !== fileName) {
       await this._flushPendingThread();
     } else if (this._threadDebounceTimer) {
@@ -863,6 +844,7 @@ export class PlanningPanelProvider {
     if (this._pendingThread && this._pendingThread.fileName === fileName) {
       this._pendingThread = undefined;
     }
+    await deleteOpenQuestionsForEntity(this.rootPath, this.safeFs, "thread", fileName);
     await deleteThread(fileName, this.rootPath, config, this.safeFs);
     if (this._selectedThreadFileName === fileName) {
       this._selectedThreadFileName = undefined;
@@ -1056,11 +1038,13 @@ export class PlanningPanelProvider {
     const profiles = await listCharacters(this.rootPath, config);
     const profile = profiles.find((p) => p.fileName === fileName);
     const label = profile?.name || fileName.replace(/\.md$/, "");
-    const choice = await this.vscodeApi.window.showWarningMessage(
-      `Delete character "${label}"? This cannot be undone.`,
-      { modal: true },
-      "Delete",
-    );
+    const oq = await listOpenQuestions(this.rootPath);
+    const issueCount = countOpenQuestionsLinkedToEntity(oq, "character", fileName);
+    const prompt =
+      issueCount > 0
+        ? `Delete character "${label}" and ${issueCount} associated issue${issueCount === 1 ? "" : "s"}? This cannot be undone.`
+        : `Delete character "${label}"? This cannot be undone.`;
+    const choice = await this.vscodeApi.window.showWarningMessage(prompt, { modal: true }, "Delete");
     if (choice !== "Delete") { return; }
     if (this._pendingCharacter && this._pendingCharacter.fileName !== fileName) {
       await this._flushPendingCharacter();
@@ -1071,6 +1055,7 @@ export class PlanningPanelProvider {
     if (this._pendingCharacter && this._pendingCharacter.fileName === fileName) {
       this._pendingCharacter = undefined;
     }
+    await deleteOpenQuestionsForEntity(this.rootPath, this.safeFs, "character", fileName);
     await deleteCharacter(fileName, this.rootPath, config, this.safeFs);
     if (this._selectedCharacterFileName === fileName) {
       this._selectedCharacterFileName = undefined;
@@ -1224,11 +1209,13 @@ export class PlanningPanelProvider {
     const profiles = await listPlaces(this.rootPath, config);
     const profile = profiles.find((p) => p.fileName === fileName);
     const label = profile?.name || fileName.replace(/\.md$/, "");
-    const choice = await this.vscodeApi.window.showWarningMessage(
-      `Delete place "${label}"? This cannot be undone.`,
-      { modal: true },
-      "Delete",
-    );
+    const oq = await listOpenQuestions(this.rootPath);
+    const issueCount = countOpenQuestionsLinkedToEntity(oq, "place", fileName);
+    const prompt =
+      issueCount > 0
+        ? `Delete place "${label}" and ${issueCount} associated issue${issueCount === 1 ? "" : "s"}? This cannot be undone.`
+        : `Delete place "${label}"? This cannot be undone.`;
+    const choice = await this.vscodeApi.window.showWarningMessage(prompt, { modal: true }, "Delete");
     if (choice !== "Delete") {
       return;
     }
@@ -1241,6 +1228,7 @@ export class PlanningPanelProvider {
     if (this._pendingPlace && this._pendingPlace.fileName === fileName) {
       this._pendingPlace = undefined;
     }
+    await deleteOpenQuestionsForEntity(this.rootPath, this.safeFs, "place", fileName);
     await deletePlace(fileName, this.rootPath, config, this.safeFs);
     if (this._selectedPlaceFileName === fileName) {
       this._selectedPlaceFileName = undefined;
@@ -1255,6 +1243,33 @@ export class PlanningPanelProvider {
     await this.vscodeApi.commands.executeCommand("vscode.open", this.vscodeApi.Uri.file(filePath));
   }
 
+  private _planningWorkspaceTitle(): string {
+    const label = PLANNING_TAB_LABELS[this._activeTab] ?? "Planning";
+    return `LeanQuill - ${label}`;
+  }
+
+  private _syncPlanningPanelTitle(): void {
+    if (!this._panel) {
+      return;
+    }
+    this._panel.title = this._planningWorkspaceTitle();
+  }
+
+  private async _openOpenQuestionMarkdownInEditor(id: string): Promise<void> {
+    if (!id) {
+      return;
+    }
+    const list = await listOpenQuestions(this.rootPath);
+    const q = list.find((x) => x.id === id);
+    if (!q) {
+      return;
+    }
+    const abs = path.join(this.rootPath, ...OPEN_QUESTIONS_DIR.split("/"), q.fileName);
+    const uri = this.vscodeApi.Uri.file(abs);
+    const doc = await this.vscodeApi.workspace.openTextDocument(uri);
+    await this.vscodeApi.window.showTextDocument(doc, { preview: false });
+  }
+
   private _openQuestionAssociationChip(association: OpenQuestionRecord["association"]): string {
     switch (association.kind) {
       case "book":
@@ -1265,6 +1280,8 @@ export class PlanningPanelProvider {
         return `Place · ${association.fileName}`;
       case "thread":
         return `Thread · ${association.fileName}`;
+      case "research":
+        return `Research · ${association.fileName}`;
       case "chapter":
         return `Chapter · ${association.chapterRef}`;
       case "selection":
@@ -1280,109 +1297,16 @@ export class PlanningPanelProvider {
     return {
       id: r.id,
       title: r.title,
-      body: r.body,
       preview: preview || " ",
       status: r.status,
       associationChip: this._openQuestionAssociationChip(r.association),
+      issueTypeLabel: displayIssueTypeLabel(r.issueSchemaType),
       stale: Boolean(r.staleHint),
     };
   }
 
   private _openQuestionSerializableRows(list: OpenQuestionRecord[]): SerializableOpenQuestionRow[] {
-    return list.map((r) => {
-      const effective =
-        this._pendingOpenQuestion && this._pendingOpenQuestion.id === r.id ? this._pendingOpenQuestion : r;
-      return this._toOpenQuestionRow(effective);
-    });
-  }
-
-  private async _flushPendingOpenQuestion(): Promise<void> {
-    if (this._oqDebounceTimer) {
-      clearTimeout(this._oqDebounceTimer);
-      this._oqDebounceTimer = undefined;
-    }
-    if (this._pendingOpenQuestion) {
-      const rec = this._pendingOpenQuestion;
-      try {
-        await saveOpenQuestion(rec, this.rootPath, this.safeFs);
-      } catch (err: unknown) {
-        console.error("[LeanQuill] Failed to save open question", err);
-        await this.vscodeApi.window.showErrorMessage("Could not save this question. Check the file is writable and retry.");
-        return;
-      }
-      this._pendingOpenQuestion = undefined;
-    }
-  }
-
-  private async _updateOpenQuestionField(id: string, field: string, value: string): Promise<void> {
-    if (!id) {
-      return;
-    }
-    if (this._pendingOpenQuestion && this._pendingOpenQuestion.id !== id) {
-      await this._flushPendingOpenQuestion();
-    }
-    if (!this._pendingOpenQuestion || this._pendingOpenQuestion.id !== id) {
-      const list = await listOpenQuestions(this.rootPath);
-      const found = list.find((q) => q.id === id);
-      if (!found) {
-        return;
-      }
-      this._pendingOpenQuestion = { ...found };
-    }
-    const pending = this._pendingOpenQuestion;
-    if (!pending || pending.id !== id) {
-      return;
-    }
-    if (field === "title") {
-      pending.title = value;
-    } else if (field === "body") {
-      pending.body = value;
-    } else if (field === "status") {
-      const s = value as OpenQuestionStatus;
-      if (s === "open" || s === "deferred" || s === "resolved") {
-        pending.status = s;
-      }
-    }
-
-    if (this._oqDebounceTimer) {
-      clearTimeout(this._oqDebounceTimer);
-    }
-    const toWrite = pending;
-    this._oqDebounceTimer = setTimeout(() => {
-      void saveOpenQuestion(toWrite, this.rootPath, this.safeFs)
-        .then(() => {
-          if (this._pendingOpenQuestion?.id === toWrite.id) {
-            this._pendingOpenQuestion = undefined;
-          }
-        })
-        .catch((err: unknown) => {
-          console.error("[LeanQuill] Failed to save open question (debounced)", err);
-        });
-    }, 300);
-  }
-
-  private async _handleOpenQuestionDelete(id: string): Promise<void> {
-    if (!id) {
-      return;
-    }
-    const choice = await this.vscodeApi.window.showWarningMessage(
-      "Delete this open question? This cannot be undone.",
-      { modal: true },
-      "Delete",
-    );
-    if (choice !== "Delete") {
-      return;
-    }
-    await this._flushPendingOpenQuestion();
-    const list = await listOpenQuestions(this.rootPath);
-    const found = list.find((q) => q.id === id);
-    if (found) {
-      await deleteOpenQuestion(found.fileName, this.rootPath, this.safeFs);
-    }
-    if (this._selectedOpenQuestionId === id) {
-      this._selectedOpenQuestionId = undefined;
-    }
-    await this._renderPanel();
+    return list.map((r) => this._toOpenQuestionRow(r));
   }
 
 }

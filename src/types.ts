@@ -110,12 +110,15 @@ export type OpenQuestionAssociation =
   | { kind: "character"; fileName: string }
   | { kind: "place"; fileName: string }
   | { kind: "thread"; fileName: string }
+  | { kind: "research"; fileName: string }
   | { kind: "chapter"; chapterRef: string }
   | { kind: "selection"; chapterRef: string; spanHint: string };
 
 export interface OpenQuestionRecord {
   fileName: string;
   id: string;
+  /** issue-schema `type` (e.g. `author-note`); drives list label such as "Question". */
+  issueSchemaType: string;
   title: string;
   body: string;
   status: OpenQuestionStatus;

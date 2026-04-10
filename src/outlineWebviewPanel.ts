@@ -56,8 +56,11 @@ function renderNodeTree(nodes: OutlineNode[], depth: number, chapterOpenIssueCou
         : "";
       const expandClass = hasChildren ? " expanded" : "";
 
+      const fileAttr = node.fileName
+        ? ` data-file-name="${escapeHtml(normalizeOutlinePath(node.fileName))}"`
+        : "";
       return `<div class="node-item${expandClass}${inactiveClass}" data-id="${escapeHtml(node.id)}" data-depth="${depth}" draggable="true">
-  <div class="node-row" data-id="${escapeHtml(node.id)}">
+  <div class="node-row" data-id="${escapeHtml(node.id)}"${fileAttr}>
     ${hasChildren ? '<span class="toggle codicon codicon-chevron-right"></span>' : '<span class="toggle-spacer"></span>'}
     <span class="icon codicon codicon-${escapeHtml(icon)}"></span>
     <span class="label">${escapeHtml(node.title || "(untitled)")}</span>
@@ -188,51 +191,11 @@ export function renderOutlineWebviewHtml(
       opacity: 0.6;
     }
     .orphan-item:hover { background: var(--vscode-list-hoverBackground); opacity: 0.8; }
-
-    /* Context menu */
-    .context-menu {
-      position: fixed;
-      z-index: 1000;
-      background: var(--vscode-menu-background);
-      color: var(--vscode-menu-foreground);
-      border: 1px solid var(--vscode-menu-border);
-      border-radius: 4px;
-      padding: 4px 0;
-      min-width: 160px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      display: none;
-    }
-    .context-menu.visible { display: block; }
-    .context-menu-item {
-      padding: 4px 16px;
-      cursor: pointer;
-      font-size: 13px;
-    }
-    .context-menu-item:hover { background: var(--vscode-menu-selectionBackground); color: var(--vscode-menu-selectionForeground); }
-    .context-menu-separator { height: 1px; background: var(--vscode-menu-separatorBackground); margin: 4px 0; }
   </style>
 </head>
 <body>
   ${tree}
   ${renderOrphans(orphanFiles, chapterOpenIssueCounts)}
-
-  <div class="context-menu" id="contextMenu">
-    <div class="context-menu-item" data-action="addChild">Add Child</div>
-    <div class="context-menu-item" data-action="addSibling">Add Sibling</div>
-    <div class="context-menu-separator"></div>
-    <div class="context-menu-item" data-action="openInEditor">Open in Editor</div>
-    <div class="context-menu-item" data-action="openFile">Open File</div>
-    <div class="context-menu-item" data-action="newOpenQuestion">New open question</div>
-    <div class="context-menu-item" data-action="updateStatus">Update Status</div>
-    <div class="context-menu-separator"></div>
-    <div class="context-menu-item" data-action="rename">Rename</div>
-    <div class="context-menu-item" data-action="toggleActive">Toggle Active</div>
-    <div class="context-menu-separator"></div>
-    <div class="context-menu-item" data-action="moveUp">Move Up</div>
-    <div class="context-menu-item" data-action="moveDown">Move Down</div>
-    <div class="context-menu-separator"></div>
-    <div class="context-menu-item" data-action="remove">Remove</div>
-  </div>
 
   <script nonce="${nonce}">
   (function() {
@@ -276,9 +239,18 @@ export function renderOutlineWebviewHtml(
       }
     }
 
+    // --- Track row under pointer (for native webview/context menu commands) ---
+    document.addEventListener('pointerdown', function (e) {
+      const row = e.target.closest('.node-row');
+      if (!row || !row.dataset.id) return;
+      vscode.postMessage({ type: 'outlineInteract', id: row.dataset.id });
+      if (e.button === 2) {
+        selectNode(row.dataset.id);
+      }
+    }, true);
+
     // --- Toggle expand/collapse ---
     document.addEventListener('click', (e) => {
-      hideContextMenu();
       const toggle = e.target.closest('.toggle');
       if (toggle) {
         const item = toggle.closest('.node-item');
@@ -308,40 +280,6 @@ export function renderOutlineWebviewHtml(
       if (row) {
         vscode.postMessage({ type: 'openNode', id: row.dataset.id });
       }
-    });
-
-    // --- Context Menu ---
-    const cmenu = document.getElementById('contextMenu');
-    let contextNodeId = null;
-
-    function hideContextMenu() {
-      cmenu.classList.remove('visible');
-      contextNodeId = null;
-    }
-
-    document.addEventListener('contextmenu', (e) => {
-      const row = e.target.closest('.node-row');
-      if (!row) {
-        hideContextMenu();
-        return;
-      }
-      e.preventDefault();
-      contextNodeId = row.dataset.id;
-      selectNode(contextNodeId);
-      cmenu.style.left = e.clientX + 'px';
-      cmenu.style.top = e.clientY + 'px';
-      cmenu.classList.add('visible');
-      // Keep menu in viewport
-      const rect = cmenu.getBoundingClientRect();
-      if (rect.right > window.innerWidth) cmenu.style.left = (window.innerWidth - rect.width - 4) + 'px';
-      if (rect.bottom > window.innerHeight) cmenu.style.top = (window.innerHeight - rect.height - 4) + 'px';
-    });
-
-    cmenu.addEventListener('click', (e) => {
-      const item = e.target.closest('.context-menu-item');
-      if (!item || !contextNodeId) return;
-      vscode.postMessage({ type: 'contextAction', action: item.dataset.action, id: contextNodeId });
-      hideContextMenu();
     });
 
     // --- Drag and Drop ---
@@ -506,6 +444,7 @@ export function renderOutlineWebviewHtml(
 
 export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
   private view?: VSCode.WebviewView;
+  private _outlineInteractionNodeId: string | undefined;
   private _onDidSelect: VSCode.EventEmitter<string>;
   readonly onDidSelect: VSCode.Event<string>;
 
@@ -535,6 +474,44 @@ export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
     this.view.webview.onDidReceiveMessage((msg) => this.handleMessage(msg));
 
     this.refresh();
+  }
+
+  /** Node id for the row last clicked or right-clicked; used by native `webview/context` commands. */
+  public getOutlineInteractionNodeId(): string | undefined {
+    return this._outlineInteractionNodeId;
+  }
+
+  /** Book-wide if the row has no manuscript chapter file; otherwise chapter-scoped. */
+  public async newOpenQuestionFromOutlineRow(): Promise<void> {
+    const nodeId = this._outlineInteractionNodeId;
+    if (!nodeId) {
+      await this.vscodeApi.window.showWarningMessage("Right-click or select an outline row first.");
+      return;
+    }
+    const index = await readOutlineIndex(this.rootPath);
+    const found = findNodeById(index.nodes, nodeId);
+    const chapterPath = OutlineWebviewProvider.manuscriptChapterPathForNode(found?.node);
+    if (chapterPath.startsWith("manuscript/")) {
+      await this.vscodeApi.commands.executeCommand("leanquill.newOpenQuestionFromChapter", {
+        chapterPath,
+      });
+    } else {
+      await this.vscodeApi.commands.executeCommand("leanquill.newOpenQuestion");
+    }
+  }
+
+  private static manuscriptChapterPathForNode(node: OutlineNode | undefined): string {
+    if (!node) {
+      return "";
+    }
+    let chapterPath = node.fileName ? normalizeOutlinePath(node.fileName) : "";
+    if (chapterPath && !chapterPath.startsWith("manuscript/")) {
+      const trimmed = chapterPath.replace(/^\.+\//, "");
+      if (!trimmed.includes("/")) {
+        chapterPath = `manuscript/${trimmed}`;
+      }
+    }
+    return chapterPath;
   }
 
   public async refresh(): Promise<void> {
@@ -580,7 +557,12 @@ export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
   }): Promise<void> {
     switch (msg.type) {
       case "select":
-        this._onDidSelect.fire(msg.id as string);
+        this._outlineInteractionNodeId = msg.id as string;
+        this._onDidSelect.fire(this._outlineInteractionNodeId);
+        break;
+
+      case "outlineInteract":
+        this._outlineInteractionNodeId = msg.id as string;
         break;
 
       case "openNode":
@@ -693,17 +675,6 @@ export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
           nodeId,
         );
         break;
-      case "newOpenQuestion": {
-        const index = await readOutlineIndex(this.rootPath);
-        const node = findNodeById(index.nodes, nodeId);
-        const chapterPath = node?.fileName ? normalizeOutlinePath(node.fileName) : "";
-        if (chapterPath.startsWith("manuscript/")) {
-          await this.vscodeApi.commands.executeCommand("leanquill.newOpenQuestionFromChapter", {
-            chapterPath,
-          });
-        }
-        break;
-      }
       case "updateStatus":
         await this.vscodeApi.commands.executeCommand(
           "leanquill.updateNodeStatus",

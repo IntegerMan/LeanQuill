@@ -2,11 +2,7 @@
  * Shared Open Questions webview markup + client script (Planning tab + panel host, D-02).
  *
  * postMessage protocol (always include `host: 'planning' | 'panel'`):
- * - openQuestion:select — `{ type, host, id }`
- * - openQuestion:fieldChange — `{ type, host, id, field, value }` (debounced client-side)
- * - openQuestion:save — `{ type, host, id }`
- * - openQuestion:delete — `{ type, host, id }`
- * - openQuestion:navigate — `{ type, host, id }` (“Go to target”)
+ * - openQuestion:openEditor — `{ type, host, id }` (open `.leanquill/open-questions/*.md` in editor)
  * - openQuestion:refresh — `{ type, host }`
  * - openQuestion:new-question — `{ type, host }`
  */
@@ -16,10 +12,10 @@ import { escapeHtml } from "./htmlUtils";
 export interface SerializableOpenQuestionRow {
   id: string;
   title: string;
-  body: string;
   preview: string;
   status: string;
   associationChip: string;
+  issueTypeLabel: string;
   stale?: boolean;
 }
 
@@ -33,11 +29,7 @@ function statusLabel(status: string): string {
   return "Open";
 }
 
-function buildOpenQuestionsMarkup(
-  questions: SerializableOpenQuestionRow[],
-  selectedId: string | undefined,
-  host: "planning" | "panel",
-): string {
+function buildOpenQuestionsMarkup(questions: SerializableOpenQuestionRow[], host: "planning" | "panel"): string {
   const toolbar = `<div class="oq-toolbar">
   <button type="button" class="oq-btn" data-action="new-question">New question</button>
   <button type="button" class="oq-btn oq-btn--ghost" data-action="refresh">Refresh</button>
@@ -48,7 +40,7 @@ function buildOpenQuestionsMarkup(
       ? `<div class="oq-empty-state-full" role="status">
   <div class="oq-empty-inner">
     <div class="oq-empty-title">No open questions yet</div>
-    <p class="oq-empty-body">Create a question from the chapter tree, a selection in the manuscript, or a character, place, or thread row.</p>
+    <p class="oq-empty-body">Create a question from the outline, a manuscript chapter, a selection, or a research, character, or place row. Click a row below to open it in the editor.</p>
   </div>
 </div>`
       : "";
@@ -60,66 +52,39 @@ ${emptyFullState}
 </div>`;
   }
 
-  const listRows = questions
+  const bodyRows = questions
     .map((q) => {
-      const sel = q.id === selectedId ? " oq-list-item--selected" : "";
       const stale = q.stale ? ' data-stale="1"' : "";
-      return `<button type="button" class="oq-list-item${sel}" data-question-id="${escapeHtml(q.id)}" tabindex="0"${stale}>
-  <span class="oq-list-title">${escapeHtml(q.title || "(untitled)")}</span>
-  <span class="oq-list-meta">
-    <span class="oq-chip">${escapeHtml(q.associationChip)}</span>
-    <span class="oq-status">${escapeHtml(statusLabel(q.status))}</span>
-  </span>
-  <span class="oq-preview">${escapeHtml(q.preview)}</span>
-</button>`;
+      const prev = escapeHtml(q.preview);
+      return `<tr class="oq-row" tabindex="0" data-question-id="${escapeHtml(q.id)}"${stale}>
+  <td class="oq-col-type"><span class="oq-type-pill">${escapeHtml(q.issueTypeLabel)}</span></td>
+  <td class="oq-col-desc">
+    <div class="oq-title">${escapeHtml(q.title || "(untitled)")}</div>
+    <div class="oq-preview-line">${prev}</div>
+  </td>
+  <td class="oq-col-source">${escapeHtml(q.associationChip)}</td>
+  <td class="oq-col-status">${escapeHtml(statusLabel(q.status))}</td>
+</tr>`;
     })
     .join("");
 
-  const selected = questions.find((q) => q.id === selectedId);
-  const staleBlock = selected?.stale
-    ? `<div class="oq-stale" data-stale="1">This link may be out of date after edits. Opened the chapter — update the link from the question if needed.</div>`
-    : "";
+  const table = `<div class="oq-table-wrap">
+  <table class="oq-table" role="grid">
+    <thead>
+      <tr>
+        <th class="oq-col-type" scope="col">Type</th>
+        <th class="oq-col-desc" scope="col">Description</th>
+        <th class="oq-col-source" scope="col">Source</th>
+        <th class="oq-col-status" scope="col">Status</th>
+      </tr>
+    </thead>
+    <tbody>${bodyRows}</tbody>
+  </table>
+</div>`;
 
-  const detail = selected
-    ? `<div class="oq-detail" data-question-id="${escapeHtml(selected.id)}">
-  ${staleBlock}
-  <div class="oq-field">
-    <label class="oq-label">Title</label>
-    <input class="oq-input" name="title" value="${escapeHtml(selected.title)}" />
-  </div>
-  <div class="oq-field">
-    <label class="oq-label">Body</label>
-    <textarea class="oq-textarea" name="body" rows="8">${escapeHtml(selected.body)}</textarea>
-  </div>
-  <div class="oq-field">
-    <label class="oq-label">Status</label>
-    <select class="oq-select" name="status">
-      <option value="open"${selected.status === "open" ? " selected" : ""}>open</option>
-      <option value="deferred"${selected.status === "deferred" ? " selected" : ""}>deferred</option>
-      <option value="resolved"${selected.status === "resolved" ? " selected" : ""}>resolved</option>
-    </select>
-  </div>
-  <div class="oq-field oq-readonly">
-    <label class="oq-label">Association</label>
-    <div class="oq-assoc">${escapeHtml(selected.associationChip)}</div>
-  </div>
-  <div class="oq-actions">
-    <button type="button" class="oq-btn oq-btn--primary" data-action="save">Save</button>
-    <button type="button" class="oq-btn" data-action="navigate">Go to target</button>
-    <button type="button" class="oq-btn oq-btn--danger" data-action="delete">Delete</button>
-  </div>
-</div>`
-    : `<div class="oq-detail oq-detail--empty">Select a question to view details.</div>`;
-
-  /* Master–detail: default 40% list / 60% detail on wide; stack below 520px viewport. */
   return `<div class="oq-root" data-host="${host}">
 ${toolbar}
-<div class="oq-split">
-  <div class="oq-pane oq-pane--list">
-    <div class="oq-list" role="list">${listRows}</div>
-  </div>
-  <div class="oq-pane oq-pane--detail">${detail}</div>
-</div>
+${table}
 </div>`;
 }
 
@@ -136,21 +101,78 @@ function buildOpenQuestionsStyles(): string {
       background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); cursor: pointer; font-size: 13px; border-radius: 2px; }
     .oq-btn--primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
     .oq-btn--ghost { background: transparent; }
-    .oq-btn--danger { border-color: var(--vscode-errorForeground); color: var(--vscode-errorForeground); }
-    .oq-split { display: flex; flex: 1; min-height: 0; }
-    /* 40% list / 60% detail split on wide layouts */
-    .oq-pane--list { flex: 0 0 40%; max-width: 40%; min-width: 0; border-right: 1px solid var(--vscode-widget-border); display: flex; flex-direction: column; }
-    .oq-pane--detail { flex: 1; min-width: 0; overflow: auto; padding: 16px; display: flex; flex-direction: column; min-height: 0; }
-    .oq-list { overflow: auto; flex: 1; padding: 8px 0; }
-    .oq-list-item { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left;
-      padding: 8px 16px; border: none; background: transparent; color: inherit; cursor: pointer;
-      border-bottom: 1px solid var(--vscode-widget-border); font: inherit; }
-    .oq-list-item:hover { background: var(--vscode-list-hoverBackground); }
-    .oq-list-item--selected { background: var(--vscode-editorWidget-background); }
-    .oq-list-title { font-size: 13px; font-weight: 600; line-height: 1.3; }
-    .oq-list-meta { display: flex; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--vscode-descriptionForeground); }
-    .oq-chip { opacity: 0.9; }
-    .oq-preview { font-size: 12px; color: var(--vscode-descriptionForeground); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .oq-table-wrap {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      margin: 0 12px 12px;
+      border: 1px solid var(--vscode-widget-border);
+      border-radius: 2px;
+      background: var(--vscode-editor-background);
+    }
+    .oq-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .oq-table thead th {
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--vscode-descriptionForeground);
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--vscode-widget-border);
+      background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .oq-table tbody td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-widget-border));
+      vertical-align: top;
+      word-break: break-word;
+    }
+    .oq-table tbody tr.oq-row {
+      cursor: pointer;
+    }
+    .oq-table tbody tr.oq-row:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+    .oq-table tbody tr.oq-row:focus {
+      outline: 1px solid var(--vscode-focusBorder);
+      outline-offset: -1px;
+    }
+    .oq-table tbody tr[data-stale="1"] td.oq-col-source {
+      color: var(--vscode-list-warningForeground);
+    }
+    .oq-col-type { width: 88px; }
+    .oq-col-status { width: 88px; }
+    .oq-col-source { width: 28%; }
+    .oq-type-pill {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 2px 6px;
+      border-radius: 2px;
+      border: 1px solid var(--vscode-widget-border);
+      color: var(--vscode-descriptionForeground);
+    }
+    .oq-title { font-weight: 600; color: var(--vscode-foreground); }
+    .oq-preview-line {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .oq-empty-state-full {
       flex: 1;
       min-height: 120px;
@@ -167,32 +189,6 @@ function buildOpenQuestionsStyles(): string {
     }
     .oq-empty-title { font-size: 15px; font-weight: 600; color: var(--vscode-foreground); margin: 0 0 12px; line-height: 1.3; }
     .oq-empty-body { font-size: var(--vscode-font-size); line-height: 1.55; margin: 0; }
-    .oq-detail { width: 100%; box-sizing: border-box; }
-    .oq-detail--empty {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      color: var(--vscode-descriptionForeground);
-      font-size: 13px;
-      line-height: 1.5;
-      padding: 8px;
-      min-height: 0;
-    }
-    .oq-label { display: block; font-size: 12px; font-weight: 600; line-height: 1.3; margin-bottom: 8px; }
-    .oq-field { margin-bottom: 16px; }
-    .oq-input, .oq-textarea, .oq-select { width: 100%; box-sizing: border-box; padding: 6px 8px;
-      background: var(--vscode-input-background); color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border, var(--vscode-widget-border)); font: inherit; }
-    .oq-assoc { color: var(--vscode-descriptionForeground); font-size: 13px; }
-    .oq-stale { padding: 8px 12px; margin-bottom: 16px; border: 1px solid var(--vscode-widget-border);
-      color: var(--vscode-list-warningForeground); font-size: 13px; }
-    .oq-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
-    @media (max-width: 520px) {
-      .oq-split { flex-direction: column; }
-      .oq-pane--list { flex: 0 0 auto; max-width: none; border-right: none; border-bottom: 1px solid var(--vscode-widget-border); max-height: 40vh; }
-    }
   `;
 }
 
@@ -203,9 +199,12 @@ function buildClientScript(nonce: string, host: "planning" | "panel"): string {
 (function () {
   const vscode = acquireVsCodeApi();
   const host = ${hostJson};
-  const state = vscode.getState() || {};
   function post(type, payload) {
     vscode.postMessage(Object.assign({ type: type, host: host }, payload || {}));
+  }
+  function openRowEditor(tr) {
+    const id = tr && tr.getAttribute('data-question-id');
+    if (id) post('openQuestion:openEditor', { id: id });
   }
   document.querySelector('.oq-root')?.addEventListener('click', function (e) {
     const t = e.target;
@@ -215,49 +214,22 @@ function buildClientScript(nonce: string, host: "planning" | "panel"): string {
     const action = btn.getAttribute('data-action');
     if (action === 'new-question') post('openQuestion:new-question');
     if (action === 'refresh') post('openQuestion:refresh');
-    if (action === 'save') {
-      const root = document.querySelector('.oq-detail[data-question-id]');
-      const id = root && root.getAttribute('data-question-id');
-      if (id) post('openQuestion:save', { id: id });
-    }
-    if (action === 'delete') {
-      const root = document.querySelector('.oq-detail[data-question-id]');
-      const id = root && root.getAttribute('data-question-id');
-      if (id) post('openQuestion:delete', { id: id });
-    }
-    if (action === 'navigate') {
-      const root = document.querySelector('.oq-detail[data-question-id]');
-      const id = root && root.getAttribute('data-question-id');
-      if (id) post('openQuestion:navigate', { id: id });
-    }
   });
-  document.querySelector('.oq-list')?.addEventListener('click', function (e) {
+  document.querySelector('.oq-table tbody')?.addEventListener('click', function (e) {
     const t = e.target;
     if (!(t instanceof HTMLElement)) return;
-    const row = t.closest('[data-question-id]');
-    if (!row || row.getAttribute('data-action')) return;
-    const id = row.getAttribute('data-question-id');
-    if (id) post('openQuestion:select', { id: id });
+    const tr = t.closest('tr[data-question-id]');
+    if (!tr) return;
+    openRowEditor(tr);
   });
-  let debounceTimer = null;
-  function scheduleFieldChange(id, field, value) {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(function () {
-      post('openQuestion:fieldChange', { id: id, field: field, value: value });
-    }, 300);
-  }
-  document.querySelector('.oq-root')?.addEventListener('input', function (e) {
+  document.querySelector('.oq-table tbody')?.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
     const t = e.target;
     if (!(t instanceof HTMLElement)) return;
-    const root = t.closest('.oq-detail[data-question-id]');
-    if (!root) return;
-    const id = root.getAttribute('data-question-id');
-    if (!id) return;
-    const name = t.getAttribute('name');
-    if (name === 'title' || name === 'body' || name === 'status') {
-      const value = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement ? t.value : '';
-      scheduleFieldChange(id, name, value);
-    }
+    const tr = t.closest('tr[data-question-id]');
+    if (!tr) return;
+    e.preventDefault();
+    openRowEditor(tr);
   });
 })();
 </script>`;
@@ -268,14 +240,13 @@ function buildClientScript(nonce: string, host: "planning" | "panel"): string {
  */
 export function renderOpenQuestionsHtml(
   questions: SerializableOpenQuestionRow[],
-  selectedId: string | undefined,
   host: "planning" | "panel",
   nonce: string,
   cspSource: string,
   wrapDocument = false,
 ): string {
   const styles = `<style>${buildOpenQuestionsStyles()}</style>`;
-  const markup = buildOpenQuestionsMarkup(questions, selectedId, host);
+  const markup = buildOpenQuestionsMarkup(questions, host);
   const script = buildClientScript(nonce, host);
   const inner = `${styles}${markup}${script}`;
 

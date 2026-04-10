@@ -14,6 +14,7 @@ function q(partial: Partial<OpenQuestionRecord> & Pick<OpenQuestionRecord, "id" 
   return {
     fileName: `${partial.id}.md`,
     id: partial.id,
+    issueSchemaType: partial.issueSchemaType ?? "author-note",
     title: partial.title ?? "t",
     body: partial.body ?? "",
     status: partial.status ?? "open",
@@ -48,12 +49,13 @@ test("Windows-style chapter_ref normalizes to manuscript/ forward slashes", () =
   assert.equal(counts["manuscript/ch01.md"], 1);
 });
 
-test("book entity thread place open questions do not increment manuscript chapter keys", () => {
+test("book entity thread place research open questions do not increment manuscript chapter keys", () => {
   const questions = [
     q({ id: "book", association: { kind: "book" } }),
     q({ id: "char", association: { kind: "character", fileName: "c.md" } }),
     q({ id: "pl", association: { kind: "place", fileName: "p.md" } }),
     q({ id: "th", association: { kind: "thread", fileName: "t.md" } }),
+    q({ id: "rs", association: { kind: "research", fileName: "r.md" } }),
   ];
   const counts = countOpenQuestionsByChapter(questions);
   assert.deepEqual(counts, {});

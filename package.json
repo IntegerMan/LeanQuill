@@ -147,23 +147,33 @@
         "category": "LeanQuill"
       },
       {
+        "command": "leanquill.newOpenQuestionFromOutline",
+        "title": "New Open Question",
+        "category": "LeanQuill"
+      },
+      {
         "command": "leanquill.newOpenQuestionFromSelection",
         "title": "New Open Question from Selection",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromCharacter",
-        "title": "New Open Question from Character",
+        "title": "Create New Issue (question) from Character",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromPlace",
-        "title": "New Open Question from Place",
+        "title": "Create New Issue (question) from Place",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromThread",
-        "title": "New Open Question from Thread",
+        "title": "Create New Issue (question) from Thread",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromResearch",
+        "title": "Create New Issue (question) from Research",
         "category": "LeanQuill"
       },
       {
@@ -183,7 +193,7 @@
       "panel": [
         {
           "id": "leanquillOpenQuestions",
-          "title": "LeanQuill",
+          "title": "LeanQuill Issues",
           "icon": "media/leanquill.svg"
         }
       ]
@@ -224,7 +234,7 @@
       "leanquillOpenQuestions": [
         {
           "id": "leanquill.openQuestionsPanel",
-          "name": "Open questions",
+          "name": "LeanQuill Issues",
           "type": "webview",
           "when": "leanquill.workspaceLeanQuillReady"
         }
@@ -239,6 +249,17 @@
         {
           "command": "leanquill.newOpenQuestionFromSelection",
           "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
+          "command": "leanquill.newOpenQuestionFromOutline",
+          "when": "false"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "leanquill.newOpenQuestionFromOutline",
+          "when": "webviewId == 'leanquill.outlineTree' && leanquill.workspaceLeanQuillReady",
+          "group": "leanquillIssues@1"
         }
       ],
       "editor/context": [
@@ -246,6 +267,23 @@
           "command": "leanquill.newOpenQuestionFromSelection",
           "when": "editorTextFocus && leanquill.workspaceLeanQuillReady",
           "group": "leanquill@30"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "leanquill.newOpenQuestionFromCharacter",
+          "when": "view == leanquill.characters && viewItem == character && leanquill.workspaceLeanQuillReady",
+          "group": "leanquillIssues@10"
+        },
+        {
+          "command": "leanquill.newOpenQuestionFromPlace",
+          "when": "view == leanquill.places && viewItem == place && leanquill.workspaceLeanQuillReady",
+          "group": "leanquillIssues@10"
+        },
+        {
+          "command": "leanquill.newOpenQuestionFromResearch",
+          "when": "view == leanquill.research && viewItem == research && leanquill.workspaceLeanQuillReady",
+          "group": "leanquillIssues@10"
         }
       ],
       "view/title": [
