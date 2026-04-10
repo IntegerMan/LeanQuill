@@ -38,7 +38,8 @@
 - [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
 - [x] **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
 - [x] **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing. (completed 2026-04-09)
-- [x] **Phase 14: Open Questions** - Author-created open-question notes linked to book, characters, threads, places, or manuscript selections with list view, navigation, and status management. (completed 2026-04-10)
+- [x] **Phase 14: Open Questions** - Author-created open-question notes linked to book, characters, threads, places, or manuscript selections with list view, navigation, and status management.
+ (completed 2026-04-10)
 
 ## Phase Details
 
@@ -326,7 +327,7 @@ Plans:
 | 10. AI Review and Advisory Workflows | 0/0 | Not started | - |
 | 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
 | 12. Standardized Research Workflow and Results Repository | 2/2 | Completed | 2026-04-05 |
-| 13. LeanPub Workspace Initialization | 4/4 | Completed | 2026-04-09 |
+| 14. Open Questions | 6/6 | Completed | 2026-04-09 |
 | 14. Open Questions | 0/6 | Not started | - |
 
 ## Backlog
