@@ -135,8 +135,8 @@ Which phases cover which requirements. To be populated during roadmap creation.
 | KNOW-01 | 7 | Pending |
 | KNOW-02 | 7 | Pending |
 | KNOW-03 | 7 | Pending |
-| ISSUE-01 | 8 | Complete |
-| ISSUE-02 | 8 | Complete |
+| ISSUE-01 | 8 | Partial |
+| ISSUE-02 | 8 | Partial |
 | ISSUE-03 | 8 | Pending |
 | ISSUE-04 | 8 | Pending |
 | ISSUE-05 | 10 | Pending |
