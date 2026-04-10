@@ -8,12 +8,18 @@ export interface ProjectConfig {
     research: string;
     characters: string;
     threads: string;
+    settings: string;
   };
 }
 
 export const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
   schemaVersion: "1",
-  folders: { research: "research/leanquill/", characters: "notes/characters/", threads: "notes/threads/" },
+  folders: {
+    research: "research/leanquill/",
+    characters: "notes/characters/",
+    threads: "notes/threads/",
+    settings: "notes/settings/",
+  },
 };
 
 export function parseProjectConfig(content: string): ProjectConfig {
@@ -26,6 +32,7 @@ export function parseProjectConfig(content: string): ProjectConfig {
   let research = "research/leanquill/";
   let characters = "notes/characters/";
   let threads = "notes/threads/";
+  let settings = "notes/settings/";
 
   // Find the folders: block and extract research: from it
   const lines = normalized.split("\n");
@@ -53,12 +60,16 @@ export function parseProjectConfig(content: string): ProjectConfig {
       if (threadsMatch) {
         threads = threadsMatch[1].trim();
       }
+      const settingsMatch = /^\s+settings:\s*["']?(.+?)["']?\s*$/.exec(line);
+      if (settingsMatch) {
+        settings = settingsMatch[1].trim();
+      }
     }
   }
 
   return {
     schemaVersion,
-    folders: { research, characters, threads },
+    folders: { research, characters, threads, settings },
   };
 }
 
