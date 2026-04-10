@@ -1,5 +1,6 @@
 import type { ChapterPickerOption } from "./chapterPickerOptions";
 import { escapeHtml } from "./htmlUtils";
+import { buildPlaceTree, type PlaceTreeNode } from "./placeStore";
 import {
   OutlineNode,
   OutlineIndex,
@@ -8,6 +9,8 @@ import {
   ThemesDocument,
   ThreadProfile,
 } from "./types";
+
+const PLACE_WEBVIEW_DRAG_TYPE = "application/x-leanquill-place";
 
 function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) {
@@ -481,16 +484,8 @@ function renderCharactersTab(
   return `<div class="char-container">${listPane}${detailPane}</div>`;
 }
 
-function renderPlaceDetail(profile: PlaceProfile, allPlaces: PlaceProfile[]): string {
+function renderPlaceDetail(profile: PlaceProfile): string {
   const bodyId = `place-body-${profile.fileName.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
-
-  const parentOptions = allPlaces
-    .filter((p) => p.fileName !== profile.fileName)
-    .map((p) => {
-      const selected = p.fileName === profile.parentFileName ? " selected" : "";
-      return `<option value="${escapeHtml(p.fileName)}"${selected}>${escapeHtml(p.name || p.fileName)}</option>`;
-    })
-    .join("");
 
   const standardFields = `
     <div class="char-field-row">
@@ -505,14 +500,6 @@ function renderPlaceDetail(profile: PlaceProfile, allPlaces: PlaceProfile[]): st
         data-file="${escapeHtml(profile.fileName)}" data-field="aliases"
         value="${escapeHtml(profile.aliases.join(", "))}"
         placeholder="Comma-separated aliases" />
-    </div>
-    <div class="char-field-row">
-      <label class="char-field-label">Parent Place</label>
-      <select class="char-field-input" data-action="place:updateField"
-        data-file="${escapeHtml(profile.fileName)}" data-field="parentFileName">
-        <option value=""${!profile.parentFileName ? " selected" : ""}>(none — top level)</option>
-        ${parentOptions}
-      </select>
     </div>
     <div class="char-field-row">
       <label class="char-field-label">Description</label>
@@ -533,10 +520,6 @@ function renderPlaceDetail(profile: PlaceProfile, allPlaces: PlaceProfile[]): st
     ? profile.referencedByNameIn.map((r) => `<li class="char-ref-item">${escapeHtml(r)}</li>`).join("")
     : '<li class="char-ref-empty">No manuscript references detected yet.</li>';
 
-  const beatRefs = profile.referencedInBeats.length > 0
-    ? profile.referencedInBeats.map((id) => `<li class="char-ref-item">${escapeHtml(id)}</li>`).join("")
-    : '<li class="char-ref-empty">No outline beat references detected yet.</li>';
-
   return `
     <div class="char-detail-inner" data-file="${escapeHtml(profile.fileName)}">
       ${standardFields}
@@ -555,10 +538,6 @@ function renderPlaceDetail(profile: PlaceProfile, allPlaces: PlaceProfile[]): st
         <div class="char-refs-label">Appears in manuscript</div>
         <ul class="char-refs-list">${refs}</ul>
       </div>
-      <div class="char-refs-section">
-        <div class="char-refs-label">Referenced in outline (beats)</div>
-        <ul class="char-refs-list">${beatRefs}</ul>
-      </div>
       <div class="char-detail-actions">
         <button class="char-btn-editor" data-action="place:openInEditor"
           data-file="${escapeHtml(profile.fileName)}">Open in Editor</button>
@@ -568,26 +547,38 @@ function renderPlaceDetail(profile: PlaceProfile, allPlaces: PlaceProfile[]): st
     </div>`;
 }
 
+function renderPlaceListRows(
+  nodes: PlaceTreeNode[],
+  depth: number,
+  effectiveSelected: string | undefined,
+): string {
+  return nodes
+    .map((n) => {
+      const p = n.profile;
+      const sel = p.fileName === effectiveSelected ? " char-list-item--selected" : "";
+      const pad = 10 + depth * 16;
+      const row = `<div class="char-list-item place-list-item${sel}" draggable="true" style="padding-left:${pad}px"
+        data-action="place:select" data-file="${escapeHtml(p.fileName)}"
+        title="Drag onto another place to nest, or onto empty list area for top level">
+        ${escapeHtml(p.name || "(untitled)")}
+      </div>`;
+      const children = renderPlaceListRows(n.children, depth + 1, effectiveSelected);
+      return row + children;
+    })
+    .join("");
+}
+
 function renderPlacesTab(places: PlaceProfile[], selectedFileName: string | undefined): string {
   const effectiveSelected = selectedFileName ?? places[0]?.fileName;
 
-  const sorted = [...places].sort((a, b) =>
-    (a.name || a.fileName).localeCompare(b.name || b.fileName, undefined, { sensitivity: "base" }),
-  );
-
-  const listItems = sorted.map((p) =>
-    `<div class="char-list-item${p.fileName === effectiveSelected ? " char-list-item--selected" : ""}"
-         data-action="place:select"
-         data-file="${escapeHtml(p.fileName)}">
-      ${escapeHtml(p.name || "(untitled)")}
-    </div>`
-  ).join("");
+  const tree = buildPlaceTree(places);
+  const listItems = renderPlaceListRows(tree, 0, effectiveSelected);
 
   const listPane = `<div class="char-list">
     <div class="char-list-header">
       <button class="char-btn-new" data-action="place:create">+ New Place</button>
     </div>
-    <div class="char-list-body">
+    <div class="char-list-body place-list-body" data-place-drop-root="1">
       ${places.length === 0
         ? '<div class="char-empty-list">No places yet. Click + New Place to start.</div>'
         : listItems}
@@ -597,7 +588,7 @@ function renderPlacesTab(places: PlaceProfile[], selectedFileName: string | unde
   const selected = places.find((p) => p.fileName === effectiveSelected);
   const detailPane = `<div class="char-detail">
     ${selected
-      ? renderPlaceDetail(selected, places)
+      ? renderPlaceDetail(selected)
       : '<div class="char-empty-detail">Select a place to view its profile.</div>'}
   </div>`;
 
@@ -1035,6 +1026,20 @@ export function renderPlanningHtml(
     .char-list-item--selected {
       background: var(--vscode-list-activeSelectionBackground);
       color: var(--vscode-list-activeSelectionForeground);
+    }
+    .place-list-item {
+      cursor: grab;
+      user-select: none;
+    }
+    .place-list-item:active {
+      cursor: grabbing;
+    }
+    .place-list-body.place-list-drag-active {
+      box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
+      background: var(--vscode-list-hoverBackground);
+    }
+    .place-list-item.place-list-drop-target {
+      box-shadow: inset 0 -2px 0 0 var(--vscode-focusBorder);
     }
     .char-empty-list {
       padding: 16px 12px;
@@ -1650,14 +1655,65 @@ export function renderPlanningHtml(
             vscode.postMessage({ type: 'place:updateField', fileName: fileName, field: field, value: value });
           }, 300);
         });
-        placeContainer.addEventListener('change', (e) => {
-          const target = e.target;
-          if (!target || target.tagName !== 'SELECT' || target.getAttribute('data-action') !== 'place:updateField') return;
-          const fileName = target.getAttribute('data-file');
-          const field = target.getAttribute('data-field');
-          if (!fileName || !field) return;
-          vscode.postMessage({ type: 'place:updateField', fileName: fileName, field: field, value: target.value });
+
+        const placeDragType = ${JSON.stringify(PLACE_WEBVIEW_DRAG_TYPE)};
+        const placeListBody = placeContainer.querySelector('.place-list-body');
+        let placeDragActive = false;
+        placeContainer.addEventListener('dragstart', (e) => {
+          const t = e.target;
+          if (!t || !t.classList || !t.classList.contains('place-list-item')) return;
+          const fn = t.getAttribute('data-file');
+          if (!fn) return;
+          placeDragActive = true;
+          e.dataTransfer.setData(placeDragType, fn);
+          e.dataTransfer.setData('text/plain', fn);
+          e.dataTransfer.effectAllowed = 'move';
         });
+        placeContainer.addEventListener('dragend', () => {
+          placeDragActive = false;
+          placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
+          if (placeListBody) placeListBody.classList.remove('place-list-drag-active');
+        });
+        if (placeListBody) {
+          placeListBody.addEventListener('dragover', (e) => {
+            if (!placeDragActive) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const row = e.target && e.target.closest && e.target.closest('.place-list-item');
+            placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
+            placeListBody.classList.remove('place-list-drag-active');
+            if (row && placeListBody.contains(row)) {
+              row.classList.add('place-list-drop-target');
+            } else {
+              placeListBody.classList.add('place-list-drag-active');
+            }
+          });
+          placeListBody.addEventListener('dragleave', (e) => {
+            const row = e.target && e.target.closest && e.target.closest('.place-list-item');
+            if (row) row.classList.remove('place-list-drop-target');
+            if (e.target === placeListBody && !placeListBody.contains(e.relatedTarget)) {
+              placeListBody.classList.remove('place-list-drag-active');
+            }
+          });
+          placeListBody.addEventListener('drop', (e) => {
+            if (!placeDragActive) return;
+            e.preventDefault();
+            const dragged = e.dataTransfer.getData(placeDragType) || e.dataTransfer.getData('text/plain');
+            placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
+            placeListBody.classList.remove('place-list-drag-active');
+            placeDragActive = false;
+            if (!dragged) return;
+            const row = e.target && e.target.closest && e.target.closest('.place-list-item');
+            if (row && placeListBody.contains(row)) {
+              const newParent = row.getAttribute('data-file');
+              if (newParent && newParent !== dragged) {
+                vscode.postMessage({ type: 'place:reparent', draggedFileName: dragged, newParentFileName: newParent });
+              }
+            } else {
+              vscode.postMessage({ type: 'place:reparent', draggedFileName: dragged, newParentFileName: '' });
+            }
+          });
+        }
       }
 
       // --- Themes tab ---

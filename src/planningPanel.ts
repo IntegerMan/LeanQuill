@@ -3,7 +3,7 @@ import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { resolveChapterOrder } from "./chapterOrder";
 import { listCharacters, createCharacter, saveCharacter, deleteCharacter } from "./characterStore";
-import { listPlaces, createPlace, savePlace, deletePlace } from "./placeStore";
+import { listPlaces, createPlace, placeReparentWouldCycle, savePlace, deletePlace } from "./placeStore";
 import { buildChapterPickerOptions } from "./chapterPickerOptions";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml } from "./planningPanelHtml";
@@ -461,6 +461,13 @@ export class PlanningPanelProvider {
 
       case "place:openInEditor":
         await this._openPlaceInEditor(msg.fileName as string);
+        break;
+
+      case "place:reparent":
+        await this._reparentPlace(
+          String(msg.draggedFileName ?? ""),
+          String(msg.newParentFileName ?? ""),
+        );
         break;
 
       case "theme:updateBook":
@@ -982,6 +989,36 @@ export class PlanningPanelProvider {
     const charsDir = config.folders.characters.replace(/\/+$/, "");
     const filePath = path.join(this.rootPath, ...charsDir.split("/"), fileName);
     await this.vscodeApi.commands.executeCommand("vscode.open", this.vscodeApi.Uri.file(filePath));
+  }
+
+  private async _reparentPlace(draggedFileName: string, newParentFileName: string): Promise<void> {
+    if (!draggedFileName || draggedFileName === newParentFileName) {
+      return;
+    }
+    await this._flushPendingPlace();
+    const config = await readProjectConfigWithDefaults(this.rootPath);
+    const profiles = await listPlaces(this.rootPath, config);
+    const parentOf = new Map<string, string>();
+    for (const p of profiles) {
+      parentOf.set(p.fileName, p.parentFileName || "");
+    }
+    if (placeReparentWouldCycle(draggedFileName, newParentFileName, parentOf)) {
+      await this.vscodeApi.window.showWarningMessage(
+        "LeanQuill: Cannot move a place under itself or one of its descendants.",
+      );
+      return;
+    }
+    const profile = profiles.find((p) => p.fileName === draggedFileName);
+    if (!profile) {
+      return;
+    }
+    const current = profile.parentFileName || "";
+    if (current === newParentFileName) {
+      return;
+    }
+    profile.parentFileName = newParentFileName;
+    await savePlace(profile, this.rootPath, config, this.safeFs);
+    await this._renderPanel();
   }
 
   private async _createPlace(): Promise<void> {

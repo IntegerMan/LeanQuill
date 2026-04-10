@@ -123,7 +123,7 @@
         "command": "leanquill.newPlace",
         "title": "New Place",
         "category": "LeanQuill",
-        "icon": "$(map)"
+        "icon": "$(add)"
       },
       {
         "command": "leanquill.newThread",

@@ -246,7 +246,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const researchDir = path.join(rootPath, ...researchFolder.split("/"));
   const researchTreeProvider = new ResearchTreeProvider(vscode, researchDir);
   const characterTreeProvider = new CharacterTreeProvider(vscode, rootPath);
-  const placeTreeProvider = new PlaceTreeProvider(vscode, rootPath);
 
   const setupViewProvider = new LeanQuillActionsProvider();
   const outlineContextProvider = new OutlineContextPaneProvider(vscode);
@@ -264,6 +263,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   outlineWebviewRef.current = outlineWebviewProvider;
 
   planningPanel = new PlanningPanelProvider(vscode, context.extensionUri, rootPath, safeFileSystem);
+
+  const placeTreeProvider = new PlaceTreeProvider(vscode, rootPath, safeFileSystem, () => {
+    void planningPanel.refresh();
+  });
 
   // Flag to prevent Book.txt write-loop (reset after delay to allow watcher to fire)
   let _selfEditingBookTxt = false;
@@ -422,6 +425,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const placesTreeView = vscode.window.createTreeView("leanquill.places", {
+    treeDataProvider: placeTreeProvider,
+    dragAndDropController: placeTreeProvider,
+    showCollapseAll: true,
+  });
+  placeTreeProvider.attachTreeView(placesTreeView);
+
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("leanquill.actions", setupViewProvider),
     vscode.window.registerWebviewViewProvider("leanquill.outlineTree", outlineWebviewProvider, {
@@ -432,7 +442,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.window.registerTreeDataProvider("leanquill.research", researchTreeProvider),
     vscode.window.registerTreeDataProvider("leanquill.characters", characterTreeProvider),
-    vscode.window.registerTreeDataProvider("leanquill.places", placeTreeProvider),
+    placesTreeView,
     researchWatcher,
     charactersWatcher,
     threadsWatcher,

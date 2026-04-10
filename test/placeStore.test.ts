@@ -16,6 +16,7 @@ import {
   outlineTextMatchesPlace,
   scanOutlineIndexForPlaces,
   buildPlaceTree,
+  placeReparentWouldCycle,
 } from "../src/placeStore";
 import { SafeFileSystem } from "../src/safeFileSystem";
 import { OutlineIndex, OutlineNode, PlaceProfile } from "../src/types";
@@ -425,4 +426,25 @@ test("buildPlaceTree orphaned parent reference falls back to root", () => {
   const tree = buildPlaceTree([orphan]);
   assert.equal(tree.length, 1);
   assert.equal(tree[0].profile.name, "Orphan");
+});
+
+test("placeReparentWouldCycle is false for root reparent or unrelated branch", () => {
+  const m = new Map<string, string>([
+    ["ship.md", ""],
+    ["deck.md", "ship.md"],
+    ["room.md", "deck.md"],
+  ]);
+  assert.equal(placeReparentWouldCycle("room.md", "", m), false);
+  assert.equal(placeReparentWouldCycle("deck.md", "ship.md", m), false);
+});
+
+test("placeReparentWouldCycle is true when new parent is under moving node", () => {
+  const m = new Map<string, string>([
+    ["ship.md", ""],
+    ["deck.md", "ship.md"],
+    ["room.md", "deck.md"],
+  ]);
+  assert.equal(placeReparentWouldCycle("ship.md", "room.md", m), true);
+  assert.equal(placeReparentWouldCycle("ship.md", "deck.md", m), true);
+  assert.equal(placeReparentWouldCycle("deck.md", "room.md", m), true);
 });

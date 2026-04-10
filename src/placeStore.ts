@@ -416,6 +416,26 @@ export async function scanOutlineIndexForPlaces(
 // Tree helpers — build hierarchical view from flat profiles
 // ---------------------------------------------------------------------------
 
+/** True if `newParent` is `moving` or an ancestor chain leads from `newParent` up to `moving` (cycle). */
+export function placeReparentWouldCycle(
+  moving: string,
+  newParent: string,
+  parentOf: Map<string, string>,
+): boolean {
+  let cur: string | undefined = newParent;
+  while (cur) {
+    if (cur === moving) {
+      return true;
+    }
+    const next = parentOf.get(cur);
+    if (!next) {
+      break;
+    }
+    cur = next;
+  }
+  return false;
+}
+
 export interface PlaceTreeNode {
   profile: PlaceProfile;
   children: PlaceTreeNode[];
