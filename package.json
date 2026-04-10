@@ -12,6 +12,7 @@
   ],
   "activationEvents": [
     "onCommand:leanquill.initialize",
+    "onCommand:leanquill.newPlace",
     "onCommand:leanquill.openPlanningWorkspace",
     "onCommand:leanquill.newThread",
     "onCommand:leanquill.newTheme",
@@ -116,6 +117,12 @@
         "title": "New Character",
         "category": "LeanQuill",
         "icon": "$(person-add)"
+      },
+      {
+        "command": "leanquill.newPlace",
+        "title": "New Place",
+        "category": "LeanQuill",
+        "icon": "$(map)"
       },
       {
         "command": "leanquill.newThread",

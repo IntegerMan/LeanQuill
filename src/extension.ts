@@ -19,6 +19,11 @@ import { ResearchTreeProvider } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
 import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
 import { createCharacter, scanManuscriptFileForCharacters } from "./characterStore";
+import {
+  createPlace,
+  scanManuscriptFileForPlaces,
+  scanOutlineIndexForPlaces,
+} from "./placeStore";
 import { createThread } from "./threadStore";
 import { addCentralThemeEntry, readThemesDocument, writeThemesDocument } from "./themesStore";
 
@@ -361,6 +366,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const newPlaceCommand = vscode.commands.registerCommand("leanquill.newPlace", async () => {
+    const name = await vscode.window.showInputBox({ prompt: "Place name", placeHolder: "e.g. The Old Mill" });
+    if (!name?.trim()) {
+      return;
+    }
+    const latestConfig = await readProjectConfigWithDefaults(rootPath);
+    try {
+      const profile = await createPlace(name.trim(), rootPath, latestConfig, safeFileSystem);
+      await planningPanel.show();
+      await planningPanel.showPlace(profile.fileName);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(`LeanQuill: Failed to create place: ${message}`);
+    }
+  });
+
   const newThreadCommand = vscode.commands.registerCommand("leanquill.newThread", async () => {
     const title = await vscode.window.showInputBox({
       prompt: "Thread title",
@@ -407,6 +428,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     settingsWatcher,
     startResearchCommand,
     newCharacterCommand,
+    newPlaceCommand,
     newThreadCommand,
     newThemeCommand,
     selectCharacterInPanelCommand,
@@ -767,9 +789,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   manuscriptFileWatcher.onDidDelete(triggerOutlineRefresh);
   // Outline index watcher — reload webview + panel + sync Book.txt
   const onOutlineChanged = () => {
-    void outlineWebviewProvider.refresh();
-    void planningPanel.refresh();
-    void syncBookTxt();
+    void (async () => {
+      void outlineWebviewProvider.refresh();
+      try {
+        const index = await readOutlineIndex(rootPath);
+        const latestConfig = await readProjectConfigWithDefaults(rootPath);
+        await scanOutlineIndexForPlaces(index, rootPath, latestConfig, safeFileSystem);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.error(`Outline place scan failed: ${message}`);
+      }
+      void planningPanel.refresh();
+      void syncBookTxt();
+    })();
   };
   outlineWatcher.onDidCreate(onOutlineChanged);
   outlineWatcher.onDidChange(onOutlineChanged);
@@ -818,6 +850,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       const latestConfig = await readProjectConfigWithDefaults(rootPath);
       await scanManuscriptFileForCharacters(filePath, rootPath, latestConfig, safeFileSystem);
+      await scanManuscriptFileForPlaces(filePath, rootPath, latestConfig, safeFileSystem);
       await planningPanel.refresh();
       characterTreeProvider.refresh();
     } catch {
