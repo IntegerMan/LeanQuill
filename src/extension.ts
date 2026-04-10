@@ -178,7 +178,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Load project config and configure research folder access
   let config = await readProjectConfig(rootPath);
   const DEFAULT_THREADS_FOLDER = "notes/threads";
+  const DEFAULT_SETTINGS_FOLDER = "notes/settings";
   let safeThreadsFolder = DEFAULT_THREADS_FOLDER;
+  let safeSettingsFolder = DEFAULT_SETTINGS_FOLDER;
   if (config) {
     if (config.schemaVersion === "1") {
       const migrated = await migrateProjectYaml(rootPath, safeFileSystem);
@@ -218,11 +220,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     safeThreadsFolder = isThreadsMsPath ? DEFAULT_THREADS_FOLDER : threadsFolderClean;
     safeFileSystem.allowPath(safeThreadsFolder, ".md");
 
+    const settingsFolderRaw = config.folders.settings ?? DEFAULT_SETTINGS_FOLDER;
+    const settingsFolderClean = settingsFolderRaw.replace(/\/+$/g, "");
+    const isSettingsMsPath =
+      settingsFolderClean === "manuscript" ||
+      settingsFolderClean.startsWith("manuscript/");
+    safeSettingsFolder = isSettingsMsPath ? DEFAULT_SETTINGS_FOLDER : settingsFolderClean;
+    safeFileSystem.allowPath(safeSettingsFolder, ".md");
+
     // Ensure harness entry points exist for projects initialized before phase 12
     // (writeHarnessEntryPoints is idempotent — skips existing files)
     void writeHarnessEntryPoints(rootPath).catch(() => { /* non-critical */ });
   } else {
     safeFileSystem.allowPath(DEFAULT_THREADS_FOLDER, ".md");
+    safeFileSystem.allowPath(DEFAULT_SETTINGS_FOLDER, ".md");
   }
 
   const researchFolder = (config?.folders.research ?? "research/leanquill").replace(/\/+$/, "");
@@ -291,6 +302,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   threadsWatcher.onDidCreate(() => void planningPanel.refresh());
   threadsWatcher.onDidChange(() => void planningPanel.refresh());
   threadsWatcher.onDidDelete(() => void planningPanel.refresh());
+
+  const settingsWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(rootPath, `${safeSettingsFolder}/**/*.md`),
+  );
+  settingsWatcher.onDidCreate(() => void planningPanel.refresh());
+  settingsWatcher.onDidChange(() => void planningPanel.refresh());
+  settingsWatcher.onDidDelete(() => void planningPanel.refresh());
 
   const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
     const appName = vscode.env.appName ?? "";
@@ -386,6 +404,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     researchWatcher,
     charactersWatcher,
     threadsWatcher,
+    settingsWatcher,
     startResearchCommand,
     newCharacterCommand,
     newThreadCommand,
