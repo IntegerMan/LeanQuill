@@ -7,6 +7,8 @@ import { listPlaces, createPlace, placeReparentWouldCycle, savePlace, deletePlac
 import { buildChapterPickerOptions } from "./chapterPickerOptions";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml } from "./planningPanelHtml";
+import type { SerializableOpenQuestionRow } from "./openQuestionsHtml";
+import { deleteOpenQuestion, listOpenQuestions, saveOpenQuestion } from "./openQuestionStore";
 import {
   readProjectConfigWithDefaults,
   readProjectIdentity,
@@ -33,6 +35,8 @@ import {
   PlaceProfile,
   ThemesDocument,
   ThreadProfile,
+  OpenQuestionRecord,
+  OpenQuestionStatus,
 } from "./types";
 
 export class PlanningPanelProvider {
@@ -59,6 +63,10 @@ export class PlanningPanelProvider {
   private _pendingThread: ThreadProfile | undefined;
   private _threadDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   private _threadUpdateLock: Promise<void> = Promise.resolve();
+
+  private _selectedOpenQuestionId: string | undefined;
+  private _pendingOpenQuestion: OpenQuestionRecord | undefined;
+  private _oqDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly vscodeApi: typeof VSCode,
@@ -102,6 +110,7 @@ export class PlanningPanelProvider {
         await this._flushPendingCharacter();
         await this._flushPendingPlace();
         await this._flushPendingThread();
+        await this._flushPendingOpenQuestion();
       })().catch((err: unknown) => {
         console.error('[LeanQuill] Failed to flush pending state on dispose', err);
       });
@@ -170,6 +179,23 @@ export class PlanningPanelProvider {
     }
   }
 
+  public async showOpenQuestion(id: string): Promise<void> {
+    this._activeTab = "openQuestions";
+    this._selectedOpenQuestionId = id;
+    if (this._panel) {
+      this._panel.reveal(this.vscodeApi.ViewColumn.One);
+      await this._renderPanel();
+    } else {
+      await this.show();
+    }
+  }
+
+  public async revealOpenQuestionRow(questionId: string): Promise<void> {
+    this._activeTab = "openQuestions";
+    this._selectedOpenQuestionId = questionId;
+    await this._renderPanel();
+  }
+
   public async dispose(): Promise<void> {
     if (this._debounceTimer) {
       clearTimeout(this._debounceTimer);
@@ -184,6 +210,7 @@ export class PlanningPanelProvider {
     await this._flushPendingCharacter();
     await this._flushPendingPlace();
     await this._flushPendingThread();
+    await this._flushPendingOpenQuestion();
     if (this._panel) {
       this._panel.dispose();
       this._panel = undefined;
@@ -351,6 +378,14 @@ export class PlanningPanelProvider {
     ) {
       this._selectedPlaceFileName = undefined;
     }
+    const openQuestionRecords = await listOpenQuestions(this.rootPath);
+    if (
+      this._selectedOpenQuestionId &&
+      !openQuestionRecords.find((q) => q.id === this._selectedOpenQuestionId)
+    ) {
+      this._selectedOpenQuestionId = undefined;
+    }
+    const openQuestionRows = this._openQuestionSerializableRows(openQuestionRecords);
     const nonce = crypto.randomBytes(16).toString("hex");
     const cspSource = this._panel.webview.cspSource;
     this._panel.webview.html = renderPlanningHtml(
@@ -362,6 +397,8 @@ export class PlanningPanelProvider {
       themes,
       threads,
       this._selectedThreadFileName,
+      openQuestionRows,
+      this._selectedOpenQuestionId,
       chapterPickerOptions,
       projectIdentity.workingTitle,
       projectIdentity.genres.join(", "),
@@ -559,6 +596,63 @@ export class PlanningPanelProvider {
       case "thread:setTouchesChapters":
         await this._setThreadTouchesChapters(msg.fileName as string, msg.paths as string[]);
         break;
+
+      case "openQuestion:select": {
+        await this._flushPendingOpenQuestion();
+        this._selectedOpenQuestionId = String(msg.id ?? "");
+        this._pendingOpenQuestion = undefined;
+        await this._renderPanel();
+        break;
+      }
+
+      case "openQuestion:fieldChange":
+        await this._updateOpenQuestionField(String(msg.id ?? ""), String(msg.field ?? ""), String(msg.value ?? ""));
+        break;
+
+      case "openQuestion:save":
+        await this._flushPendingOpenQuestion();
+        await this._renderPanel();
+        break;
+
+      case "openQuestion:delete":
+        await this._handleOpenQuestionDelete(String(msg.id ?? ""));
+        break;
+
+      case "openQuestion:navigate":
+        try {
+          await this.vscodeApi.commands.executeCommand("leanquill.openQuestionTarget", String(msg.id ?? ""));
+        } catch {
+          /* Command registers in phase 14-06 */
+        }
+        break;
+
+      case "openQuestion:refresh":
+        await this._renderPanel();
+        break;
+
+      case "openQuestion:new-question":
+        try {
+          await this.vscodeApi.commands.executeCommand("leanquill.newOpenQuestion");
+        } catch {
+          /* Command registers in phase 14-06 */
+        }
+        break;
+
+      case "openQuestionRowContext": {
+        const kind = String(msg.openQuestionRowContext ?? "");
+        const fileName = String(msg.fileName ?? "");
+        if (!fileName) {
+          break;
+        }
+        if (kind === "character") {
+          await this.vscodeApi.commands.executeCommand("leanquill.newOpenQuestionFromCharacter", { fileName });
+        } else if (kind === "place") {
+          await this.vscodeApi.commands.executeCommand("leanquill.newOpenQuestionFromPlace", { fileName });
+        } else if (kind === "thread") {
+          await this.vscodeApi.commands.executeCommand("leanquill.newOpenQuestionFromThread", { fileName });
+        }
+        break;
+      }
     }
   }
 
@@ -1159,6 +1253,136 @@ export class PlanningPanelProvider {
     const settingsDir = config.folders.settings.replace(/\/+$/, "");
     const filePath = path.join(this.rootPath, ...settingsDir.split("/"), fileName);
     await this.vscodeApi.commands.executeCommand("vscode.open", this.vscodeApi.Uri.file(filePath));
+  }
+
+  private _openQuestionAssociationChip(association: OpenQuestionRecord["association"]): string {
+    switch (association.kind) {
+      case "book":
+        return "Book";
+      case "character":
+        return `Character · ${association.fileName}`;
+      case "place":
+        return `Place · ${association.fileName}`;
+      case "thread":
+        return `Thread · ${association.fileName}`;
+      case "chapter":
+        return `Chapter · ${association.chapterRef}`;
+      case "selection":
+        return `Selection · ${association.chapterRef}`;
+      default:
+        return "Book";
+    }
+  }
+
+  private _toOpenQuestionRow(r: OpenQuestionRecord): SerializableOpenQuestionRow {
+    const line = (r.body || "").split("\n")[0]?.trim() ?? "";
+    const preview = line.length > 120 ? `${line.slice(0, 120)}…` : line;
+    return {
+      id: r.id,
+      title: r.title,
+      body: r.body,
+      preview: preview || " ",
+      status: r.status,
+      associationChip: this._openQuestionAssociationChip(r.association),
+      stale: Boolean(r.staleHint),
+    };
+  }
+
+  private _openQuestionSerializableRows(list: OpenQuestionRecord[]): SerializableOpenQuestionRow[] {
+    return list.map((r) => {
+      const effective =
+        this._pendingOpenQuestion && this._pendingOpenQuestion.id === r.id ? this._pendingOpenQuestion : r;
+      return this._toOpenQuestionRow(effective);
+    });
+  }
+
+  private async _flushPendingOpenQuestion(): Promise<void> {
+    if (this._oqDebounceTimer) {
+      clearTimeout(this._oqDebounceTimer);
+      this._oqDebounceTimer = undefined;
+    }
+    if (this._pendingOpenQuestion) {
+      const rec = this._pendingOpenQuestion;
+      try {
+        await saveOpenQuestion(rec, this.rootPath, this.safeFs);
+      } catch (err: unknown) {
+        console.error("[LeanQuill] Failed to save open question", err);
+        await this.vscodeApi.window.showErrorMessage("Could not save this question. Check the file is writable and retry.");
+        return;
+      }
+      this._pendingOpenQuestion = undefined;
+    }
+  }
+
+  private async _updateOpenQuestionField(id: string, field: string, value: string): Promise<void> {
+    if (!id) {
+      return;
+    }
+    if (this._pendingOpenQuestion && this._pendingOpenQuestion.id !== id) {
+      await this._flushPendingOpenQuestion();
+    }
+    if (!this._pendingOpenQuestion || this._pendingOpenQuestion.id !== id) {
+      const list = await listOpenQuestions(this.rootPath);
+      const found = list.find((q) => q.id === id);
+      if (!found) {
+        return;
+      }
+      this._pendingOpenQuestion = { ...found };
+    }
+    const pending = this._pendingOpenQuestion;
+    if (!pending || pending.id !== id) {
+      return;
+    }
+    if (field === "title") {
+      pending.title = value;
+    } else if (field === "body") {
+      pending.body = value;
+    } else if (field === "status") {
+      const s = value as OpenQuestionStatus;
+      if (s === "open" || s === "deferred" || s === "resolved") {
+        pending.status = s;
+      }
+    }
+
+    if (this._oqDebounceTimer) {
+      clearTimeout(this._oqDebounceTimer);
+    }
+    const toWrite = pending;
+    this._oqDebounceTimer = setTimeout(() => {
+      void saveOpenQuestion(toWrite, this.rootPath, this.safeFs)
+        .then(() => {
+          if (this._pendingOpenQuestion?.id === toWrite.id) {
+            this._pendingOpenQuestion = undefined;
+          }
+        })
+        .catch((err: unknown) => {
+          console.error("[LeanQuill] Failed to save open question (debounced)", err);
+        });
+    }, 300);
+  }
+
+  private async _handleOpenQuestionDelete(id: string): Promise<void> {
+    if (!id) {
+      return;
+    }
+    const choice = await this.vscodeApi.window.showWarningMessage(
+      "Delete this open question? This cannot be undone.",
+      { modal: true },
+      "Delete",
+    );
+    if (choice !== "Delete") {
+      return;
+    }
+    await this._flushPendingOpenQuestion();
+    const list = await listOpenQuestions(this.rootPath);
+    const found = list.find((q) => q.id === id);
+    if (found) {
+      await deleteOpenQuestion(found.fileName, this.rootPath, this.safeFs);
+    }
+    if (this._selectedOpenQuestionId === id) {
+      this._selectedOpenQuestionId = undefined;
+    }
+    await this._renderPanel();
   }
 
 }

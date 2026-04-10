@@ -9,6 +9,7 @@ import {
   isAncestorOf,
 } from "./outlineStore";
 import { SafeFileSystem } from "./safeFileSystem";
+import { countOpenQuestionsByChapter, listOpenQuestions } from "./openQuestionStore";
 import { OutlineNode, OutlineIndex, ChapterStatus } from "./types";
 
 const STATUS_ICONS: Record<ChapterStatus, string> = {
@@ -23,7 +24,23 @@ const STATUS_ICONS: Record<ChapterStatus, string> = {
 
 // --- HTML generation ---
 
-function renderNodeTree(nodes: OutlineNode[], depth: number): string {
+function normalizeOutlinePath(p: string): string {
+  return p.split("\\").join("/");
+}
+
+function openQuestionCountSuffix(fileName: string, counts: Record<string, number>): string {
+  if (!fileName) {
+    return "";
+  }
+  const key = normalizeOutlinePath(fileName);
+  const n = counts[key];
+  if (n && n > 0) {
+    return ` · ${n} issue${n === 1 ? "" : "s"}`;
+  }
+  return "";
+}
+
+function renderNodeTree(nodes: OutlineNode[], depth: number, chapterOpenIssueCounts: Record<string, number>): string {
   return nodes
     .map((node) => {
       const hasChildren = node.children.length > 0;
@@ -33,8 +50,9 @@ function renderNodeTree(nodes: OutlineNode[], depth: number): string {
         : STATUS_ICONS[node.status] || "dash";
       const inactiveClass = node.active ? "" : " inactive";
       const statusLabel = hasPart ? "" : ` (${escapeHtml(node.status)})`;
+      const issueSuffix = !hasPart && node.fileName ? escapeHtml(openQuestionCountSuffix(node.fileName, chapterOpenIssueCounts)) : "";
       const childrenHtml = hasChildren
-        ? `<div class="children" data-parent-id="${escapeHtml(node.id)}">${renderNodeTree(node.children, depth + 1)}</div>`
+        ? `<div class="children" data-parent-id="${escapeHtml(node.id)}">${renderNodeTree(node.children, depth + 1, chapterOpenIssueCounts)}</div>`
         : "";
       const expandClass = hasChildren ? " expanded" : "";
 
@@ -43,7 +61,7 @@ function renderNodeTree(nodes: OutlineNode[], depth: number): string {
     ${hasChildren ? '<span class="toggle codicon codicon-chevron-right"></span>' : '<span class="toggle-spacer"></span>'}
     <span class="icon codicon codicon-${escapeHtml(icon)}"></span>
     <span class="label">${escapeHtml(node.title || "(untitled)")}</span>
-    <span class="status-text">${statusLabel}</span>
+    <span class="status-text">${statusLabel}${issueSuffix}</span>
   </div>
   <div class="drop-zone sibling-zone" data-target-id="${escapeHtml(node.id)}" data-action="after"></div>
   ${childrenHtml}
@@ -52,15 +70,15 @@ function renderNodeTree(nodes: OutlineNode[], depth: number): string {
     .join("\n");
 }
 
-function renderOrphans(orphanFiles: string[]): string {
+function renderOrphans(orphanFiles: string[], chapterOpenIssueCounts: Record<string, number>): string {
   if (orphanFiles.length === 0) {
     return "";
   }
   const items = orphanFiles
-    .map(
-      (f) =>
-        `<div class="orphan-item" data-file="${escapeHtml(f)}"><span class="icon codicon codicon-file"></span><span class="label">${escapeHtml(f.replace(/^manuscript\//, ""))}</span></div>`,
-    )
+    .map((f) => {
+      const suf = escapeHtml(openQuestionCountSuffix(f, chapterOpenIssueCounts));
+      return `<div class="orphan-item" data-file="${escapeHtml(f)}"><span class="icon codicon codicon-file"></span><span class="label">${escapeHtml(f.replace(/^manuscript\//, ""))}${suf}</span></div>`;
+    })
     .join("\n");
   return `<div class="orphan-group">
   <div class="orphan-header">Not Included (${orphanFiles.length})</div>
@@ -71,13 +89,14 @@ function renderOrphans(orphanFiles: string[]): string {
 export function renderOutlineWebviewHtml(
   index: OutlineIndex,
   orphanFiles: string[],
+  chapterOpenIssueCounts: Record<string, number>,
   nonce: string,
   codiconCssUri: string,
   cspSource: string,
 ): string {
   const tree =
     index.nodes.length > 0
-      ? `<div class="tree-root" data-parent-id="root">${renderNodeTree(index.nodes, 0)}</div>`
+      ? `<div class="tree-root" data-parent-id="root">${renderNodeTree(index.nodes, 0, chapterOpenIssueCounts)}</div>`
       : '<div class="empty-state"><p>No outline yet.</p></div>';
 
   return `<!DOCTYPE html>
@@ -195,7 +214,7 @@ export function renderOutlineWebviewHtml(
 </head>
 <body>
   ${tree}
-  ${renderOrphans(orphanFiles)}
+  ${renderOrphans(orphanFiles, chapterOpenIssueCounts)}
 
   <div class="context-menu" id="contextMenu">
     <div class="context-menu-item" data-action="addChild">Add Child</div>
@@ -203,6 +222,7 @@ export function renderOutlineWebviewHtml(
     <div class="context-menu-separator"></div>
     <div class="context-menu-item" data-action="openInEditor">Open in Editor</div>
     <div class="context-menu-item" data-action="openFile">Open File</div>
+    <div class="context-menu-item" data-action="newOpenQuestion">New open question</div>
     <div class="context-menu-item" data-action="updateStatus">Update Status</div>
     <div class="context-menu-separator"></div>
     <div class="context-menu-item" data-action="rename">Rename</div>
@@ -524,6 +544,8 @@ export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
 
     const index = await readOutlineIndex(this.rootPath);
     const orphanFiles = await this.discoverOrphans(index);
+    const oqList = await listOpenQuestions(this.rootPath);
+    const chapterOpenIssueCounts = countOpenQuestionsByChapter(oqList);
     const nonce = crypto.randomUUID().replace(/-/g, "");
 
     const cspSource = this.view.webview.cspSource;
@@ -545,6 +567,7 @@ export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
     this.view.webview.html = renderOutlineWebviewHtml(
       index,
       orphanFiles,
+      chapterOpenIssueCounts,
       nonce,
       codiconCssUri,
       cspSource,
@@ -670,6 +693,17 @@ export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
           nodeId,
         );
         break;
+      case "newOpenQuestion": {
+        const index = await readOutlineIndex(this.rootPath);
+        const node = findNodeById(index.nodes, nodeId);
+        const chapterPath = node?.fileName ? normalizeOutlinePath(node.fileName) : "";
+        if (chapterPath.startsWith("manuscript/")) {
+          await this.vscodeApi.commands.executeCommand("leanquill.newOpenQuestionFromChapter", {
+            chapterPath,
+          });
+        }
+        break;
+      }
       case "updateStatus":
         await this.vscodeApi.commands.executeCommand(
           "leanquill.updateNodeStatus",

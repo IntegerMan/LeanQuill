@@ -22,6 +22,7 @@
     "onView:leanquill.research",
     "onView:leanquill.characters",
     "onView:leanquill.places",
+    "onView:leanquill.openQuestionsPanel",
     "workspaceContains:manuscript/Book.txt",
     "workspaceContains:manuscript"
   ],
@@ -134,12 +135,54 @@
         "command": "leanquill.newTheme",
         "title": "New Theme",
         "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestion",
+        "title": "New Open Question (book-wide)",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromChapter",
+        "title": "New Open Question from Chapter",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromSelection",
+        "title": "New Open Question from Selection",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromCharacter",
+        "title": "New Open Question from Character",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromPlace",
+        "title": "New Open Question from Place",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromThread",
+        "title": "New Open Question from Thread",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.openQuestionTarget",
+        "title": "Open Open Question Target",
+        "category": "LeanQuill"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "leanquill",
+          "title": "LeanQuill",
+          "icon": "media/leanquill.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "leanquillOpenQuestions",
           "title": "LeanQuill",
           "icon": "media/leanquill.svg"
         }
@@ -177,9 +220,34 @@
           "name": "Places",
           "when": "leanquill.workspaceLeanQuillReady"
         }
+      ],
+      "leanquillOpenQuestions": [
+        {
+          "id": "leanquill.openQuestionsPanel",
+          "name": "Open questions",
+          "type": "webview",
+          "when": "leanquill.workspaceLeanQuillReady"
+        }
       ]
     },
     "menus": {
+      "commandPalette": [
+        {
+          "command": "leanquill.newOpenQuestion",
+          "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
+          "command": "leanquill.newOpenQuestionFromSelection",
+          "when": "leanquill.workspaceLeanQuillReady"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "leanquill.newOpenQuestionFromSelection",
+          "when": "editorTextFocus && leanquill.workspaceLeanQuillReady",
+          "group": "leanquill@30"
+        }
+      ],
       "view/title": [
         {
           "command": "leanquill.openPlanningWorkspace",
