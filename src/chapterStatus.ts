@@ -161,7 +161,7 @@ export async function writeChapterStatusEntry(
     chapterId: current.chapterId,
     title: title && title.trim().length > 0 ? title.trim() : current.title,
     status,
-    openIssueCount: 0,
+    openIssueCount: current.openIssueCount,
     updatedAt: new Date().toISOString(),
   };
 

@@ -57,6 +57,20 @@ test("coerces invalid stored status to not-started", async () => {
 test("writes and reloads chapter status through SafeFileSystem", async () => {
   await withTempDir(async (dir) => {
     const safeFs = new SafeFileSystem(dir);
+    const statusPath = path.join(dir, ".leanquill", "chapter-status-index.json");
+    await fs.mkdir(path.dirname(statusPath), { recursive: true });
+    await fs.writeFile(statusPath, JSON.stringify({
+      schemaVersion: "1",
+      chapters: {
+        "manuscript/ch2.md": {
+          chapterId: "ch2",
+          title: "Old",
+          status: "not-started",
+          openIssueCount: 2,
+          updatedAt: "2026-03-29T00:00:00.000Z",
+        },
+      },
+    }, null, 2));
 
     await writeChapterStatusEntry(safeFs, dir, "manuscript/ch2.md", "drafting", "Chapter Two");
     const index = await readChapterStatusIndex(dir);
@@ -65,7 +79,7 @@ test("writes and reloads chapter status through SafeFileSystem", async () => {
     assert.ok(entry);
     assert.equal(entry.status, "drafting");
     assert.equal(entry.title, "Chapter Two");
-    assert.equal(entry.openIssueCount, 0);
+    assert.equal(entry.openIssueCount, 2);
     assert.match(entry.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
   });
 });

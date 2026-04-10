@@ -100,3 +100,28 @@ export interface ThreadProfile {
   customFields: Record<string, string>;
   body: string;
 }
+
+// --- Open questions (Phase 14, ISSUE-01/02 partial) ---
+
+export type OpenQuestionStatus = "open" | "deferred" | "resolved";
+
+export type OpenQuestionAssociation =
+  | { kind: "book" }
+  | { kind: "character"; fileName: string }
+  | { kind: "place"; fileName: string }
+  | { kind: "thread"; fileName: string }
+  | { kind: "chapter"; chapterRef: string }
+  | { kind: "selection"; chapterRef: string; spanHint: string };
+
+export interface OpenQuestionRecord {
+  fileName: string;
+  id: string;
+  title: string;
+  body: string;
+  status: OpenQuestionStatus;
+  createdAt: string;
+  updatedAt: string;
+  association: OpenQuestionAssociation;
+  /** Computed for webview navigation UX; not persisted. */
+  staleHint?: string;
+}
