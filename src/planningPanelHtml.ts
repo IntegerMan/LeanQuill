@@ -1,5 +1,6 @@
 import type { ChapterPickerOption } from "./chapterPickerOptions";
 import { escapeHtml } from "./htmlUtils";
+import { renderOpenQuestionsHtml, type SerializableOpenQuestionRow } from "./openQuestionsHtml";
 import { buildPlaceTree, type PlaceTreeNode } from "./placeStore";
 import {
   OutlineNode,
@@ -175,15 +176,20 @@ function renderStubTab(name: string): string {
   return `<div class="stub-tab"><p>The <strong>${escapeHtml(name)}</strong> feature is coming in a future update.</p></div>`;
 }
 
-const TAB_IDS = ["themes", "outline", "cards", "characters", "places", "threads"] as const;
-const TAB_LABELS: Record<string, string> = {
+const TAB_IDS = ["themes", "outline", "cards", "characters", "places", "threads", "openQuestions"] as const;
+
+/** Panel/window title segment for each planning tab (`LeanQuill - …`). */
+export const PLANNING_TAB_LABELS: Record<string, string> = {
   outline: "Outline",
   cards: "Cards",
   themes: "Themes",
   characters: "Characters",
   places: "Places",
   threads: "Threads",
+  openQuestions: "Open questions",
 };
+
+const TAB_LABELS = PLANNING_TAB_LABELS;
 
 // ---------------------------------------------------------------------------
 // Themes tab
@@ -319,7 +325,9 @@ function renderThreadsTab(
     .map(
       (p) =>
         `<div class="thread-list-item${p.fileName === effectiveSelected ? " thread-list-item--selected" : ""}"
-           data-action="thread:select" data-file="${escapeHtml(p.fileName)}">
+           data-action="thread:select"
+           data-open-question-row-context="thread"
+           data-file="${escapeHtml(p.fileName)}">
         ${escapeHtml(p.title || "(untitled)")}
       </div>`,
     )
@@ -453,6 +461,7 @@ function renderCharactersTab(
     const groupItems = roleProfiles.map((p) =>
       `<div class="char-list-item${p.fileName === effectiveSelected ? " char-list-item--selected" : ""}"
            data-action="character:select"
+           data-open-question-row-context="character"
            data-file="${escapeHtml(p.fileName)}">
         ${escapeHtml(p.name || "(untitled)")}
       </div>`
@@ -558,7 +567,9 @@ function renderPlaceListRows(
       const sel = p.fileName === effectiveSelected ? " char-list-item--selected" : "";
       const pad = 10 + depth * 16;
       const row = `<div class="char-list-item place-list-item${sel}" draggable="true" style="padding-left:${pad}px"
-        data-action="place:select" data-file="${escapeHtml(p.fileName)}"
+        data-action="place:select"
+        data-open-question-row-context="place"
+        data-file="${escapeHtml(p.fileName)}"
         title="Drag onto another place to nest, or onto empty list area for top level">
         ${escapeHtml(p.name || "(untitled)")}
       </div>`;
@@ -604,6 +615,7 @@ export function renderPlanningHtml(
   themes: ThemesDocument,
   threads: ThreadProfile[],
   selectedThreadFileName: string | undefined,
+  openQuestions: SerializableOpenQuestionRow[],
   chapterPickerOptions: ChapterPickerOption[],
   projectBookTitle: string,
   projectGenresDisplay: string,
@@ -630,6 +642,8 @@ export function renderPlanningHtml(
       content = renderPlacesTab(places, selectedPlaceFileName);
     } else if (id === "threads") {
       content = renderThreadsTab(threads, selectedThreadFileName, chapterPickerOptions);
+    } else if (id === "openQuestions") {
+      content = renderOpenQuestionsHtml(openQuestions, "planning", nonce, cspSource, false);
     } else {
       content = renderStubTab(TAB_LABELS[id]);
     }
@@ -1613,6 +1627,15 @@ export function renderPlanningHtml(
             vscode.postMessage({ type: 'character:updateField', fileName: fileName, field: field, value: value });
           }, 300);
         });
+        charContainer.addEventListener('contextmenu', (e) => {
+          const row = e.target && e.target.closest && e.target.closest('.char-list-item');
+          if (!row || !charContainer.contains(row)) return;
+          if (row.getAttribute('data-open-question-row-context') !== 'character') return;
+          const fileName = row.getAttribute('data-file');
+          if (!fileName) return;
+          e.preventDefault();
+          vscode.postMessage({ type: 'openQuestionRowContext', openQuestionRowContext: 'character', fileName: fileName });
+        });
       }
 
       // --- Places tab (same layout classes as characters; scoped panel) ---
@@ -1714,6 +1737,15 @@ export function renderPlanningHtml(
             }
           });
         }
+        placeContainer.addEventListener('contextmenu', (e) => {
+          const row = e.target && e.target.closest && e.target.closest('.place-list-item');
+          if (!row || !placeContainer.contains(row)) return;
+          if (row.getAttribute('data-open-question-row-context') !== 'place') return;
+          const fileName = row.getAttribute('data-file');
+          if (!fileName) return;
+          e.preventDefault();
+          vscode.postMessage({ type: 'openQuestionRowContext', openQuestionRowContext: 'place', fileName: fileName });
+        });
       }
 
       // --- Themes tab ---
@@ -1819,6 +1851,15 @@ export function renderPlanningHtml(
               vscode.postMessage({ type: 'thread:delete', fileName: fileName });
             }
           }
+        });
+        threadContainer.addEventListener('contextmenu', (e) => {
+          const row = e.target && e.target.closest && e.target.closest('.thread-list-item');
+          if (!row || !threadContainer.contains(row)) return;
+          if (row.getAttribute('data-open-question-row-context') !== 'thread') return;
+          const fileName = row.getAttribute('data-file');
+          if (!fileName) return;
+          e.preventDefault();
+          vscode.postMessage({ type: 'openQuestionRowContext', openQuestionRowContext: 'thread', fileName: fileName });
         });
         threadContainer.addEventListener('input', (e) => {
           const t = e.target;

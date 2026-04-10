@@ -21,7 +21,7 @@
 | 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
 | 12 | Standardized Research Workflow and Results Repository | Author can capture standardized research findings and store them in a consistent project repository for later planning and drafting use | RES-01, RES-02 | 2 criteria |
 | 13 | LeanPub Workspace Initialization | Author can initialize a LeanPub workspace with manuscript scaffold from the sidebar | INIT-01, INIT-02 | 3 criteria |
-| 14 | Open Questions | Author can create, view, navigate, and status-manage open-question notes associated with book, characters, threads, places, or manuscript selections | ISSUE-01 (partial), ISSUE-02 (partial) | 4 criteria |
+| 14 | Open Questions | 6/6 | Complete   | 2026-04-10 |
 
 ## Phases
 
@@ -38,7 +38,8 @@
 - [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
 - [x] **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
 - [x] **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing. (completed 2026-04-09)
-- [ ] **Phase 14: Open Questions** - Author-created open-question notes linked to book, characters, threads, places, or manuscript selections with list view, navigation, and status management.
+- [x] **Phase 14: Open Questions** - Author-created open-question notes linked to book, characters, threads, places, or manuscript selections with list view, navigation, and status management.
+ (completed 2026-04-10)
 
 ## Phase Details
 
@@ -270,10 +271,15 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 2, Phase 4, Phase 5, Phase 6
 **Requirements:** ISSUE-01 (partial), ISSUE-02 (partial)
-**Plans:** 0 plans
+**Plans:** 6/6 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 14 to break down)
+- [x] 14-01-PLAN.md — Wave 0 tests: `openQuestionStore` + chapter open-count helpers (ISSUE-01/02 partial, D-03).
+- [x] 14-02-PLAN.md — Types, `openQuestionStore`, `writeChapterStatusEntry` pitfall fix, green unit tests.
+- [x] 14-03-PLAN.md — Shared `openQuestionsHtml` (14-UI-SPEC, D-02 protocol).
+- [x] 14-04-PLAN.md — Planning workspace Open questions tab + handlers (D-01, D-02).
+- [x] 14-05-PLAN.md — Panel `WebviewViewProvider` + `package.json` panel container (D-02).
+- [x] 14-06-PLAN.md — Commands, context menus, outline row counts (D-03/D-04), navigation (D-05), watchers.
 
 **Success criteria:**
 1. Author can create open-question notes and associate them with nothing (book-wide), a character, a thread, a place, a manuscript file, or a specific text selection from a manuscript file.
@@ -321,7 +327,7 @@ Plans:
 | 10. AI Review and Advisory Workflows | 0/0 | Not started | - |
 | 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
 | 12. Standardized Research Workflow and Results Repository | 2/2 | Completed | 2026-04-05 |
-| 13. LeanPub Workspace Initialization | 4/4 | Completed | 2026-04-09 |
-| 14. Open Questions | 0/0 | Not started | - |
+| 14. Open Questions | 6/6 | Completed | 2026-04-09 |
+| 14. Open Questions | 0/6 | Not started | - |
 
 ## Backlog

@@ -12,10 +12,13 @@ import { readOutlineIndex, writeOutlineIndex, bootstrapOutline, findNodeById, re
 import { OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTree";
 import { OutlineWebviewProvider } from "./outlineWebviewPanel";
 import { PlanningPanelProvider } from "./planningPanel";
+import { OpenQuestionsPanelViewProvider } from "./openQuestionsPanel";
+import { createOpenQuestion, getOpenQuestion, OPEN_QUESTIONS_DIR } from "./openQuestionStore";
+import { handleOpenQuestionWorkspaceDelete, handleOpenQuestionWorkspaceRename } from "./openQuestionWorkspaceSync";
 import { SafeFileSystem } from "./safeFileSystem";
 import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlForSetup } from "./projectConfig";
 import { migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
-import { ResearchTreeProvider } from "./researchTree";
+import { ResearchTreeProvider, type ResearchItem } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
 import { PlaceTreeProvider } from "./placeTree";
 import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
@@ -260,6 +263,29 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   planningPanel = new PlanningPanelProvider(vscode, context.extensionUri, rootPath, safeFileSystem);
 
+  const openQuestionsPanelProvider = new OpenQuestionsPanelViewProvider(vscode, context.extensionUri, rootPath);
+
+  const refreshOpenQuestionSurfaces = async (): Promise<void> => {
+    await planningPanel.refresh();
+    await openQuestionsPanelProvider.refresh();
+    await outlineWebviewRef.current?.refresh();
+  };
+
+  context.subscriptions.push(
+    vscode.workspace.onDidRenameFiles(async (e) => {
+      for (const { oldUri, newUri } of e.files) {
+        await handleOpenQuestionWorkspaceRename(rootPath, safeFileSystem, oldUri.fsPath, newUri.fsPath);
+      }
+      await refreshOpenQuestionSurfaces();
+    }),
+    vscode.workspace.onDidDeleteFiles(async (e) => {
+      for (const uri of e.files) {
+        await handleOpenQuestionWorkspaceDelete(rootPath, safeFileSystem, uri.fsPath);
+      }
+      await refreshOpenQuestionSurfaces();
+    }),
+  );
+
   const placeTreeProvider = new PlaceTreeProvider(vscode, rootPath, safeFileSystem, () => {
     void planningPanel.refresh();
   });
@@ -315,6 +341,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   settingsWatcher.onDidCreate(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
   settingsWatcher.onDidChange(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
   settingsWatcher.onDidDelete(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
+
+  const openQuestionsWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(rootPath, `${OPEN_QUESTIONS_DIR}/**/*.md`),
+  );
+  openQuestionsWatcher.onDidCreate(() => void refreshOpenQuestionSurfaces());
+  openQuestionsWatcher.onDidChange(() => void refreshOpenQuestionSurfaces());
+  openQuestionsWatcher.onDidDelete(() => void refreshOpenQuestionSurfaces());
 
   const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
     const appName = vscode.env.appName ?? "";
@@ -421,6 +454,225 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const newOpenQuestionCommand = vscode.commands.registerCommand("leanquill.newOpenQuestion", async () => {
+    const title = await vscode.window.showInputBox({ prompt: "Open question title" });
+    if (!title?.trim()) {
+      return;
+    }
+    try {
+      const rec = await createOpenQuestion(safeFileSystem, rootPath, {
+        title: title.trim(),
+        association: { kind: "book" },
+      });
+      await planningPanel.showOpenQuestion(rec.id);
+      await refreshOpenQuestionSurfaces();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      await vscode.window.showErrorMessage(`LeanQuill: ${message}`);
+    }
+  });
+
+  const newOpenQuestionFromOutlineCommand = vscode.commands.registerCommand(
+    "leanquill.newOpenQuestionFromOutline",
+    async () => {
+      await outlineWebviewProvider.newOpenQuestionFromOutlineRow();
+    },
+  );
+
+  const newOpenQuestionFromChapterCommand = vscode.commands.registerCommand(
+    "leanquill.newOpenQuestionFromChapter",
+    async (args: { chapterPath?: string } | undefined) => {
+      const chapterPath = normalizePath(String(args?.chapterPath ?? ""));
+      if (!chapterPath.startsWith("manuscript/")) {
+        await vscode.window.showErrorMessage(
+          "Open questions from the outline must target a manuscript chapter file.",
+        );
+        return;
+      }
+      const title = await vscode.window.showInputBox({ prompt: "Open question title" });
+      if (!title?.trim()) {
+        return;
+      }
+      try {
+        const rec = await createOpenQuestion(safeFileSystem, rootPath, {
+          title: title.trim(),
+          association: { kind: "chapter", chapterRef: chapterPath },
+        });
+        await planningPanel.showOpenQuestion(rec.id);
+        await refreshOpenQuestionSurfaces();
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        await vscode.window.showErrorMessage(`LeanQuill: ${message}`);
+      }
+    },
+  );
+
+  const newOpenQuestionFromSelectionCommand = vscode.commands.registerCommand(
+    "leanquill.newOpenQuestionFromSelection",
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        await vscode.window.showErrorMessage("Open a manuscript chapter in the editor first.");
+        return;
+      }
+      const rel = vscode.workspace.asRelativePath(editor.document.uri, false);
+      const chapter_ref = normalizePath(rel);
+      if (!chapter_ref.startsWith("manuscript/")) {
+        await vscode.window.showErrorMessage("Select a file under manuscript/ for this command.");
+        return;
+      }
+      const span_hint = editor.document.getText(editor.selection);
+      if (!span_hint.trim()) {
+        await vscode.window.showErrorMessage("Select text in the manuscript to anchor this question.");
+        return;
+      }
+      const title = await vscode.window.showInputBox({ prompt: "Open question title" });
+      if (!title?.trim()) {
+        return;
+      }
+      try {
+        const rec = await createOpenQuestion(safeFileSystem, rootPath, {
+          title: title.trim(),
+          association: { kind: "selection", chapterRef: chapter_ref, spanHint: span_hint },
+        });
+        await planningPanel.showOpenQuestion(rec.id);
+        await refreshOpenQuestionSurfaces();
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        await vscode.window.showErrorMessage(`LeanQuill: ${message}`);
+      }
+    },
+  );
+
+  const newOpenQuestionFromEntity = async (
+    kind: "character" | "place" | "thread" | "research",
+    fileName: string | undefined,
+  ): Promise<void> => {
+    if (!fileName?.trim()) {
+      return;
+    }
+    const title = await vscode.window.showInputBox({ prompt: "Open question title" });
+    if (!title?.trim()) {
+      return;
+    }
+    const association =
+      kind === "character"
+        ? ({ kind: "character" as const, fileName: fileName.trim() })
+        : kind === "place"
+          ? ({ kind: "place" as const, fileName: fileName.trim() })
+          : kind === "research"
+            ? ({ kind: "research" as const, fileName: fileName.trim() })
+            : ({ kind: "thread" as const, fileName: fileName.trim() });
+    try {
+      const rec = await createOpenQuestion(safeFileSystem, rootPath, { title: title.trim(), association });
+      await planningPanel.showOpenQuestion(rec.id);
+      await refreshOpenQuestionSurfaces();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      await vscode.window.showErrorMessage(`LeanQuill: ${message}`);
+    }
+  };
+
+  const newOpenQuestionFromCharacterCommand = vscode.commands.registerCommand(
+    "leanquill.newOpenQuestionFromCharacter",
+    async (args: { fileName?: string } | undefined) => newOpenQuestionFromEntity("character", args?.fileName),
+  );
+
+  const newOpenQuestionFromPlaceCommand = vscode.commands.registerCommand(
+    "leanquill.newOpenQuestionFromPlace",
+    async (args: { fileName?: string } | undefined) => newOpenQuestionFromEntity("place", args?.fileName),
+  );
+
+  const newOpenQuestionFromThreadCommand = vscode.commands.registerCommand(
+    "leanquill.newOpenQuestionFromThread",
+    async (args: { fileName?: string } | undefined) => newOpenQuestionFromEntity("thread", args?.fileName),
+  );
+
+  const newOpenQuestionFromResearchCommand = vscode.commands.registerCommand(
+    "leanquill.newOpenQuestionFromResearch",
+    async (item?: ResearchItem) => {
+      const base = item?.filePath ? path.basename(item.filePath) : undefined;
+      await newOpenQuestionFromEntity("research", base);
+    },
+  );
+
+  const openQuestionTargetCommand = vscode.commands.registerCommand(
+    "leanquill.openQuestionTarget",
+    async (questionIdArg: string | undefined) => {
+      const questionId = String(questionIdArg ?? "");
+      if (!questionId) {
+        return;
+      }
+      const question = await getOpenQuestion(rootPath, questionId);
+      if (!question) {
+        await vscode.window.showWarningMessage("That open question was not found.");
+        return;
+      }
+      const pc = await readProjectConfigWithDefaults(rootPath);
+      // Navigation reads lq_assoc_kind plus lq_character_file / lq_place_file / lq_thread_file / chapter_ref / span_hint from disk via getOpenQuestion.
+      const lq_assoc_kind = question.association.kind;
+      if (lq_assoc_kind === "book") {
+        // Book-wide targets use chapter_ref project-wide in the markdown file; reveal in Planning workspace.
+        await vscode.commands.executeCommand("leanquill.openPlanningWorkspace");
+        await planningPanel.revealOpenQuestionRow(question.id);
+        return;
+      }
+      if (lq_assoc_kind === "character") {
+        const lq_character_file = question.association.fileName;
+        const relBase = pc.folders.characters.replace(/\/+$/g, "");
+        const absPath = path.join(rootPath, ...relBase.split("/"), lq_character_file);
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(absPath));
+        await vscode.window.showTextDocument(doc);
+        return;
+      }
+      if (lq_assoc_kind === "place") {
+        const lq_place_file = question.association.fileName;
+        const relBase = pc.folders.settings.replace(/\/+$/g, "");
+        const absPath = path.join(rootPath, ...relBase.split("/"), lq_place_file);
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(absPath));
+        await vscode.window.showTextDocument(doc);
+        return;
+      }
+      if (lq_assoc_kind === "thread") {
+        const lq_thread_file = question.association.fileName;
+        const relBase = pc.folders.threads.replace(/\/+$/g, "");
+        const absPath = path.join(rootPath, ...relBase.split("/"), lq_thread_file);
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(absPath));
+        await vscode.window.showTextDocument(doc);
+        return;
+      }
+      if (lq_assoc_kind === "research") {
+        const lq_research_file = question.association.fileName;
+        const relBase = pc.folders.research.replace(/\/+$/g, "");
+        const absPath = path.join(rootPath, ...relBase.split("/"), lq_research_file);
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(absPath));
+        await vscode.window.showTextDocument(doc);
+        return;
+      }
+      const assoc = question.association;
+      if (assoc.kind === "chapter" || assoc.kind === "selection") {
+        const chapter_ref = normalizePath(assoc.chapterRef);
+        const span_hint = assoc.kind === "selection" ? assoc.spanHint : "";
+        const absMs = path.join(rootPath, ...chapter_ref.split("/"));
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(absMs));
+        const editor = await vscode.window.showTextDocument(doc);
+        if (span_hint) {
+          const needle = span_hint.replace(/^["']|["']$/g, "").trim();
+          if (needle.length > 0) {
+            const full = doc.getText();
+            const idx = full.indexOf(needle);
+            if (idx >= 0) {
+              const start = doc.positionAt(idx);
+              const end = doc.positionAt(idx + needle.length);
+              editor.selection = new vscode.Selection(start, end);
+              editor.revealRange(new vscode.Range(start, end), vscode.TextEditorRevealType.InCenter);
+            }
+          }
+        }
+      }
+    },
+  );
+
   const placesTreeView = vscode.window.createTreeView("leanquill.places", {
     treeDataProvider: placeTreeProvider,
     dragAndDropController: placeTreeProvider,
@@ -436,6 +688,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerWebviewViewProvider("leanquill.chapterContext", outlineContextProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
+    vscode.window.registerWebviewViewProvider(OpenQuestionsPanelViewProvider.viewId, openQuestionsPanelProvider, {
+      webviewOptions: { retainContextWhenHidden: true },
+    }),
     vscode.window.registerTreeDataProvider("leanquill.research", researchTreeProvider),
     vscode.window.registerTreeDataProvider("leanquill.characters", characterTreeProvider),
     placesTreeView,
@@ -443,6 +698,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     charactersWatcher,
     threadsWatcher,
     settingsWatcher,
+    openQuestionsWatcher,
     startResearchCommand,
     newCharacterCommand,
     newPlaceCommand,
@@ -450,6 +706,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     newThemeCommand,
     selectCharacterInPanelCommand,
     selectPlaceInPanelCommand,
+    newOpenQuestionCommand,
+    newOpenQuestionFromOutlineCommand,
+    newOpenQuestionFromChapterCommand,
+    newOpenQuestionFromSelectionCommand,
+    newOpenQuestionFromCharacterCommand,
+    newOpenQuestionFromPlaceCommand,
+    newOpenQuestionFromThreadCommand,
+    newOpenQuestionFromResearchCommand,
+    openQuestionTargetCommand,
   );
 
   const updateNodeStatus = async (nodeId: string): Promise<void> => {
@@ -511,7 +776,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (arg && typeof arg === "object" && "kind" in arg && arg.kind === "node") {
       return arg.data.id;
     }
-    return undefined;
+    return outlineWebviewProvider.getOutlineInteractionNodeId();
   };
 
   // --- Outline Status Command ---

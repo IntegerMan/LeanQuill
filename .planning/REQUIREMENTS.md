@@ -45,8 +45,8 @@
 
 ### Issue Tracking
 
-- [ ] **ISSUE-01**: Author can manually create an issue attached to a specific chapter or project-wide, using the full issue schema (type, title, description, optional span_hint)
-- [ ] **ISSUE-02**: Author can triage any issue: mark open, dismiss with an optional rationale (dismissed issues hidden from default view), or defer to a later session
+- [ ] **ISSUE-01**: Author can manually create an issue attached to a specific chapter or project-wide *(Phase 14 delivers basic manual issue creation, but not the full issue schema described here, including optional `span_hint`)*
+- [ ] **ISSUE-02**: Author can triage any issue *(Phase 14 delivers basic status changes, but not the full flow described here, including dismiss with an optional rationale and default-hidden dismissed issues)*
 - [ ] **ISSUE-03**: Author can filter the issue list by status: open / deferred / dismissed / all
 - [ ] **ISSUE-04**: Issues with a `span_hint` referencing a manuscript text fragment display as gutter indicator icons in the editor margin, providing spatially precise issue awareness without leaving the writing surface
 - [ ] **ISSUE-05**: Author can right-click any issue and choose "Chat about this" to open a focused AI conversation scoped to that issue — the agent receives the issue record and relevant chapter context but cannot write to manuscript files
@@ -135,8 +135,8 @@ Which phases cover which requirements. To be populated during roadmap creation.
 | KNOW-01 | 7 | Pending |
 | KNOW-02 | 7 | Pending |
 | KNOW-03 | 7 | Pending |
-| ISSUE-01 | 8 | Pending |
-| ISSUE-02 | 8 | Pending |
+| ISSUE-01 | 8 | Partial |
+| ISSUE-02 | 8 | Partial |
 | ISSUE-03 | 8 | Pending |
 | ISSUE-04 | 8 | Pending |
 | ISSUE-05 | 10 | Pending |

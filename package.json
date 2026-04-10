@@ -22,6 +22,7 @@
     "onView:leanquill.research",
     "onView:leanquill.characters",
     "onView:leanquill.places",
+    "onView:leanquill.openQuestionsPanel",
     "workspaceContains:manuscript/Book.txt",
     "workspaceContains:manuscript"
   ],
@@ -134,6 +135,51 @@
         "command": "leanquill.newTheme",
         "title": "New Theme",
         "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestion",
+        "title": "New Open Question (book-wide)",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromChapter",
+        "title": "New Open Question from Chapter",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromOutline",
+        "title": "New Open Question",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromSelection",
+        "title": "New Open Question from Selection",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromCharacter",
+        "title": "Create New Issue (question) from Character",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromPlace",
+        "title": "Create New Issue (question) from Place",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromThread",
+        "title": "Create New Issue (question) from Thread",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.newOpenQuestionFromResearch",
+        "title": "Create New Issue (question) from Research",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.openQuestionTarget",
+        "title": "Open Open Question Target",
+        "category": "LeanQuill"
       }
     ],
     "viewsContainers": {
@@ -141,6 +187,13 @@
         {
           "id": "leanquill",
           "title": "LeanQuill",
+          "icon": "media/leanquill.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "leanquillOpenQuestions",
+          "title": "LeanQuill Issues",
           "icon": "media/leanquill.svg"
         }
       ]
@@ -177,9 +230,62 @@
           "name": "Places",
           "when": "leanquill.workspaceLeanQuillReady"
         }
+      ],
+      "leanquillOpenQuestions": [
+        {
+          "id": "leanquill.openQuestionsPanel",
+          "name": "LeanQuill Issues",
+          "type": "webview",
+          "when": "leanquill.workspaceLeanQuillReady"
+        }
       ]
     },
     "menus": {
+      "commandPalette": [
+        {
+          "command": "leanquill.newOpenQuestion",
+          "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
+          "command": "leanquill.newOpenQuestionFromSelection",
+          "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
+          "command": "leanquill.newOpenQuestionFromOutline",
+          "when": "false"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "leanquill.newOpenQuestionFromOutline",
+          "when": "webviewId == 'leanquill.outlineTree' && leanquill.workspaceLeanQuillReady",
+          "group": "leanquillIssues@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "leanquill.newOpenQuestionFromSelection",
+          "when": "editorTextFocus && leanquill.workspaceLeanQuillReady",
+          "group": "leanquill@30"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "leanquill.newOpenQuestionFromCharacter",
+          "when": "view == leanquill.characters && viewItem == character && leanquill.workspaceLeanQuillReady",
+          "group": "leanquillIssues@10"
+        },
+        {
+          "command": "leanquill.newOpenQuestionFromPlace",
+          "when": "view == leanquill.places && viewItem == place && leanquill.workspaceLeanQuillReady",
+          "group": "leanquillIssues@10"
+        },
+        {
+          "command": "leanquill.newOpenQuestionFromResearch",
+          "when": "view == leanquill.research && viewItem == research && leanquill.workspaceLeanQuillReady",
+          "group": "leanquillIssues@10"
+        }
+      ],
       "view/title": [
         {
           "command": "leanquill.openPlanningWorkspace",

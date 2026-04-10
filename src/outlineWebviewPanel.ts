@@ -9,6 +9,7 @@ import {
   isAncestorOf,
 } from "./outlineStore";
 import { SafeFileSystem } from "./safeFileSystem";
+import { countOpenQuestionsByChapter, listOpenQuestions } from "./openQuestionStore";
 import { OutlineNode, OutlineIndex, ChapterStatus } from "./types";
 
 const STATUS_ICONS: Record<ChapterStatus, string> = {
@@ -23,7 +24,23 @@ const STATUS_ICONS: Record<ChapterStatus, string> = {
 
 // --- HTML generation ---
 
-function renderNodeTree(nodes: OutlineNode[], depth: number): string {
+function normalizeOutlinePath(p: string): string {
+  return p.split("\\").join("/");
+}
+
+function openQuestionCountSuffix(fileName: string, counts: Record<string, number>): string {
+  if (!fileName) {
+    return "";
+  }
+  const key = normalizeOutlinePath(fileName);
+  const n = counts[key];
+  if (n && n > 0) {
+    return ` · ${n} issue${n === 1 ? "" : "s"}`;
+  }
+  return "";
+}
+
+function renderNodeTree(nodes: OutlineNode[], depth: number, chapterOpenIssueCounts: Record<string, number>): string {
   return nodes
     .map((node) => {
       const hasChildren = node.children.length > 0;
@@ -33,17 +50,21 @@ function renderNodeTree(nodes: OutlineNode[], depth: number): string {
         : STATUS_ICONS[node.status] || "dash";
       const inactiveClass = node.active ? "" : " inactive";
       const statusLabel = hasPart ? "" : ` (${escapeHtml(node.status)})`;
+      const issueSuffix = !hasPart && node.fileName ? escapeHtml(openQuestionCountSuffix(node.fileName, chapterOpenIssueCounts)) : "";
       const childrenHtml = hasChildren
-        ? `<div class="children" data-parent-id="${escapeHtml(node.id)}">${renderNodeTree(node.children, depth + 1)}</div>`
+        ? `<div class="children" data-parent-id="${escapeHtml(node.id)}">${renderNodeTree(node.children, depth + 1, chapterOpenIssueCounts)}</div>`
         : "";
       const expandClass = hasChildren ? " expanded" : "";
 
+      const fileAttr = node.fileName
+        ? ` data-file-name="${escapeHtml(normalizeOutlinePath(node.fileName))}"`
+        : "";
       return `<div class="node-item${expandClass}${inactiveClass}" data-id="${escapeHtml(node.id)}" data-depth="${depth}" draggable="true">
-  <div class="node-row" data-id="${escapeHtml(node.id)}">
+  <div class="node-row" data-id="${escapeHtml(node.id)}"${fileAttr}>
     ${hasChildren ? '<span class="toggle codicon codicon-chevron-right"></span>' : '<span class="toggle-spacer"></span>'}
     <span class="icon codicon codicon-${escapeHtml(icon)}"></span>
     <span class="label">${escapeHtml(node.title || "(untitled)")}</span>
-    <span class="status-text">${statusLabel}</span>
+    <span class="status-text">${statusLabel}${issueSuffix}</span>
   </div>
   <div class="drop-zone sibling-zone" data-target-id="${escapeHtml(node.id)}" data-action="after"></div>
   ${childrenHtml}
@@ -52,15 +73,15 @@ function renderNodeTree(nodes: OutlineNode[], depth: number): string {
     .join("\n");
 }
 
-function renderOrphans(orphanFiles: string[]): string {
+function renderOrphans(orphanFiles: string[], chapterOpenIssueCounts: Record<string, number>): string {
   if (orphanFiles.length === 0) {
     return "";
   }
   const items = orphanFiles
-    .map(
-      (f) =>
-        `<div class="orphan-item" data-file="${escapeHtml(f)}"><span class="icon codicon codicon-file"></span><span class="label">${escapeHtml(f.replace(/^manuscript\//, ""))}</span></div>`,
-    )
+    .map((f) => {
+      const suf = escapeHtml(openQuestionCountSuffix(f, chapterOpenIssueCounts));
+      return `<div class="orphan-item" data-file="${escapeHtml(f)}"><span class="icon codicon codicon-file"></span><span class="label">${escapeHtml(f.replace(/^manuscript\//, ""))}${suf}</span></div>`;
+    })
     .join("\n");
   return `<div class="orphan-group">
   <div class="orphan-header">Not Included (${orphanFiles.length})</div>
@@ -71,13 +92,14 @@ function renderOrphans(orphanFiles: string[]): string {
 export function renderOutlineWebviewHtml(
   index: OutlineIndex,
   orphanFiles: string[],
+  chapterOpenIssueCounts: Record<string, number>,
   nonce: string,
   codiconCssUri: string,
   cspSource: string,
 ): string {
   const tree =
     index.nodes.length > 0
-      ? `<div class="tree-root" data-parent-id="root">${renderNodeTree(index.nodes, 0)}</div>`
+      ? `<div class="tree-root" data-parent-id="root">${renderNodeTree(index.nodes, 0, chapterOpenIssueCounts)}</div>`
       : '<div class="empty-state"><p>No outline yet.</p></div>';
 
   return `<!DOCTYPE html>
@@ -169,50 +191,11 @@ export function renderOutlineWebviewHtml(
       opacity: 0.6;
     }
     .orphan-item:hover { background: var(--vscode-list-hoverBackground); opacity: 0.8; }
-
-    /* Context menu */
-    .context-menu {
-      position: fixed;
-      z-index: 1000;
-      background: var(--vscode-menu-background);
-      color: var(--vscode-menu-foreground);
-      border: 1px solid var(--vscode-menu-border);
-      border-radius: 4px;
-      padding: 4px 0;
-      min-width: 160px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      display: none;
-    }
-    .context-menu.visible { display: block; }
-    .context-menu-item {
-      padding: 4px 16px;
-      cursor: pointer;
-      font-size: 13px;
-    }
-    .context-menu-item:hover { background: var(--vscode-menu-selectionBackground); color: var(--vscode-menu-selectionForeground); }
-    .context-menu-separator { height: 1px; background: var(--vscode-menu-separatorBackground); margin: 4px 0; }
   </style>
 </head>
 <body>
   ${tree}
-  ${renderOrphans(orphanFiles)}
-
-  <div class="context-menu" id="contextMenu">
-    <div class="context-menu-item" data-action="addChild">Add Child</div>
-    <div class="context-menu-item" data-action="addSibling">Add Sibling</div>
-    <div class="context-menu-separator"></div>
-    <div class="context-menu-item" data-action="openInEditor">Open in Editor</div>
-    <div class="context-menu-item" data-action="openFile">Open File</div>
-    <div class="context-menu-item" data-action="updateStatus">Update Status</div>
-    <div class="context-menu-separator"></div>
-    <div class="context-menu-item" data-action="rename">Rename</div>
-    <div class="context-menu-item" data-action="toggleActive">Toggle Active</div>
-    <div class="context-menu-separator"></div>
-    <div class="context-menu-item" data-action="moveUp">Move Up</div>
-    <div class="context-menu-item" data-action="moveDown">Move Down</div>
-    <div class="context-menu-separator"></div>
-    <div class="context-menu-item" data-action="remove">Remove</div>
-  </div>
+  ${renderOrphans(orphanFiles, chapterOpenIssueCounts)}
 
   <script nonce="${nonce}">
   (function() {
@@ -256,9 +239,18 @@ export function renderOutlineWebviewHtml(
       }
     }
 
+    // --- Track row under pointer (for native webview/context menu commands) ---
+    document.addEventListener('pointerdown', function (e) {
+      const row = e.target.closest('.node-row');
+      if (!row || !row.dataset.id) return;
+      vscode.postMessage({ type: 'outlineInteract', id: row.dataset.id });
+      if (e.button === 2) {
+        selectNode(row.dataset.id);
+      }
+    }, true);
+
     // --- Toggle expand/collapse ---
     document.addEventListener('click', (e) => {
-      hideContextMenu();
       const toggle = e.target.closest('.toggle');
       if (toggle) {
         const item = toggle.closest('.node-item');
@@ -288,40 +280,6 @@ export function renderOutlineWebviewHtml(
       if (row) {
         vscode.postMessage({ type: 'openNode', id: row.dataset.id });
       }
-    });
-
-    // --- Context Menu ---
-    const cmenu = document.getElementById('contextMenu');
-    let contextNodeId = null;
-
-    function hideContextMenu() {
-      cmenu.classList.remove('visible');
-      contextNodeId = null;
-    }
-
-    document.addEventListener('contextmenu', (e) => {
-      const row = e.target.closest('.node-row');
-      if (!row) {
-        hideContextMenu();
-        return;
-      }
-      e.preventDefault();
-      contextNodeId = row.dataset.id;
-      selectNode(contextNodeId);
-      cmenu.style.left = e.clientX + 'px';
-      cmenu.style.top = e.clientY + 'px';
-      cmenu.classList.add('visible');
-      // Keep menu in viewport
-      const rect = cmenu.getBoundingClientRect();
-      if (rect.right > window.innerWidth) cmenu.style.left = (window.innerWidth - rect.width - 4) + 'px';
-      if (rect.bottom > window.innerHeight) cmenu.style.top = (window.innerHeight - rect.height - 4) + 'px';
-    });
-
-    cmenu.addEventListener('click', (e) => {
-      const item = e.target.closest('.context-menu-item');
-      if (!item || !contextNodeId) return;
-      vscode.postMessage({ type: 'contextAction', action: item.dataset.action, id: contextNodeId });
-      hideContextMenu();
     });
 
     // --- Drag and Drop ---
@@ -486,6 +444,7 @@ export function renderOutlineWebviewHtml(
 
 export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
   private view?: VSCode.WebviewView;
+  private _outlineInteractionNodeId: string | undefined;
   private _onDidSelect: VSCode.EventEmitter<string>;
   readonly onDidSelect: VSCode.Event<string>;
 
@@ -517,6 +476,44 @@ export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
     this.refresh();
   }
 
+  /** Node id for the row last clicked or right-clicked; used by native `webview/context` commands. */
+  public getOutlineInteractionNodeId(): string | undefined {
+    return this._outlineInteractionNodeId;
+  }
+
+  /** Book-wide if the row has no manuscript chapter file; otherwise chapter-scoped. */
+  public async newOpenQuestionFromOutlineRow(): Promise<void> {
+    const nodeId = this._outlineInteractionNodeId;
+    if (!nodeId) {
+      await this.vscodeApi.window.showWarningMessage("Right-click or select an outline row first.");
+      return;
+    }
+    const index = await readOutlineIndex(this.rootPath);
+    const found = findNodeById(index.nodes, nodeId);
+    const chapterPath = OutlineWebviewProvider.manuscriptChapterPathForNode(found?.node);
+    if (chapterPath.startsWith("manuscript/")) {
+      await this.vscodeApi.commands.executeCommand("leanquill.newOpenQuestionFromChapter", {
+        chapterPath,
+      });
+    } else {
+      await this.vscodeApi.commands.executeCommand("leanquill.newOpenQuestion");
+    }
+  }
+
+  private static manuscriptChapterPathForNode(node: OutlineNode | undefined): string {
+    if (!node) {
+      return "";
+    }
+    let chapterPath = node.fileName ? normalizeOutlinePath(node.fileName) : "";
+    if (chapterPath && !chapterPath.startsWith("manuscript/")) {
+      const trimmed = chapterPath.replace(/^\.+\//, "");
+      if (!trimmed.includes("/")) {
+        chapterPath = `manuscript/${trimmed}`;
+      }
+    }
+    return chapterPath;
+  }
+
   public async refresh(): Promise<void> {
     if (!this.view) {
       return;
@@ -524,6 +521,8 @@ export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
 
     const index = await readOutlineIndex(this.rootPath);
     const orphanFiles = await this.discoverOrphans(index);
+    const oqList = await listOpenQuestions(this.rootPath);
+    const chapterOpenIssueCounts = countOpenQuestionsByChapter(oqList);
     const nonce = crypto.randomUUID().replace(/-/g, "");
 
     const cspSource = this.view.webview.cspSource;
@@ -545,6 +544,7 @@ export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
     this.view.webview.html = renderOutlineWebviewHtml(
       index,
       orphanFiles,
+      chapterOpenIssueCounts,
       nonce,
       codiconCssUri,
       cspSource,
@@ -557,7 +557,12 @@ export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
   }): Promise<void> {
     switch (msg.type) {
       case "select":
-        this._onDidSelect.fire(msg.id as string);
+        this._outlineInteractionNodeId = msg.id as string;
+        this._onDidSelect.fire(this._outlineInteractionNodeId);
+        break;
+
+      case "outlineInteract":
+        this._outlineInteractionNodeId = msg.id as string;
         break;
 
       case "openNode":

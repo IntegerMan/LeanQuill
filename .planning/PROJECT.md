@@ -16,6 +16,8 @@ An author working in a LeanPub markdown repo can see the status of every chapter
 - **INIT-02** — Validated in Phase 13: chapter order refresh after scaffold; `Book.txt` under `manuscript/`.
 - **THREAD-01** — Validated in Phase 6: Themes + Threads planning tabs, `.leanquill/themes.yaml`, thread markdown under `folders.threads`, chapter picker from outline manuscript paths.
 - **PLACE-01** — Validated in Phase 5 plan 05-03: Places tab in Planning Workspace with region grouping, CRUD, manuscript paths + outline beat ids, `showPlace` API.
+- **ISSUE-01 (partial)** — Validated in Phase 14: author-created **open questions** as `author-note` markdown under `.leanquill/open-questions/` with chapter, selection (`chapter_ref` + `span_hint`), book-wide, and character/place/thread associations (`lq_*` keys). Full unified issue model / Phase 8 capture remains future work.
+- **ISSUE-02 (partial)** — Validated in Phase 14: triage limited to **open**, **deferred**, and **resolved** for open questions. Dismiss with reason, default filters, and gutter `span_hint` decorations remain Phase 8+.
 
 ### Active
 
@@ -28,8 +30,8 @@ An author working in a LeanPub markdown repo can see the status of every chapter
 - [ ] **CHAR-01**: Author can manage character profiles in the planning workspace Characters tab with visibility into chapter/beat associations
 - [ ] **KNOW-01**: Author can view a read-only global knowledge pane (characters, settings, timeline, research) parsed from configured notes folders
 - [ ] **KNOW-02**: Known entity names (characters, locations) are hyperlinked in the knowledge pane for quick navigation
-- [ ] **ISSUE-01**: Author can manually create issues attached to a chapter or project-wide
-- [ ] **ISSUE-02**: Author can triage issues (dismiss with optional reason, defer, view open/deferred/all)
+- [ ] **ISSUE-01**: *(partial — see Validated)* Full issue capture beyond author open-questions (AI sessions, master list, etc.) — Phase 8+
+- [ ] **ISSUE-02**: *(partial — see Validated)* Dismiss workflow, filtering views, and full triage UX — Phase 8+
 - [ ] **ISSUE-03**: Open issues with `span_hint` references are shown as in-margin gutter indicators in the editor
 - [ ] **SESS-01**: Author can close a session — recording optional chapter status change and notes for next session
 
@@ -105,4 +107,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 — PLACE-01 validated in Phase 5 (Places tab, hybrid manuscript/outline linking, extension wiring + `leanquill.newPlace`)*
+*Last updated: 2026-04-10 — Phase 14: ISSUE-01/02 partial validated (open questions store, dual hosts, commands, outline counts); Phase 5 Places validation unchanged.*
