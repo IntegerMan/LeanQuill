@@ -43,13 +43,22 @@ function buildOpenQuestionsMarkup(
   <button type="button" class="oq-btn oq-btn--ghost" data-action="refresh">Refresh</button>
 </div>`;
 
-  const empty =
+  const emptyFullState =
     questions.length === 0
-      ? `<div class="oq-empty">
-  <div class="oq-empty-title">No open questions yet</div>
-  <p class="oq-empty-body">Create a question from the chapter tree, a selection in the manuscript, or a character, place, or thread row.</p>
+      ? `<div class="oq-empty-state-full" role="status">
+  <div class="oq-empty-inner">
+    <div class="oq-empty-title">No open questions yet</div>
+    <p class="oq-empty-body">Create a question from the chapter tree, a selection in the manuscript, or a character, place, or thread row.</p>
+  </div>
 </div>`
       : "";
+
+  if (questions.length === 0) {
+    return `<div class="oq-root" data-host="${host}">
+${toolbar}
+${emptyFullState}
+</div>`;
+  }
 
   const listRows = questions
     .map((q) => {
@@ -107,7 +116,7 @@ function buildOpenQuestionsMarkup(
 ${toolbar}
 <div class="oq-split">
   <div class="oq-pane oq-pane--list">
-    <div class="oq-list" role="list">${empty}${listRows}</div>
+    <div class="oq-list" role="list">${listRows}</div>
   </div>
   <div class="oq-pane oq-pane--detail">${detail}</div>
 </div>
@@ -131,7 +140,7 @@ function buildOpenQuestionsStyles(): string {
     .oq-split { display: flex; flex: 1; min-height: 0; }
     /* 40% list / 60% detail split on wide layouts */
     .oq-pane--list { flex: 0 0 40%; max-width: 40%; min-width: 0; border-right: 1px solid var(--vscode-widget-border); display: flex; flex-direction: column; }
-    .oq-pane--detail { flex: 1; min-width: 0; overflow: auto; padding: 16px; }
+    .oq-pane--detail { flex: 1; min-width: 0; overflow: auto; padding: 16px; display: flex; flex-direction: column; min-height: 0; }
     .oq-list { overflow: auto; flex: 1; padding: 8px 0; }
     .oq-list-item { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left;
       padding: 8px 16px; border: none; background: transparent; color: inherit; cursor: pointer;
@@ -142,9 +151,35 @@ function buildOpenQuestionsStyles(): string {
     .oq-list-meta { display: flex; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--vscode-descriptionForeground); }
     .oq-chip { opacity: 0.9; }
     .oq-preview { font-size: 12px; color: var(--vscode-descriptionForeground); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-    .oq-empty { padding: 32px 16px; text-align: center; color: var(--vscode-descriptionForeground); }
-    .oq-empty-title { font-size: 15px; font-weight: 600; color: var(--vscode-foreground); margin-bottom: 8px; }
-    .oq-empty-body { font-size: var(--vscode-font-size); line-height: 1.5; max-width: 520px; margin: 0 auto; }
+    .oq-empty-state-full {
+      flex: 1;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px 40px;
+      box-sizing: border-box;
+    }
+    .oq-empty-inner {
+      text-align: center;
+      max-width: 420px;
+      color: var(--vscode-descriptionForeground);
+    }
+    .oq-empty-title { font-size: 15px; font-weight: 600; color: var(--vscode-foreground); margin: 0 0 12px; line-height: 1.3; }
+    .oq-empty-body { font-size: var(--vscode-font-size); line-height: 1.55; margin: 0; }
+    .oq-detail { width: 100%; box-sizing: border-box; }
+    .oq-detail--empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--vscode-descriptionForeground);
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 8px;
+      min-height: 0;
+    }
     .oq-label { display: block; font-size: 12px; font-weight: 600; line-height: 1.3; margin-bottom: 8px; }
     .oq-field { margin-bottom: 16px; }
     .oq-input, .oq-textarea, .oq-select { width: 100%; box-sizing: border-box; padding: 6px 8px;
