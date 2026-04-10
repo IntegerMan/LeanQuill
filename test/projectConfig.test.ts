@@ -72,6 +72,7 @@ test("parseProjectConfig handles folders block with many entries", () => {
   ].join("\n");
   const result = parseProjectConfig(content);
   assert.equal(result.folders.research, "research/leanquill/");
+  assert.equal(result.folders.settings, "notes/settings/");
 });
 
 test("readProjectConfig returns parsed config when project.yaml exists", async () => {
@@ -149,6 +150,24 @@ test("parseProjectConfig parses custom threads folder path", () => {
   const content = 'schema_version: "2"\nfolders:\n  research: research/leanquill/\n  threads: custom/t/\n';
   const result = parseProjectConfig(content);
   assert.equal(result.folders.threads, "custom/t/");
+});
+
+test("parseProjectConfig parses settings folder from YAML", () => {
+  const content = 'schema_version: "2"\nfolders:\n  research: research/leanquill/\n  settings: notes/settings/\n';
+  const result = parseProjectConfig(content);
+  assert.equal(result.folders.settings, "notes/settings/");
+});
+
+test("parseProjectConfig defaults settings to notes/settings/ when missing", () => {
+  const content = 'schema_version: "2"\nfolders:\n  research: research/leanquill/\n';
+  const result = parseProjectConfig(content);
+  assert.equal(result.folders.settings, "notes/settings/");
+});
+
+test("parseProjectConfig parses custom settings folder path", () => {
+  const content = 'schema_version: "2"\nfolders:\n  research: research/leanquill/\n  settings: custom/places/\n';
+  const result = parseProjectConfig(content);
+  assert.equal(result.folders.settings, "custom/places/");
 });
 
 const minimalValidSetupYaml = [

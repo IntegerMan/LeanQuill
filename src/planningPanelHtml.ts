@@ -1,6 +1,16 @@
 import type { ChapterPickerOption } from "./chapterPickerOptions";
 import { escapeHtml } from "./htmlUtils";
-import { OutlineNode, OutlineIndex, CharacterProfile, ThemesDocument, ThreadProfile } from "./types";
+import { buildPlaceTree, type PlaceTreeNode } from "./placeStore";
+import {
+  OutlineNode,
+  OutlineIndex,
+  CharacterProfile,
+  PlaceProfile,
+  ThemesDocument,
+  ThreadProfile,
+} from "./types";
+
+const PLACE_WEBVIEW_DRAG_TYPE = "application/x-leanquill-place";
 
 function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) {
@@ -474,10 +484,123 @@ function renderCharactersTab(
   return `<div class="char-container">${listPane}${detailPane}</div>`;
 }
 
+function renderPlaceDetail(profile: PlaceProfile): string {
+  const bodyId = `place-body-${profile.fileName.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+
+  const standardFields = `
+    <div class="char-field-row">
+      <label class="char-field-label">Name</label>
+      <input class="char-field-input" data-action="place:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="name"
+        value="${escapeHtml(profile.name)}" />
+    </div>
+    <div class="char-field-row">
+      <label class="char-field-label">Aliases</label>
+      <input class="char-field-input" data-action="place:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="aliases"
+        value="${escapeHtml(profile.aliases.join(", "))}"
+        placeholder="Comma-separated aliases" />
+    </div>
+    <div class="char-field-row">
+      <label class="char-field-label">Description</label>
+      <textarea class="char-field-textarea" data-action="place:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="description">${escapeHtml(profile.description)}</textarea>
+    </div>`;
+
+  const customFieldRows = Object.entries(profile.customFields).map(([key, val]) =>
+    `<div class="char-field-row char-field-custom">
+      <label class="char-field-label char-field-label--custom">${escapeHtml(key)}</label>
+      <input class="char-field-input" data-action="place:updateField"
+        data-file="${escapeHtml(profile.fileName)}" data-field="custom:${escapeHtml(key)}"
+        value="${escapeHtml(val)}" />
+    </div>`
+  ).join("");
+
+  const refs = profile.referencedByNameIn.length > 0
+    ? profile.referencedByNameIn.map((r) => `<li class="char-ref-item">${escapeHtml(r)}</li>`).join("")
+    : '<li class="char-ref-empty">No manuscript references detected yet.</li>';
+
+  return `
+    <div class="char-detail-inner" data-file="${escapeHtml(profile.fileName)}">
+      ${standardFields}
+      ${customFieldRows}
+      <div class="char-field-row">
+        <button class="char-btn-add-field" data-action="place:addCustomField"
+          data-file="${escapeHtml(profile.fileName)}">+ Add Field</button>
+      </div>
+      <div class="char-field-row">
+        <label class="char-field-label" for="${bodyId}">Notes</label>
+        <textarea id="${bodyId}" class="char-field-textarea char-field-textarea--body" data-action="place:updateField"
+          data-file="${escapeHtml(profile.fileName)}" data-field="body"
+          placeholder="Extended notes about this place...">${escapeHtml(profile.body)}</textarea>
+      </div>
+      <div class="char-refs-section">
+        <div class="char-refs-label">Appears in manuscript</div>
+        <ul class="char-refs-list">${refs}</ul>
+      </div>
+      <div class="char-detail-actions">
+        <button class="char-btn-editor" data-action="place:openInEditor"
+          data-file="${escapeHtml(profile.fileName)}">Open in Editor</button>
+        <button class="char-btn-delete" data-action="place:delete"
+          data-file="${escapeHtml(profile.fileName)}">Delete Place</button>
+      </div>
+    </div>`;
+}
+
+function renderPlaceListRows(
+  nodes: PlaceTreeNode[],
+  depth: number,
+  effectiveSelected: string | undefined,
+): string {
+  return nodes
+    .map((n) => {
+      const p = n.profile;
+      const sel = p.fileName === effectiveSelected ? " char-list-item--selected" : "";
+      const pad = 10 + depth * 16;
+      const row = `<div class="char-list-item place-list-item${sel}" draggable="true" style="padding-left:${pad}px"
+        data-action="place:select" data-file="${escapeHtml(p.fileName)}"
+        title="Drag onto another place to nest, or onto empty list area for top level">
+        ${escapeHtml(p.name || "(untitled)")}
+      </div>`;
+      const children = renderPlaceListRows(n.children, depth + 1, effectiveSelected);
+      return row + children;
+    })
+    .join("");
+}
+
+function renderPlacesTab(places: PlaceProfile[], selectedFileName: string | undefined): string {
+  const effectiveSelected = selectedFileName ?? places[0]?.fileName;
+
+  const tree = buildPlaceTree(places);
+  const listItems = renderPlaceListRows(tree, 0, effectiveSelected);
+
+  const listPane = `<div class="char-list">
+    <div class="char-list-header">
+      <button class="char-btn-new" data-action="place:create">+ New Place</button>
+    </div>
+    <div class="char-list-body place-list-body" data-place-drop-root="1">
+      ${places.length === 0
+        ? '<div class="char-empty-list">No places yet. Click + New Place to start.</div>'
+        : listItems}
+    </div>
+  </div>`;
+
+  const selected = places.find((p) => p.fileName === effectiveSelected);
+  const detailPane = `<div class="char-detail">
+    ${selected
+      ? renderPlaceDetail(selected)
+      : '<div class="char-empty-detail">Select a place to view its profile.</div>'}
+  </div>`;
+
+  return `<div class="char-container">${listPane}${detailPane}</div>`;
+}
+
 export function renderPlanningHtml(
   index: OutlineIndex,
   characters: CharacterProfile[],
   selectedCharacterFileName: string | undefined,
+  places: PlaceProfile[],
+  selectedPlaceFileName: string | undefined,
   themes: ThemesDocument,
   threads: ThreadProfile[],
   selectedThreadFileName: string | undefined,
@@ -503,6 +626,8 @@ export function renderPlanningHtml(
       content = renderThemesTab(themes, chapterPickerOptions, projectBookTitle, projectGenresDisplay);
     } else if (id === "characters") {
       content = renderCharactersTab(characters, selectedCharacterFileName);
+    } else if (id === "places") {
+      content = renderPlacesTab(places, selectedPlaceFileName);
     } else if (id === "threads") {
       content = renderThreadsTab(threads, selectedThreadFileName, chapterPickerOptions);
     } else {
@@ -901,6 +1026,20 @@ export function renderPlanningHtml(
     .char-list-item--selected {
       background: var(--vscode-list-activeSelectionBackground);
       color: var(--vscode-list-activeSelectionForeground);
+    }
+    .place-list-item {
+      cursor: grab;
+      user-select: none;
+    }
+    .place-list-item:active {
+      cursor: grabbing;
+    }
+    .place-list-body.place-list-drag-active {
+      box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
+      background: var(--vscode-list-hoverBackground);
+    }
+    .place-list-item.place-list-drop-target {
+      box-shadow: inset 0 -2px 0 0 var(--vscode-focusBorder);
     }
     .char-empty-list {
       padding: 16px 12px;
@@ -1434,8 +1573,9 @@ export function renderPlanningHtml(
       });
 
 
-      // --- Character event delegation ---
-      const charContainer = document.querySelector('.char-container');
+      // --- Character event delegation (scoped to Characters tab panel) ---
+      const charactersPanel = document.querySelector('.tab-panel[data-panel-id="characters"]');
+      const charContainer = charactersPanel && charactersPanel.querySelector('.char-container');
       if (charContainer) {
         const charDebounceTimers = {};
         charContainer.addEventListener('click', (e) => {
@@ -1473,6 +1613,107 @@ export function renderPlanningHtml(
             vscode.postMessage({ type: 'character:updateField', fileName: fileName, field: field, value: value });
           }, 300);
         });
+      }
+
+      // --- Places tab (same layout classes as characters; scoped panel) ---
+      const placesPanel = document.querySelector('.tab-panel[data-panel-id="places"]');
+      const placeContainer = placesPanel && placesPanel.querySelector('.char-container');
+      if (placeContainer) {
+        const placeDebounceTimers = {};
+        placeContainer.addEventListener('click', (e) => {
+          const target = e.target;
+          if (!target) return;
+          const el = target.closest('[data-action]');
+          if (!el) return;
+          const action = el.getAttribute('data-action');
+          const fileName = el.getAttribute('data-file');
+          if (action === 'place:select' && fileName) {
+            vscode.postMessage({ type: 'place:select', fileName: fileName });
+          } else if (action === 'place:create') {
+            vscode.postMessage({ type: 'place:create' });
+          } else if (action === 'place:addCustomField' && fileName) {
+            const fieldName = prompt('Field name:');
+            if (fieldName && fieldName.trim()) {
+              vscode.postMessage({ type: 'place:addCustomField', fileName: fileName, fieldName: fieldName.trim() });
+            }
+          } else if (action === 'place:delete' && fileName) {
+            vscode.postMessage({ type: 'place:delete', fileName: fileName });
+          } else if (action === 'place:openInEditor' && fileName) {
+            vscode.postMessage({ type: 'place:openInEditor', fileName: fileName });
+          }
+        });
+        placeContainer.addEventListener('input', (e) => {
+          const target = e.target;
+          if (!target || target.getAttribute('data-action') !== 'place:updateField') return;
+          const fileName = target.getAttribute('data-file');
+          const field = target.getAttribute('data-field');
+          if (!fileName || !field) return;
+          const value = target.value;
+          const key = fileName + ':' + field;
+          if (placeDebounceTimers[key]) clearTimeout(placeDebounceTimers[key]);
+          placeDebounceTimers[key] = setTimeout(() => {
+            vscode.postMessage({ type: 'place:updateField', fileName: fileName, field: field, value: value });
+          }, 300);
+        });
+
+        const placeDragType = ${JSON.stringify(PLACE_WEBVIEW_DRAG_TYPE)};
+        const placeListBody = placeContainer.querySelector('.place-list-body');
+        let placeDragActive = false;
+        placeContainer.addEventListener('dragstart', (e) => {
+          const t = e.target;
+          if (!t || !t.classList || !t.classList.contains('place-list-item')) return;
+          const fn = t.getAttribute('data-file');
+          if (!fn) return;
+          placeDragActive = true;
+          e.dataTransfer.setData(placeDragType, fn);
+          e.dataTransfer.setData('text/plain', fn);
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        placeContainer.addEventListener('dragend', () => {
+          placeDragActive = false;
+          placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
+          if (placeListBody) placeListBody.classList.remove('place-list-drag-active');
+        });
+        if (placeListBody) {
+          placeListBody.addEventListener('dragover', (e) => {
+            if (!placeDragActive) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const row = e.target && e.target.closest && e.target.closest('.place-list-item');
+            placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
+            placeListBody.classList.remove('place-list-drag-active');
+            if (row && placeListBody.contains(row)) {
+              row.classList.add('place-list-drop-target');
+            } else {
+              placeListBody.classList.add('place-list-drag-active');
+            }
+          });
+          placeListBody.addEventListener('dragleave', (e) => {
+            const row = e.target && e.target.closest && e.target.closest('.place-list-item');
+            if (row) row.classList.remove('place-list-drop-target');
+            if (e.target === placeListBody && !placeListBody.contains(e.relatedTarget)) {
+              placeListBody.classList.remove('place-list-drag-active');
+            }
+          });
+          placeListBody.addEventListener('drop', (e) => {
+            if (!placeDragActive) return;
+            e.preventDefault();
+            const dragged = e.dataTransfer.getData(placeDragType) || e.dataTransfer.getData('text/plain');
+            placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
+            placeListBody.classList.remove('place-list-drag-active');
+            placeDragActive = false;
+            if (!dragged) return;
+            const row = e.target && e.target.closest && e.target.closest('.place-list-item');
+            if (row && placeListBody.contains(row)) {
+              const newParent = row.getAttribute('data-file');
+              if (newParent && newParent !== dragged) {
+                vscode.postMessage({ type: 'place:reparent', draggedFileName: dragged, newParentFileName: newParent });
+              }
+            } else {
+              vscode.postMessage({ type: 'place:reparent', draggedFileName: dragged, newParentFileName: '' });
+            }
+          });
+        }
       }
 
       // --- Themes tab ---

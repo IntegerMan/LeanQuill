@@ -3,6 +3,7 @@ import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { resolveChapterOrder } from "./chapterOrder";
 import { listCharacters, createCharacter, saveCharacter, deleteCharacter } from "./characterStore";
+import { listPlaces, createPlace, placeReparentWouldCycle, savePlace, deletePlace } from "./placeStore";
 import { buildChapterPickerOptions } from "./chapterPickerOptions";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml } from "./planningPanelHtml";
@@ -24,7 +25,15 @@ import {
   writeThemesDocument,
   addCentralThemeEntry,
 } from "./themesStore";
-import { OutlineNode, OutlineIndex, ChapterStatus, CharacterProfile, ThemesDocument, ThreadProfile } from "./types";
+import {
+  OutlineNode,
+  OutlineIndex,
+  ChapterStatus,
+  CharacterProfile,
+  PlaceProfile,
+  ThemesDocument,
+  ThreadProfile,
+} from "./types";
 
 export class PlanningPanelProvider {
   private _panel: VSCode.WebviewPanel | undefined;
@@ -35,6 +44,11 @@ export class PlanningPanelProvider {
   private _pendingCharacter: CharacterProfile | undefined;
   private _charDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   private _charUpdateLock: Promise<void> = Promise.resolve();
+
+  private _selectedPlaceFileName: string | undefined;
+  private _pendingPlace: PlaceProfile | undefined;
+  private _placeDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  private _placeUpdateLock: Promise<void> = Promise.resolve();
 
   private _pendingThemes: ThemesDocument | undefined;
   private _themeDebounceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -86,6 +100,7 @@ export class PlanningPanelProvider {
         await this._flushPendingTheme();
         await this._flushPendingProjectIdentity();
         await this._flushPendingCharacter();
+        await this._flushPendingPlace();
         await this._flushPendingThread();
       })().catch((err: unknown) => {
         console.error('[LeanQuill] Failed to flush pending state on dispose', err);
@@ -104,6 +119,17 @@ export class PlanningPanelProvider {
   public async showCharacter(fileName: string): Promise<void> {
     this._activeTab = "characters";
     this._selectedCharacterFileName = fileName;
+    if (this._panel) {
+      this._panel.reveal(this.vscodeApi.ViewColumn.One);
+      await this._renderPanel();
+    } else {
+      await this.show();
+    }
+  }
+
+  public async showPlace(fileName: string): Promise<void> {
+    this._activeTab = "places";
+    this._selectedPlaceFileName = fileName;
     if (this._panel) {
       this._panel.reveal(this.vscodeApi.ViewColumn.One);
       await this._renderPanel();
@@ -156,6 +182,7 @@ export class PlanningPanelProvider {
     await this._flushPendingTheme();
     await this._flushPendingProjectIdentity();
     await this._flushPendingCharacter();
+    await this._flushPendingPlace();
     await this._flushPendingThread();
     if (this._panel) {
       this._panel.dispose();
@@ -279,6 +306,18 @@ export class PlanningPanelProvider {
     }
   }
 
+  private async _flushPendingPlace(): Promise<void> {
+    if (this._placeDebounceTimer) {
+      clearTimeout(this._placeDebounceTimer);
+      this._placeDebounceTimer = undefined;
+    }
+    if (this._pendingPlace) {
+      const config = await readProjectConfigWithDefaults(this.rootPath);
+      await savePlace(this._pendingPlace, this.rootPath, config, this.safeFs);
+      this._pendingPlace = undefined;
+    }
+  }
+
   private async _renderPanel(): Promise<void> {
     if (!this._panel) {
       return;
@@ -287,6 +326,7 @@ export class PlanningPanelProvider {
     const index = await readOutlineIndex(this.rootPath);
     const config = await readProjectConfigWithDefaults(this.rootPath);
     const characters = await listCharacters(this.rootPath, config);
+    const places = await listPlaces(this.rootPath, config);
     const chapterOrder = await resolveChapterOrder(this.rootPath);
     const chapterPickerOptions = buildChapterPickerOptions(index, chapterOrder);
     const themes = this._pendingThemes ?? await readThemesDocument(this.rootPath);
@@ -305,12 +345,20 @@ export class PlanningPanelProvider {
     ) {
       this._selectedThreadFileName = undefined;
     }
+    if (
+      this._selectedPlaceFileName &&
+      !places.find((p) => p.fileName === this._selectedPlaceFileName)
+    ) {
+      this._selectedPlaceFileName = undefined;
+    }
     const nonce = crypto.randomBytes(16).toString("hex");
     const cspSource = this._panel.webview.cspSource;
     this._panel.webview.html = renderPlanningHtml(
       index,
       characters,
       this._selectedCharacterFileName,
+      places,
+      this._selectedPlaceFileName,
       themes,
       threads,
       this._selectedThreadFileName,
@@ -381,6 +429,45 @@ export class PlanningPanelProvider {
 
       case "character:openInEditor":
         await this._openCharacterInEditor(msg.fileName as string);
+        break;
+
+      case "place:select":
+        this._selectedPlaceFileName = msg.fileName as string;
+        await this._renderPanel();
+        break;
+
+      case "place:create":
+        await this._createPlace();
+        break;
+
+      case "place:updateField":
+        this._placeUpdateLock = this._placeUpdateLock.catch(() => {}).then(() =>
+          this._updatePlaceField(
+            msg.fileName as string,
+            msg.field as string,
+            msg.value as string,
+          ),
+        );
+        await this._placeUpdateLock;
+        break;
+
+      case "place:addCustomField":
+        await this._addPlaceCustomField(msg.fileName as string, msg.fieldName as string);
+        break;
+
+      case "place:delete":
+        await this._deletePlace(msg.fileName as string);
+        break;
+
+      case "place:openInEditor":
+        await this._openPlaceInEditor(msg.fileName as string);
+        break;
+
+      case "place:reparent":
+        await this._reparentPlace(
+          String(msg.draggedFileName ?? ""),
+          String(msg.newParentFileName ?? ""),
+        );
         break;
 
       case "theme:updateBook":
@@ -901,6 +988,176 @@ export class PlanningPanelProvider {
     const config = await readProjectConfigWithDefaults(this.rootPath);
     const charsDir = config.folders.characters.replace(/\/+$/, "");
     const filePath = path.join(this.rootPath, ...charsDir.split("/"), fileName);
+    await this.vscodeApi.commands.executeCommand("vscode.open", this.vscodeApi.Uri.file(filePath));
+  }
+
+  private async _reparentPlace(draggedFileName: string, newParentFileName: string): Promise<void> {
+    if (!draggedFileName || draggedFileName === newParentFileName) {
+      return;
+    }
+    await this._flushPendingPlace();
+    const config = await readProjectConfigWithDefaults(this.rootPath);
+    const profiles = await listPlaces(this.rootPath, config);
+    const parentOf = new Map<string, string>();
+    for (const p of profiles) {
+      parentOf.set(p.fileName, p.parentFileName || "");
+    }
+    if (placeReparentWouldCycle(draggedFileName, newParentFileName, parentOf)) {
+      await this.vscodeApi.window.showWarningMessage(
+        "LeanQuill: Cannot move a place under itself or one of its descendants.",
+      );
+      return;
+    }
+    const profile = profiles.find((p) => p.fileName === draggedFileName);
+    if (!profile) {
+      return;
+    }
+    const current = profile.parentFileName || "";
+    if (current === newParentFileName) {
+      return;
+    }
+    profile.parentFileName = newParentFileName;
+    await savePlace(profile, this.rootPath, config, this.safeFs);
+    await this._renderPanel();
+  }
+
+  private async _createPlace(): Promise<void> {
+    const name = await this.vscodeApi.window.showInputBox({
+      prompt: "Place name",
+      placeHolder: "e.g. The Old Mill",
+    });
+    if (!name?.trim()) {
+      return;
+    }
+    const config = await readProjectConfigWithDefaults(this.rootPath);
+    const profile = await createPlace(name.trim(), this.rootPath, config, this.safeFs);
+    this._selectedPlaceFileName = profile.fileName;
+    await this._renderPanel();
+  }
+
+  private async _updatePlaceField(
+    fileName: string,
+    field: string,
+    value: string,
+  ): Promise<void> {
+    if (this._pendingPlace && this._pendingPlace.fileName !== fileName) {
+      await this._flushPendingPlace();
+    }
+    if (!this._pendingPlace || this._pendingPlace.fileName !== fileName) {
+      const config = await readProjectConfigWithDefaults(this.rootPath);
+      const profiles = await listPlaces(this.rootPath, config);
+      const found = profiles.find((p) => p.fileName === fileName);
+      if (!found) {
+        return;
+      }
+      this._pendingPlace = { ...found };
+    }
+    if (field === "aliases") {
+      this._pendingPlace.aliases = value.split(",").map((s) => s.trim()).filter(Boolean);
+    } else if (field.startsWith("custom:")) {
+      const customKey = field.slice(7);
+      this._pendingPlace.customFields[customKey] = value;
+    } else if (
+      field === "name" ||
+      field === "parentFileName" ||
+      field === "description" ||
+      field === "body"
+    ) {
+      (this._pendingPlace as Record<string, unknown>)[field] = value;
+    }
+
+    if (this._placeDebounceTimer) {
+      clearTimeout(this._placeDebounceTimer);
+    }
+    const profileToWrite = this._pendingPlace;
+    this._placeDebounceTimer = setTimeout(() => {
+      const doSave = async () => {
+        const config = await readProjectConfigWithDefaults(this.rootPath);
+        await savePlace(profileToWrite, this.rootPath, config, this.safeFs);
+        if (this._pendingPlace?.fileName === profileToWrite.fileName) {
+          this._pendingPlace = undefined;
+        }
+      };
+      doSave().catch((err: unknown) => {
+        console.error("[LeanQuill] Failed to save place", err);
+      });
+    }, 300);
+  }
+
+  private async _addPlaceCustomField(fileName: string, fieldName: string): Promise<void> {
+    if (this._pendingPlace && this._pendingPlace.fileName !== fileName) {
+      await this._flushPendingPlace();
+    } else if (this._placeDebounceTimer) {
+      clearTimeout(this._placeDebounceTimer);
+      this._placeDebounceTimer = undefined;
+    }
+    const RESERVED_KEYS = new Set([
+      "name",
+      "aliases",
+      "parentFileName",
+      "description",
+      "referencedByNameIn",
+      "body",
+    ]);
+    const safeName = fieldName.trim().replace(/[^a-zA-Z0-9_]/g, "_");
+    if (!safeName || RESERVED_KEYS.has(safeName)) {
+      const reason = !safeName
+        ? "Field names must contain at least one alphanumeric character or underscore."
+        : `"${fieldName}" is a reserved field name and cannot be used as a custom field.`;
+      await this.vscodeApi.window.showErrorMessage(reason);
+      return;
+    }
+    const config = await readProjectConfigWithDefaults(this.rootPath);
+    let profile: PlaceProfile;
+    if (this._pendingPlace && this._pendingPlace.fileName === fileName) {
+      profile = this._pendingPlace;
+      this._pendingPlace = undefined;
+    } else {
+      const profiles = await listPlaces(this.rootPath, config);
+      const found = profiles.find((p) => p.fileName === fileName);
+      if (!found) {
+        return;
+      }
+      profile = found;
+    }
+    profile.customFields[safeName] = "";
+    await savePlace(profile, this.rootPath, config, this.safeFs);
+    await this._renderPanel();
+  }
+
+  private async _deletePlace(fileName: string): Promise<void> {
+    const config = await readProjectConfigWithDefaults(this.rootPath);
+    const profiles = await listPlaces(this.rootPath, config);
+    const profile = profiles.find((p) => p.fileName === fileName);
+    const label = profile?.name || fileName.replace(/\.md$/, "");
+    const choice = await this.vscodeApi.window.showWarningMessage(
+      `Delete place "${label}"? This cannot be undone.`,
+      { modal: true },
+      "Delete",
+    );
+    if (choice !== "Delete") {
+      return;
+    }
+    if (this._pendingPlace && this._pendingPlace.fileName !== fileName) {
+      await this._flushPendingPlace();
+    } else if (this._placeDebounceTimer) {
+      clearTimeout(this._placeDebounceTimer);
+      this._placeDebounceTimer = undefined;
+    }
+    if (this._pendingPlace && this._pendingPlace.fileName === fileName) {
+      this._pendingPlace = undefined;
+    }
+    await deletePlace(fileName, this.rootPath, config, this.safeFs);
+    if (this._selectedPlaceFileName === fileName) {
+      this._selectedPlaceFileName = undefined;
+    }
+    await this._renderPanel();
+  }
+
+  private async _openPlaceInEditor(fileName: string): Promise<void> {
+    const config = await readProjectConfigWithDefaults(this.rootPath);
+    const settingsDir = config.folders.settings.replace(/\/+$/, "");
+    const filePath = path.join(this.rootPath, ...settingsDir.split("/"), fileName);
     await this.vscodeApi.commands.executeCommand("vscode.open", this.vscodeApi.Uri.file(filePath));
   }
 

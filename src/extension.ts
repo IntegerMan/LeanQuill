@@ -17,8 +17,10 @@ import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlFo
 import { migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
 import { ResearchTreeProvider } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
+import { PlaceTreeProvider } from "./placeTree";
 import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
 import { createCharacter, scanManuscriptFileForCharacters } from "./characterStore";
+import { createPlace, scanManuscriptFileForPlaces } from "./placeStore";
 import { createThread } from "./threadStore";
 import { addCentralThemeEntry, readThemesDocument, writeThemesDocument } from "./themesStore";
 
@@ -178,7 +180,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Load project config and configure research folder access
   let config = await readProjectConfig(rootPath);
   const DEFAULT_THREADS_FOLDER = "notes/threads";
+  const DEFAULT_SETTINGS_FOLDER = "notes/settings";
   let safeThreadsFolder = DEFAULT_THREADS_FOLDER;
+  let safeSettingsFolder = DEFAULT_SETTINGS_FOLDER;
   if (config) {
     if (config.schemaVersion === "1") {
       const migrated = await migrateProjectYaml(rootPath, safeFileSystem);
@@ -218,11 +222,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     safeThreadsFolder = isThreadsMsPath ? DEFAULT_THREADS_FOLDER : threadsFolderClean;
     safeFileSystem.allowPath(safeThreadsFolder, ".md");
 
+    const settingsFolderRaw = config.folders.settings ?? DEFAULT_SETTINGS_FOLDER;
+    const settingsFolderClean = settingsFolderRaw.replace(/\/+$/g, "");
+    const isSettingsMsPath =
+      settingsFolderClean === "manuscript" ||
+      settingsFolderClean.startsWith("manuscript/");
+    safeSettingsFolder = isSettingsMsPath ? DEFAULT_SETTINGS_FOLDER : settingsFolderClean;
+    safeFileSystem.allowPath(safeSettingsFolder, ".md");
+
     // Ensure harness entry points exist for projects initialized before phase 12
     // (writeHarnessEntryPoints is idempotent — skips existing files)
     void writeHarnessEntryPoints(rootPath).catch(() => { /* non-critical */ });
   } else {
     safeFileSystem.allowPath(DEFAULT_THREADS_FOLDER, ".md");
+    safeFileSystem.allowPath(DEFAULT_SETTINGS_FOLDER, ".md");
   }
 
   const researchFolder = (config?.folders.research ?? "research/leanquill").replace(/\/+$/, "");
@@ -246,6 +259,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   outlineWebviewRef.current = outlineWebviewProvider;
 
   planningPanel = new PlanningPanelProvider(vscode, context.extensionUri, rootPath, safeFileSystem);
+
+  const placeTreeProvider = new PlaceTreeProvider(vscode, rootPath, safeFileSystem, () => {
+    void planningPanel.refresh();
+  });
 
   // Flag to prevent Book.txt write-loop (reset after delay to allow watcher to fire)
   let _selfEditingBookTxt = false;
@@ -291,6 +308,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   threadsWatcher.onDidCreate(() => void planningPanel.refresh());
   threadsWatcher.onDidChange(() => void planningPanel.refresh());
   threadsWatcher.onDidDelete(() => void planningPanel.refresh());
+
+  const settingsWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(rootPath, `${safeSettingsFolder}/**/*.md`),
+  );
+  settingsWatcher.onDidCreate(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
+  settingsWatcher.onDidChange(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
+  settingsWatcher.onDidDelete(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
 
   const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
     const appName = vscode.env.appName ?? "";
@@ -343,6 +367,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const selectPlaceInPanelCommand = vscode.commands.registerCommand(
+    "leanquill.selectPlaceInPanel",
+    async (fileName: string) => {
+      await planningPanel.showPlace(fileName);
+    },
+  );
+
+  const newPlaceCommand = vscode.commands.registerCommand("leanquill.newPlace", async () => {
+    const name = await vscode.window.showInputBox({ prompt: "Place name", placeHolder: "e.g. The Old Mill" });
+    if (!name?.trim()) {
+      return;
+    }
+    const latestConfig = await readProjectConfigWithDefaults(rootPath);
+    try {
+      const profile = await createPlace(name.trim(), rootPath, latestConfig, safeFileSystem);
+      placeTreeProvider.refresh();
+      await planningPanel.show();
+      await planningPanel.showPlace(profile.fileName);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(`LeanQuill: Failed to create place: ${message}`);
+    }
+  });
+
   const newThreadCommand = vscode.commands.registerCommand("leanquill.newThread", async () => {
     const title = await vscode.window.showInputBox({
       prompt: "Thread title",
@@ -373,6 +421,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const placesTreeView = vscode.window.createTreeView("leanquill.places", {
+    treeDataProvider: placeTreeProvider,
+    dragAndDropController: placeTreeProvider,
+    showCollapseAll: true,
+  });
+  placeTreeProvider.attachTreeView(placesTreeView);
+
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("leanquill.actions", setupViewProvider),
     vscode.window.registerWebviewViewProvider("leanquill.outlineTree", outlineWebviewProvider, {
@@ -383,14 +438,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.window.registerTreeDataProvider("leanquill.research", researchTreeProvider),
     vscode.window.registerTreeDataProvider("leanquill.characters", characterTreeProvider),
+    placesTreeView,
     researchWatcher,
     charactersWatcher,
     threadsWatcher,
+    settingsWatcher,
     startResearchCommand,
     newCharacterCommand,
+    newPlaceCommand,
     newThreadCommand,
     newThemeCommand,
     selectCharacterInPanelCommand,
+    selectPlaceInPanelCommand,
   );
 
   const updateNodeStatus = async (nodeId: string): Promise<void> => {
@@ -799,8 +858,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       const latestConfig = await readProjectConfigWithDefaults(rootPath);
       await scanManuscriptFileForCharacters(filePath, rootPath, latestConfig, safeFileSystem);
+      await scanManuscriptFileForPlaces(filePath, rootPath, latestConfig, safeFileSystem);
       await planningPanel.refresh();
       characterTreeProvider.refresh();
+      placeTreeProvider.refresh();
     } catch {
       // Never surface errors from background scanning
     }

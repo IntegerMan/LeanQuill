@@ -28,7 +28,7 @@
 - [x] **Phase 2: Core Chapter Workflow** - Deliver chapter tree navigation and chapter context basics.
 - [x] **Phase 3: Outline and Beat Planning** - Deliver standalone Scrivener-style planning webview.
 - [x] **Phase 4: Character Reference** - Populate Characters tab with character profile management. (completed 2026-04-09)
-- [ ] **Phase 5: Place and Setting Reference** - Populate Places tab with location/setting management.
+- [x] **Phase 5: Place and Setting Reference** - Populate Places tab with location/setting management. (completed 2026-04-09)
 - [x] **Phase 6: Threads and Themes** - Populate planning workspace with Themes + Threads tabs, `themes.yaml`, and thread markdown under `folders.threads`. (completed 2026-04-09)
 - [ ] **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
 - [ ] **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators.
@@ -130,6 +130,13 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 3
 **Requirements:** PLACE-01
+**Plans:** 4/4 plans complete
+
+Plans:
+- [x] 05-01-PLAN.md — PlaceProfile, `folders.settings`, `placeStore` CRUD + tests (no scans).
+- [x] 05-02-PLAN.md — Hybrid linking: `scanManuscriptFileForPlaces` + `scanOutlineIndexForPlaces` + fixture tests (05-RESEARCH Option C).
+- [x] 05-03-PLAN.md — Places tab webview + `PlanningPanel` `place:*` handlers + `showPlace` (Characters-tab parity + beat id list).
+- [x] 05-04-PLAN.md — Extension wiring: SafeFs allowPath, watcher, outline/manuscript hooks, `leanquill.newPlace`.
 
 **Success criteria:**
 1. Author can open the Places tab in the planning webview and create, edit, and organize location/setting entries with author-defined fields.
@@ -285,7 +292,7 @@ Plans:
 | 1. Foundation and Safe Init | 0/0 | Completed | 2026-03-29 |
 | 3. Outline and Beat Planning | 3/3 | Completed | 2026-04-05 |
 | 4. Character Reference | 3/3 | Completed | 2026-04-09 |
-| 5. Place and Setting Reference | 0/0 | Not started | - |
+| 5. Place and Setting Reference | 4/4 | Completed | 2026-04-09 |
 | 6. Threads and Themes | 3/3 | Completed | 2026-04-09 |
 | 7. Global Knowledge Reference | 0/0 | Not started | - |
 | 8. Issue Capture, Triage, and Editor Signals | 0/0 | Not started | - |

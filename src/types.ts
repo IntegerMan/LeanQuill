@@ -64,6 +64,17 @@ export interface CharacterProfile {
   body: string;                // freeform markdown body after frontmatter
 }
 
+export interface PlaceProfile {
+  fileName: string;
+  name: string;
+  aliases: string[];
+  parentFileName: string; // fileName of parent place ("" = root-level)
+  description: string;
+  referencedByNameIn: string[]; // manuscript paths relative to workspace root, forward slashes
+  customFields: Record<string, string>;
+  body: string;
+}
+
 // --- Threads & themes (Phase 6) ---
 
 export interface CentralThemeEntry {

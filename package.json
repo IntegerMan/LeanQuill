@@ -12,6 +12,7 @@
   ],
   "activationEvents": [
     "onCommand:leanquill.initialize",
+    "onCommand:leanquill.newPlace",
     "onCommand:leanquill.openPlanningWorkspace",
     "onCommand:leanquill.newThread",
     "onCommand:leanquill.newTheme",
@@ -20,6 +21,7 @@
     "onView:leanquill.chapterContext",
     "onView:leanquill.research",
     "onView:leanquill.characters",
+    "onView:leanquill.places",
     "workspaceContains:manuscript/Book.txt",
     "workspaceContains:manuscript"
   ],
@@ -118,6 +120,12 @@
         "icon": "$(person-add)"
       },
       {
+        "command": "leanquill.newPlace",
+        "title": "New Place",
+        "category": "LeanQuill",
+        "icon": "$(add)"
+      },
+      {
         "command": "leanquill.newThread",
         "title": "New Thread",
         "category": "LeanQuill"
@@ -163,6 +171,11 @@
           "id": "leanquill.characters",
           "name": "Characters",
           "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
+          "id": "leanquill.places",
+          "name": "Places",
+          "when": "leanquill.workspaceLeanQuillReady"
         }
       ]
     },
@@ -186,6 +199,11 @@
         {
           "command": "leanquill.newCharacter",
           "when": "view == leanquill.characters",
+          "group": "navigation"
+        },
+        {
+          "command": "leanquill.newPlace",
+          "when": "view == leanquill.places",
           "group": "navigation"
         }
       ]
@@ -224,6 +242,11 @@
       {
         "view": "leanquill.characters",
         "contents": "No characters yet.\n\nUse the + button above to create your first character profile.",
+        "when": "leanquill.workspaceLeanQuillReady"
+      },
+      {
+        "view": "leanquill.places",
+        "contents": "No places yet.\n\nUse the + button above to create your first place or setting.",
         "when": "leanquill.workspaceLeanQuillReady"
       }
     ]

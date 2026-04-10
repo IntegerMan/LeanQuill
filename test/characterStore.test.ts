@@ -15,7 +15,7 @@ import {
 } from "../src/characterStore";
 import { SafeFileSystem } from "../src/safeFileSystem";
 import { CharacterProfile } from "../src/types";
-import { ProjectConfig } from "../src/projectConfig";
+import { DEFAULT_PROJECT_CONFIG, ProjectConfig } from "../src/projectConfig";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -33,11 +33,7 @@ async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
 function makeConfig(overrides?: Partial<ProjectConfig["folders"]>): ProjectConfig {
   return {
     schemaVersion: "1",
-    folders: {
-      research: "research/leanquill/",
-      characters: "notes/characters/",
-      ...overrides,
-    },
+    folders: { ...DEFAULT_PROJECT_CONFIG.folders, ...overrides },
   };
 }
 
