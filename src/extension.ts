@@ -807,11 +807,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   manuscriptFileWatcher.onDidDelete(triggerOutlineRefresh);
   // Outline index watcher — reload webview + panel + sync Book.txt
   const onOutlineChanged = () => {
-    void (async () => {
-      void outlineWebviewProvider.refresh();
-      void planningPanel.refresh();
-      void syncBookTxt();
-    })();
+    void outlineWebviewProvider.refresh();
+    void planningPanel.refresh();
+    void syncBookTxt();
   };
   outlineWatcher.onDidCreate(onOutlineChanged);
   outlineWatcher.onDidChange(onOutlineChanged);
