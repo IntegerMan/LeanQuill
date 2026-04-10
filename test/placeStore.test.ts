@@ -20,6 +20,13 @@ import { SafeFileSystem } from "../src/safeFileSystem";
 import { OutlineIndex, OutlineNode, PlaceProfile } from "../src/types";
 import { DEFAULT_PROJECT_CONFIG, ProjectConfig } from "../src/projectConfig";
 
+const OUTLINE_PLACE_SCAN_FIXTURE = path.join(
+  process.cwd(),
+  "test",
+  "fixtures",
+  "outline-place-scan.json",
+);
+
 async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "leanquill-places-"));
   try {
@@ -289,6 +296,57 @@ test("collectBeatCandidateNodeIds excludes chapter-linked manuscript nodes", () 
   const candidates = collectBeatCandidateNodeIds(index);
   assert.equal(candidates.length, 1);
   assert.equal(candidates[0].id, "beat-1");
+});
+
+test("scanOutlineIndexForPlaces sets referencedInBeats from outline-place-scan fixture", async () => {
+  const raw = await fs.readFile(OUTLINE_PLACE_SCAN_FIXTURE, "utf8");
+  const index = JSON.parse(raw) as OutlineIndex;
+
+  await withTempDir(async (dir) => {
+    const config = makeConfig();
+    const safeFs = makeSafeFs(dir);
+    await createPlace("Red Inn", dir, config, safeFs);
+
+    await scanOutlineIndexForPlaces(index, dir, config, safeFs);
+
+    const [p] = await listPlaces(dir, config);
+    assert.deepEqual(p.referencedInBeats, [
+      "outline-beat-active-red-inn",
+      "outline-beat-inactive-red-inn",
+    ]);
+    assert.ok(
+      !p.referencedInBeats.includes("outline-chapter-place-scan-ch01"),
+      "chapter-linked node must not appear in beat refs",
+    );
+  });
+});
+
+test("scanOutlineIndexForPlaces ignores chapter node title match (not a beat candidate)", async () => {
+  const index: OutlineIndex = {
+    schemaVersion: 2,
+    nodes: [
+      {
+        id: "ch-only-title-red-inn",
+        title: "Red Inn",
+        fileName: "manuscript/prologue.md",
+        active: true,
+        status: "not-started",
+        description: "",
+        customFields: {},
+        traits: [],
+        children: [],
+      },
+    ],
+  };
+
+  await withTempDir(async (dir) => {
+    const config = makeConfig();
+    const safeFs = makeSafeFs(dir);
+    await createPlace("Red Inn", dir, config, safeFs);
+    await scanOutlineIndexForPlaces(index, dir, config, safeFs);
+    const [p] = await listPlaces(dir, config);
+    assert.deepEqual(p.referencedInBeats, []);
+  });
 });
 
 test("collectBeatCandidateNodeIds includes inactive beat candidates", () => {
