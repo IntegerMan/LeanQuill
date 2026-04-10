@@ -21,6 +21,7 @@
 | 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
 | 12 | Standardized Research Workflow and Results Repository | Author can capture standardized research findings and store them in a consistent project repository for later planning and drafting use | RES-01, RES-02 | 2 criteria |
 | 13 | LeanPub Workspace Initialization | Author can initialize a LeanPub workspace with manuscript scaffold from the sidebar | INIT-01, INIT-02 | 3 criteria |
+| 14 | Open Questions | Author can create, view, navigate, and status-manage open-question notes associated with book, characters, threads, places, or manuscript selections | ISSUE-01 (partial), ISSUE-02 (partial) | 4 criteria |
 
 ## Phases
 
@@ -37,6 +38,7 @@
 - [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
 - [x] **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
 - [x] **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing. (completed 2026-04-09)
+- [ ] **Phase 14: Open Questions** - Author-created open-question notes linked to book, characters, threads, places, or manuscript selections with list view, navigation, and status management.
 
 ## Phase Details
 
@@ -262,6 +264,25 @@ Plans:
 
 **Notes:** Research execution happens in AI chat via harness-specific agent files, not as extension commands. The extension provides storage, browsing, and quick-start. Canonical workflow definition generated in .leanquill/workflows/ during init.
 
+### Phase 14: Open Questions
+
+**Goal:** Author can create open-question notes associated with the book as a whole, a character, a thread, a place, a manuscript file, or a specific text selection within a manuscript file — and view an issues list, navigate to issues, and update issue status.
+**UI hint:** yes
+**Depends on:** Phase 2, Phase 4, Phase 5, Phase 6
+**Requirements:** ISSUE-01 (partial), ISSUE-02 (partial)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
+
+**Success criteria:**
+1. Author can create open-question notes and associate them with nothing (book-wide), a character, a thread, a place, a manuscript file, or a specific text selection from a manuscript file.
+2. Author can view a consolidated issues list showing all open questions with their association context.
+3. Author can navigate from the issues list to the associated entity or manuscript location.
+4. Author can update issue status (e.g. open, resolved, deferred) and see the change reflected immediately in the issues list.
+
+**Notes:** Stepping stone toward the full Issue Capture, Triage, and Editor Signals workflow (Phase 8). Scoped to author-created open-question notes only — no gutter indicators, no AI-generated issues, no `research-question` type. Establishes the issue data model and basic UI that Phase 8 will extend with triage workflows and editor signals.
+
 ---
 
 ### Phase 13: LeanPub Workspace Initialization
@@ -301,5 +322,6 @@ Plans:
 | 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
 | 12. Standardized Research Workflow and Results Repository | 2/2 | Completed | 2026-04-05 |
 | 13. LeanPub Workspace Initialization | 4/4 | Completed | 2026-04-09 |
+| 14. Open Questions | 0/0 | Not started | - |
 
 ## Backlog

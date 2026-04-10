@@ -7,7 +7,7 @@ status: completed
 stopped_at: Phase 5 verified and marked complete on roadmap
 last_updated: "2026-04-10T00:25:00.000Z"
 progress:
-  total_phases: 13
+  total_phases: 14
   completed_phases: 8
   total_plans: 25
   completed_plans: 24
@@ -52,6 +52,7 @@ Plan: None
 | 11 | Outline and Card Usability Improvements | Not Started | - |
 | 12 | Standardized Research Workflow and Results Repository | Completed | 2026-04-07 |
 | 13 | LeanPub Workspace Initialization | Completed (UAT) | 2026-04-09 |
+| 14 | Open Questions | Not Started | - |
 
 ## Performance Metrics
 
@@ -94,6 +95,7 @@ Plan: None
 
 - Phase 11 added: Make the outline and card views more usable with the ability to insert, remove, and reorder cards. The outline should also support changing hierarchy structures like we can in the sidebar.
 - Phase 12 added: add the ability to run research in standardized ways and collect research results in a dedicated research folder next to the manuscript.
+- Phase 14 added: Open Questions — author-created open-question notes linked to book, characters, threads, places, or manuscript selections with issues list, navigation, and status management. Stepping stone toward full Issue Capture (Phase 8).
 
 ## Session Continuity
 
