@@ -92,12 +92,14 @@ export async function migrateIssuesLayoutV3IfNeeded(
     const raw = await fs.readFile(src, "utf8");
     const next = rewriteAuthorNoteToQuestion(raw);
     await safeFs.writeFile(dest, next);
-    await fs.unlink(src);
+    if (safeFs.canWrite(src, true)) {
+      await fs.unlink(src);
+    }
   }
 
   try {
     const remaining = await fs.readdir(legacyDir);
-    if (remaining.length === 0) {
+    if (remaining.length === 0 && safeFs.canWrite(legacyDir)) {
       await fs.rmdir(legacyDir);
     }
   } catch {

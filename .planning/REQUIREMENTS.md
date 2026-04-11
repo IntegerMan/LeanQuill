@@ -29,7 +29,7 @@
 
 - [ ] **PLAN-01**: Author can access a full Scrivener-style outline view — a hierarchical Parts → Chapters → Beats structure with drag-and-drop rearranging, dual outline and notecard views, and the ability to deactivate beats or chapters during outlining
 - [ ] **PLAN-02**: Each story beat supports per-beat fields: description of what occurs, who is present, where it takes place, why it happens — plus a candidate/committed status to track options the author hasn't yet decided on
-- [x] **PLAN-03**: Author can log open questions and research discoveries as issue records using a "research-question" issue type, surfaced in triage alongside other issue types
+- [x] **PLAN-03**: Author can log open questions and research discoveries as standard issue records with a research association, surfaced in triage alongside other issue types
 
 ### Character Reference
 

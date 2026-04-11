@@ -144,37 +144,37 @@
       },
       {
         "command": "leanquill.newOpenQuestionFromChapter",
-        "title": "New Issue",
+        "title": "New Issue (From Chapter)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromOutline",
-        "title": "New Issue",
+        "title": "New Issue (From Outline)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromSelection",
-        "title": "New Issue",
+        "title": "New Issue (From Selection)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromCharacter",
-        "title": "New Issue",
+        "title": "New Issue (From Character)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromPlace",
-        "title": "New Issue",
+        "title": "New Issue (From Place)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromThread",
-        "title": "New Issue",
+        "title": "New Issue (From Thread)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromResearch",
-        "title": "New Issue",
+        "title": "New Issue (From Research)",
         "category": "LeanQuill"
       },
       {

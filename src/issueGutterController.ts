@@ -73,13 +73,14 @@ function issueCoversCursorLine(
   doc: vscode.TextDocument,
   q: OpenQuestionRecord,
   cursorLine: number,
+  preferredStartIndex?: number,
 ): boolean {
   const hint = selectionSpanHint(q);
   if (!hint) {
     return false;
   }
   const text = doc.getText();
-  const res = resolveSpanHintInDocument(text, hint);
+  const res = resolveSpanHintInDocument(text, hint, preferredStartIndex);
   if (res.kind === "matched") {
     const start = doc.positionAt(res.start).line;
     const end = doc.positionAt(res.end).line;
@@ -106,6 +107,9 @@ export class IssueGutterController implements vscode.Disposable {
   private readonly subs: vscode.Disposable[] = [];
 
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Cached last-known char offset per issue id, used for bounded fuzzy re-resolution (D-13). */
+  private readonly offsetCache = new Map<string, number>();
 
   constructor(
     private readonly vscodeApi: typeof vscode,
@@ -182,7 +186,7 @@ export class IssueGutterController implements vscode.Disposable {
       (q) =>
         isActiveForSidebarCount(q.status as IssueStatus)
         && issueChapterRef(q) === docRel
-        && issueCoversCursorLine(editor.document, q, line),
+        && issueCoversCursorLine(editor.document, q, line, this.offsetCache.get(q.id)),
     );
     if (hits.length === 0) {
       await vscodeApi.window.showInformationMessage("No active issues at this line.");
@@ -259,10 +263,16 @@ export class IssueGutterController implements vscode.Disposable {
     const entries: Entry[] = [];
     for (const record of candidates) {
       const hint = selectionSpanHint(record)!;
-      const res = resolveSpanHintInDocument(text, hint);
+      const preferredStart = this.offsetCache.get(record.id);
+      const res = resolveSpanHintInDocument(text, hint, preferredStart);
       if (res.kind === "stale") {
         entries.push({ record, res, line: 0 });
         continue;
+      }
+      if (res.kind === "matched") {
+        this.offsetCache.set(record.id, res.start);
+      } else if (res.kind === "ambiguous" && res.candidates.length > 0) {
+        this.offsetCache.set(record.id, res.candidates[0].start);
       }
       const r = resolutionToRange(doc, res);
       if (r) {
