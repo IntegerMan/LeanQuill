@@ -322,6 +322,9 @@ export function countOpenQuestionsByChapter(questions: OpenQuestionRecord[]): Re
   return counts;
 }
 
+/** Sidebar + outline chapter rows: same totals as `countOpenQuestionsByChapter` (open + deferred via `isActiveForSidebarCount`). */
+export const countActiveIssuesByChapter = countOpenQuestionsByChapter;
+
 /**
  * Apply computed open-question counts to every chapter entry in the status index.
  */

@@ -22,7 +22,7 @@ function deriveTitle(chapterPath: string): string {
 }
 
 function issueCountText(count: number): string {
-  return `${count} issue${count === 1 ? "" : "s"}`;
+  return `${count} Issues`;
 }
 
 export interface ChapterTreeRow {
