@@ -10,8 +10,8 @@ const VALID_STATUSES: OpenQuestionStatus[] = ["open", "deferred", "resolved", "d
 
 /** Human-readable label for issue-schema `type` (list UI). */
 export function displayIssueTypeLabel(issueSchemaType: string): string {
-  const t = (issueSchemaType || "").trim() || "author-note";
-  if (t === "author-note") {
+  const t = (issueSchemaType || "").trim() || "question";
+  if (t === "author-note" || t === "question") {
     return "Question";
   }
   return t

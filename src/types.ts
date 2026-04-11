@@ -117,7 +117,7 @@ export type OpenQuestionAssociation =
 export interface OpenQuestionRecord {
   fileName: string;
   id: string;
-  /** issue-schema `type` (e.g. `author-note`); drives list label such as "Question". */
+  /** issue-schema `type` (e.g. `question`, or legacy `author-note`); drives list label such as "Question". */
   issueSchemaType: string;
   title: string;
   body: string;
