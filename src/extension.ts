@@ -13,7 +13,8 @@ import { OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTr
 import { OutlineWebviewProvider } from "./outlineWebviewPanel";
 import { PlanningPanelProvider } from "./planningPanel";
 import { OpenQuestionsPanelViewProvider } from "./openQuestionsPanel";
-import { createOpenQuestion, getOpenQuestion, LEANQUILL_ISSUES_DIR } from "./openQuestionStore";
+import { migrateIssuesLayoutV3IfNeeded } from "./issueMigration";
+import { createOpenQuestion, getOpenQuestion } from "./openQuestionStore";
 import { handleOpenQuestionWorkspaceDelete, handleOpenQuestionWorkspaceRename } from "./openQuestionWorkspaceSync";
 import { SafeFileSystem } from "./safeFileSystem";
 import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlForSetup } from "./projectConfig";
@@ -241,6 +242,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     safeFileSystem.allowPath(DEFAULT_SETTINGS_FOLDER, ".md");
   }
 
+  await migrateIssuesLayoutV3IfNeeded(rootPath, safeFileSystem);
+
   const researchFolder = (config?.folders.research ?? "research/leanquill").replace(/\/+$/, "");
   const researchDir = path.join(rootPath, ...researchFolder.split("/"));
   const researchTreeProvider = new ResearchTreeProvider(vscode, rootPath, researchDir);
@@ -277,10 +280,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     safeFileSystem,
   );
 
+  const placeTreeProvider = new PlaceTreeProvider(vscode, rootPath, safeFileSystem, () => {
+    void planningPanel.refresh();
+  });
+
   const refreshOpenQuestionSurfaces = async (): Promise<void> => {
     await planningPanel.refresh();
     await openQuestionsPanelProvider.refresh();
     await outlineWebviewRef.current?.refresh();
+    characterTreeProvider.refresh();
+    placeTreeProvider.refresh();
+    researchTreeProvider.refresh();
   };
 
   context.subscriptions.push(
@@ -297,10 +307,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await refreshOpenQuestionSurfaces();
     }),
   );
-
-  const placeTreeProvider = new PlaceTreeProvider(vscode, rootPath, safeFileSystem, () => {
-    void planningPanel.refresh();
-  });
 
   // Flag to prevent Book.txt write-loop (reset after delay to allow watcher to fire)
   let _selfEditingBookTxt = false;
@@ -354,12 +360,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   settingsWatcher.onDidChange(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
   settingsWatcher.onDidDelete(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
 
-  const openQuestionsWatcher = vscode.workspace.createFileSystemWatcher(
-    new vscode.RelativePattern(rootPath, `${LEANQUILL_ISSUES_DIR}/**/*.md`),
+  const issuesMarkdownWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(rootPath, ".leanquill/issues/**/*.md"),
   );
-  openQuestionsWatcher.onDidCreate(() => void refreshOpenQuestionSurfaces());
-  openQuestionsWatcher.onDidChange(() => void refreshOpenQuestionSurfaces());
-  openQuestionsWatcher.onDidDelete(() => void refreshOpenQuestionSurfaces());
+  issuesMarkdownWatcher.onDidCreate(() => void refreshOpenQuestionSurfaces());
+  issuesMarkdownWatcher.onDidChange(() => void refreshOpenQuestionSurfaces());
+  issuesMarkdownWatcher.onDidDelete(() => void refreshOpenQuestionSurfaces());
 
   const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
     const appName = vscode.env.appName ?? "";
@@ -710,7 +716,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     charactersWatcher,
     threadsWatcher,
     settingsWatcher,
-    openQuestionsWatcher,
+    issuesMarkdownWatcher,
     startResearchCommand,
     newCharacterCommand,
     newPlaceCommand,
