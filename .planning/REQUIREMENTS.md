@@ -29,7 +29,7 @@
 
 - [ ] **PLAN-01**: Author can access a full Scrivener-style outline view — a hierarchical Parts → Chapters → Beats structure with drag-and-drop rearranging, dual outline and notecard views, and the ability to deactivate beats or chapters during outlining
 - [ ] **PLAN-02**: Each story beat supports per-beat fields: description of what occurs, who is present, where it takes place, why it happens — plus a candidate/committed status to track options the author hasn't yet decided on
-- [ ] **PLAN-03**: Author can log open questions and research discoveries as issue records using a "research-question" issue type, surfaced in triage alongside other issue types
+- [x] **PLAN-03**: Author can log open questions and research discoveries as issue records using a "research-question" issue type, surfaced in triage alongside other issue types
 
 ### Character Reference
 
@@ -45,8 +45,8 @@
 
 ### Issue Tracking
 
-- [ ] **ISSUE-01**: Author can manually create an issue attached to a specific chapter or project-wide *(Phase 14 delivers basic manual issue creation, but not the full issue schema described here, including optional `span_hint`)*
-- [ ] **ISSUE-02**: Author can triage any issue *(Phase 14 delivers basic status changes, but not the full flow described here, including dismiss with an optional rationale and default-hidden dismissed issues)*
+- [x] **ISSUE-01**: Author can manually create an issue attached to a specific chapter or project-wide *(Phase 14 delivers basic manual issue creation, but not the full issue schema described here, including optional `span_hint`)*
+- [x] **ISSUE-02**: Author can triage any issue *(Phase 14 delivers basic status changes, but not the full flow described here, including dismiss with an optional rationale and default-hidden dismissed issues)*
 - [ ] **ISSUE-03**: Author can filter the issue list by status: open / deferred / dismissed / all
 - [ ] **ISSUE-04**: Issues with a `span_hint` referencing a manuscript text fragment display as gutter indicator icons in the editor margin, providing spatially precise issue awareness without leaving the writing surface
 - [ ] **ISSUE-05**: Author can right-click any issue and choose "Chat about this" to open a focused AI conversation scoped to that issue — the agent receives the issue record and relevant chapter context but cannot write to manuscript files
@@ -128,7 +128,7 @@ Which phases cover which requirements. To be populated during roadmap creation.
 | CHAP-04 | 2 | Pending |
 | PLAN-01 | 3 | Pending |
 | PLAN-02 | 3 | Pending |
-| PLAN-03 | 8 | Pending |
+| PLAN-03 | 8 | Complete |
 | CHAR-01 | 4 | Complete |
 | PLACE-01 | 5 | Complete |
 | THREAD-01 | 6 | Complete |

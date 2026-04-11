@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 08
 status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-04-11T01:47:28.205Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-04-11T01:52:06.387Z"
 progress:
   total_phases: 15
   completed_phases: 8
   total_plans: 36
-  completed_plans: 31
+  completed_plans: 32
 ---
 
 # Project State: LeanQuill
@@ -28,7 +28,7 @@ progress:
 ## Current Position
 
 Phase: 08 (issue-capture-triage-and-editor-signals) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 
 - Phase 6 (Threads and Themes) already **complete** (2026-04-09)
 - **Next:** Phase 7 — Global Knowledge Reference (not started)
@@ -69,6 +69,7 @@ Plan: 2 of 5
 | Phase 05-place-and-setting-reference P03 | 25min | 2 tasks | 2 files |
 | Phase 05-place-and-setting-reference P04 | 18min | 2 tasks | 2 files |
 | Phase 08 P01 | 25min | 3 tasks | 9 files |
+| Phase 08-issue-capture-triage-and-editor-signals P02 | 40min | 3 tasks | 14 files |
 
 ## Decisions Log
 
@@ -86,6 +87,8 @@ Plan: 2 of 5
 | 2026-04-10 | Split 05-03 commits: minimal `_renderPanel` wiring in task 1 | `renderPlanningHtml` signature needs TS call site so `npm run build` stays green |
 | 2026-04-10 | OpenQuestionRecord supports `dismissed` and optional `dismissedReason` | Phase 08-01 ISSUE-02 tests and issue-schema alignment |
 | 2026-04-10 | Chapter sidebar counts use open + deferred (D-06) in `countOpenQuestionsByChapter` | Phase 08-01; deferred no longer excluded from per-chapter active counts |
+| 2026-04-11 | Issue v3 marker `.leanquill/issues/.migration-v3-complete.json` for idempotent layout migration | Phase 08-02 |
+| 2026-04-11 | Migration conflicts: numeric suffix rename + `console.warn`; never overwrite existing `issues/question` files | Phase 08-02 |
 
 ## Accumulated Context
 
@@ -102,8 +105,8 @@ Plan: 2 of 5
 
 ## Session Continuity
 
-- Last updated: 2026-04-10
+- Last updated: 2026-04-11
 - Next checkpoint: `/gsd-discuss-phase 7` or `/gsd-plan-phase 7` for Global Knowledge Reference; optional `/gsd-verify-work 5` for conversational UAT
 
-Last session: 2026-04-11T01:47:28.198Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-04-11T01:52:06.378Z
+Stopped at: Completed 08-02-PLAN.md
