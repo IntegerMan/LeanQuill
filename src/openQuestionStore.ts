@@ -6,7 +6,7 @@ import { escapeYamlString, stripYamlQuotes } from "./yamlUtils";
 
 export const OPEN_QUESTIONS_DIR = ".leanquill/open-questions";
 
-const VALID_STATUSES: OpenQuestionStatus[] = ["open", "deferred", "resolved"];
+const VALID_STATUSES: OpenQuestionStatus[] = ["open", "deferred", "resolved", "dismissed"];
 
 /** Human-readable label for issue-schema `type` (list UI). */
 export function displayIssueTypeLabel(issueSchemaType: string): string {
@@ -149,7 +149,9 @@ export function parseOpenQuestionFile(fileName: string, content: string): OpenQu
 
   const statusRaw = scalars.status || "open";
   if (!isOpenQuestionStatus(statusRaw)) {
-    throw new Error(`Open question ${fileName}: invalid status "${statusRaw}" (Phase 14 allows open | deferred | resolved only)`);
+    throw new Error(
+      `Open question ${fileName}: invalid status "${statusRaw}" (expected open | deferred | resolved | dismissed)`,
+    );
   }
 
   const id = scalars.id || path.basename(fileName, path.extname(fileName));
@@ -158,6 +160,9 @@ export function parseOpenQuestionFile(fileName: string, content: string): OpenQu
   const updatedAt = scalars.updated_at || createdAt;
   const association = associationFromFrontmatter(scalars);
   const issueSchemaType = (scalars.type || "author-note").trim() || "author-note";
+  const dismissedReasonRaw = scalars.dismissed_reason?.trim();
+  const dismissedReason =
+    dismissedReasonRaw && dismissedReasonRaw.length > 0 ? dismissedReasonRaw : undefined;
 
   return {
     fileName,
@@ -169,6 +174,7 @@ export function parseOpenQuestionFile(fileName: string, content: string): OpenQu
     createdAt,
     updatedAt,
     association,
+    dismissedReason,
   };
 }
 
@@ -199,7 +205,11 @@ export function serializeOpenQuestionFile(record: OpenQuestionRecord): string {
   lines.push("verify_manually: false");
   lines.push("intentional: false");
   lines.push('intentional_note: ""');
-  lines.push('dismissed_reason: ""');
+  if (record.dismissedReason && record.dismissedReason.trim().length > 0) {
+    lines.push(`dismissed_reason: ${escapeYamlString(record.dismissedReason.trim())}`);
+  } else {
+    lines.push('dismissed_reason: ""');
+  }
   lines.push(`lq_assoc_kind: ${assocFm.lq_assoc_kind}`);
 
   if (assocFm.lq_book_wide === "true") {
@@ -225,13 +235,13 @@ export function serializeOpenQuestionFile(record: OpenQuestionRecord): string {
 }
 
 /**
- * Count `open` questions per normalized manuscript `chapter_ref` (D-03).
+ * Count chapter-linked issues that count toward sidebar / openIssueIndex (D-03, D-06): `open` + `deferred`.
  * Book-wide and entity-only associations do not increment chapter keys.
  */
 export function countOpenQuestionsByChapter(questions: OpenQuestionRecord[]): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const q of questions) {
-    if (q.status !== "open") {
+    if (q.status !== "open" && q.status !== "deferred") {
       continue;
     }
     let chapterRef: string | undefined;

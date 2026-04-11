@@ -103,7 +103,7 @@ export interface ThreadProfile {
 
 // --- Open questions (Phase 14, ISSUE-01/02 partial) ---
 
-export type OpenQuestionStatus = "open" | "deferred" | "resolved";
+export type OpenQuestionStatus = "open" | "deferred" | "resolved" | "dismissed";
 
 export type OpenQuestionAssociation =
   | { kind: "book" }
@@ -125,6 +125,8 @@ export interface OpenQuestionRecord {
   createdAt: string;
   updatedAt: string;
   association: OpenQuestionAssociation;
+  /** Persisted when status is dismissed (issue-schema `dismissed_reason`). */
+  dismissedReason?: string;
   /** Computed for webview navigation UX; not persisted. */
   staleHint?: string;
 }

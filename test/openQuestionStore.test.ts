@@ -28,6 +28,7 @@ function baseRecord(partial: Partial<OpenQuestionRecord> & Pick<OpenQuestionReco
     createdAt: partial.createdAt ?? now,
     updatedAt: partial.updatedAt ?? now,
     association: partial.association ?? { kind: "book" },
+    dismissedReason: partial.dismissedReason,
     staleHint: partial.staleHint,
   };
 }
@@ -149,10 +150,25 @@ test("countOpenQuestionsLinkedToChapterRef matches chapter and selection", () =>
   assert.equal(countOpenQuestionsLinkedToChapterRef(qs, "manuscript/other.md"), 0);
 });
 
-test("Phase 14 statuses: open deferred resolved only (no dismissed in Phase 14)", () => {
+test("Phase 14 statuses: open deferred resolved round-trip", () => {
   for (const status of ["open", "deferred", "resolved"] as const) {
     const orig = baseRecord({ id: `oq-${status}`, title: "T", status });
     const back = parseOpenQuestionFile(orig.fileName, serializeOpenQuestionFile(orig));
     assert.equal(back.status, status);
   }
+});
+
+test("ISSUE-02: dismissed status and dismissed_reason round-trip (issue-schema)", () => {
+  const orig = baseRecord({
+    id: "oq-dismissed",
+    title: "Won't fix",
+    status: "dismissed",
+    dismissedReason: "Out of scope for this draft.",
+  });
+  const raw = serializeOpenQuestionFile(orig);
+  assert.match(raw, /status:\s*dismissed/);
+  assert.match(raw, /dismissed_reason:\s*.+Out of scope/);
+  const back = parseOpenQuestionFile(orig.fileName, raw);
+  assert.equal(back.status, "dismissed");
+  assert.equal(back.dismissedReason, "Out of scope for this draft.");
 });

@@ -4,8 +4,9 @@ import { countOpenQuestionsByChapter } from "../src/openQuestionStore";
 import type { OpenQuestionRecord } from "../src/types";
 
 /**
- * D-03: per-chapter open counts use normalized `manuscript/...` keys.
- * Book-wide and entity-only (character / place / thread) open questions must not increment a chapter path.
+ * D-03: per-chapter counts use normalized `manuscript/...` keys.
+ * D-06: sidebar / `openIssueCount` treats **open + deferred** as active; dismissed and resolved excluded.
+ * Book-wide and entity-only (character / place / thread) questions must not increment a chapter path.
  */
 
 const NOW = "2026-04-10T12:00:00.000Z";
@@ -33,14 +34,15 @@ test("countOpenQuestionsByChapter aggregates multiple open on same manuscript pa
   assert.equal(counts["manuscript/ch01.md"], 2);
 });
 
-test("resolved and deferred are excluded from open count", () => {
+test("active sidebar count includes open and deferred; resolved and dismissed excluded (D-06)", () => {
   const questions = [
     q({ id: "o", status: "open", association: { kind: "chapter", chapterRef: "manuscript/a.md" } }),
     q({ id: "r", status: "resolved", association: { kind: "chapter", chapterRef: "manuscript/a.md" } }),
     q({ id: "d", status: "deferred", association: { kind: "chapter", chapterRef: "manuscript/a.md" } }),
+    q({ id: "x", status: "dismissed", association: { kind: "chapter", chapterRef: "manuscript/a.md" } }),
   ];
   const counts = countOpenQuestionsByChapter(questions);
-  assert.equal(counts["manuscript/a.md"], 1);
+  assert.equal(counts["manuscript/a.md"], 2);
 });
 
 test("Windows-style chapter_ref normalizes to manuscript/ forward slashes", () => {
