@@ -13,6 +13,7 @@ import { OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTr
 import { OutlineWebviewProvider } from "./outlineWebviewPanel";
 import { PlanningPanelProvider } from "./planningPanel";
 import { OpenQuestionsPanelViewProvider } from "./openQuestionsPanel";
+import { IssueGutterController } from "./issueGutterController";
 import { migrateIssuesLayoutV3IfNeeded } from "./issueMigration";
 import { createOpenQuestion, getOpenQuestion } from "./openQuestionStore";
 import { handleOpenQuestionWorkspaceDelete, handleOpenQuestionWorkspaceRename } from "./openQuestionWorkspaceSync";
@@ -366,6 +367,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   issuesMarkdownWatcher.onDidCreate(() => void refreshOpenQuestionSurfaces());
   issuesMarkdownWatcher.onDidChange(() => void refreshOpenQuestionSurfaces());
   issuesMarkdownWatcher.onDidDelete(() => void refreshOpenQuestionSurfaces());
+
+  const issueGutterController = new IssueGutterController(vscode, rootPath, context.extensionUri);
+  issueGutterController.register(context);
 
   const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
     const appName = vscode.env.appName ?? "";
@@ -1211,6 +1215,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Proactive init prompt (non-blocking — don't hold up activation)
   scheduleInitPrompt(context, rootPath);
 }
+
+/**
+ * VS Code disposes `ExtensionContext.subscriptions` on shutdown, which runs
+ * `IssueGutterController.dispose()` (decoration types + command registration).
+ */
+export function deactivate(): void {}
 
 async function scheduleInitPrompt(context: vscode.ExtensionContext, rootPath: string): Promise<void> {
   const dismissed = context.workspaceState.get<boolean>("leanquill.initPromptDismissed", false);
