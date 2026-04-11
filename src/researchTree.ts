@@ -1,12 +1,16 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type * as VSCode from "vscode";
+import { formatIssueCountLabel } from "./formatIssueCountLabel";
+import { countActiveQuestionsLinkedToEntity, listOpenQuestions } from "./openQuestionStore";
 
 export interface ResearchItem {
   kind: "research";
   filePath: string;
   name: string;
   created: string;
+  /** Open + deferred issues linked to this file (`lq_research_file` basename). */
+  activeIssueCount: number;
 }
 
 export function parseFrontmatter(content: string): { name?: string; created?: string } {
@@ -89,6 +93,7 @@ export async function buildResearchItems(researchDir: string): Promise<ResearchI
         filePath,
         name: fmName ?? deriveNameFromFilename(file),
         created,
+        activeIssueCount: 0,
       };
     }),
   );
@@ -110,6 +115,8 @@ export class ResearchTreeProvider implements VSCode.TreeDataProvider<ResearchIte
 
   constructor(
     private readonly vscode: typeof import("vscode"),
+    /** Workspace root for `.leanquill/issues` (issue counts). */
+    private readonly workspaceRoot: string,
     private readonly researchDir: string,
   ) {
     this._onDidChangeTreeData = new vscode.EventEmitter<void>();
@@ -125,7 +132,9 @@ export class ResearchTreeProvider implements VSCode.TreeDataProvider<ResearchIte
       item.name,
       this.vscode.TreeItemCollapsibleState.None,
     );
-    treeItem.description = formatCreatedDate(item.created);
+    const datePart = formatCreatedDate(item.created);
+    treeItem.description =
+      item.activeIssueCount > 0 ? `${datePart} · ${formatIssueCountLabel(item.activeIssueCount)}` : datePart;
     treeItem.iconPath = new this.vscode.ThemeIcon("book");
     treeItem.contextValue = "research";
     treeItem.command = {
@@ -140,6 +149,11 @@ export class ResearchTreeProvider implements VSCode.TreeDataProvider<ResearchIte
     if (element) {
       return [];
     }
-    return buildResearchItems(this.researchDir);
+    const items = await buildResearchItems(this.researchDir);
+    const oq = await listOpenQuestions(this.workspaceRoot);
+    return items.map((item) => ({
+      ...item,
+      activeIssueCount: countActiveQuestionsLinkedToEntity(oq, "research", path.basename(item.filePath)),
+    }));
   }
 }

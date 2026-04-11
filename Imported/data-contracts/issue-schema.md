@@ -35,6 +35,8 @@ body: string                  # markdown description — the actionable feedback
 
 | Type | Description | Evidence Required |
 |------|------------|---------------------|
+| `question` | Author-captured question or self-identified weakness (unified type for migrated Phase 14 open questions; replaces long-term `author-note` for new files) | No |
+| `task` | Author-tracked to-do or follow-up work item (not necessarily a “question”) | No |
 | `continuity` | Internal story contradiction or timeline conflict | No |
 | `copy-edit` | Grammar, spelling, punctuation, or sentence-level clarity | No |
 | `voice` | Phrasing that drifts from author's established style | No |
@@ -43,7 +45,7 @@ body: string                  # markdown description — the actionable feedback
 | `factual-risk` | Factual claim that may be incorrect or misleading | Yes — required |
 | `missing-expected-fact` | Knowledge/detail an informed reader would expect to see | Yes — recommended |
 | `expert-realism` | Credibility break detectable by domain expert reader | Yes — recommended |
-| `author-note` | Author-created open question or self-identified weakness | No |
+| `author-note` | **Legacy alias** for author open questions (Phase 14). On v3 layout migration, files are rewritten to `type: question` and stored under `.leanquill/issues/question/`. New author issues should use `question`. | No |
 
 ---
 

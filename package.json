@@ -23,6 +23,7 @@
     "onView:leanquill.characters",
     "onView:leanquill.places",
     "onView:leanquill.openQuestionsPanel",
+    "onCommand:leanquill.issuesAtCursor",
     "workspaceContains:manuscript/Book.txt",
     "workspaceContains:manuscript"
   ],
@@ -138,47 +139,52 @@
       },
       {
         "command": "leanquill.newOpenQuestion",
-        "title": "New Open Question (book-wide)",
+        "title": "New Issue",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromChapter",
-        "title": "New Open Question from Chapter",
+        "title": "New Issue (From Chapter)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromOutline",
-        "title": "New Open Question",
+        "title": "New Issue (From Outline)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromSelection",
-        "title": "New Open Question from Selection",
+        "title": "New Issue (From Selection)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromCharacter",
-        "title": "Create New Issue (question) from Character",
+        "title": "New Issue (From Character)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromPlace",
-        "title": "Create New Issue (question) from Place",
+        "title": "New Issue (From Place)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromThread",
-        "title": "Create New Issue (question) from Thread",
+        "title": "New Issue (From Thread)",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromResearch",
-        "title": "Create New Issue (question) from Research",
+        "title": "New Issue (From Research)",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.issuesAtCursor",
+        "title": "Issues at Cursor",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.openQuestionTarget",
-        "title": "Open Open Question Target",
+        "title": "Open Issue Target",
         "category": "LeanQuill"
       }
     ],
@@ -251,6 +257,10 @@
           "when": "leanquill.workspaceLeanQuillReady"
         },
         {
+          "command": "leanquill.issuesAtCursor",
+          "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
           "command": "leanquill.newOpenQuestionFromOutline",
           "when": "false"
         }
@@ -267,6 +277,11 @@
           "command": "leanquill.newOpenQuestionFromSelection",
           "when": "editorTextFocus && leanquill.workspaceLeanQuillReady",
           "group": "leanquill@30"
+        },
+        {
+          "command": "leanquill.issuesAtCursor",
+          "when": "editorTextFocus && leanquill.workspaceLeanQuillReady",
+          "group": "leanquill@31"
         }
       ],
       "view/item/context": [

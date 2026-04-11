@@ -1,7 +1,10 @@
 import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { listPlaces, buildPlaceTree, placeReparentWouldCycle, savePlace, PlaceTreeNode } from "./placeStore";
+import { formatIssueCountLabel } from "./formatIssueCountLabel";
+import { countActiveQuestionsLinkedToEntity, listOpenQuestions } from "./openQuestionStore";
 import { readProjectConfig, readProjectConfigWithDefaults } from "./projectConfig";
+import type { OpenQuestionRecord } from "./types";
 import { SafeFileSystem } from "./safeFileSystem";
 
 /** Lowercase tree id per VS Code `application/vnd.code.tree.<id>` convention. */
@@ -22,6 +25,8 @@ export interface PlaceItem {
   filePath: string;
   hasChildren: boolean;
   parentFileName: string;
+  /** Open + deferred issues linked to this profile (D-06 / D-09). */
+  activeIssueCount: number;
 }
 
 export class PlaceTreeProvider
@@ -36,6 +41,8 @@ export class PlaceTreeProvider
   private _nodeMap = new Map<string, PlaceTreeNode>();
   private _settingsDir = "";
   private _treeView: VSCode.TreeView<PlaceItem> | undefined;
+  /** Issues list from last root `getChildren` (same refresh tick for nested rows). */
+  private _issuesForTree: OpenQuestionRecord[] | null = null;
 
   constructor(
     private readonly vscode: typeof import("vscode"),
@@ -50,6 +57,7 @@ export class PlaceTreeProvider
   refresh(): void {
     this._tree = [];
     this._nodeMap.clear();
+    this._issuesForTree = null;
     this._onDidChangeTreeData.fire();
   }
 
@@ -63,13 +71,14 @@ export class PlaceTreeProvider
       return;
     }
     await this.getChildren();
+    const oq = this._issuesForTree ?? (await listOpenQuestions(this.rootPath));
     for (const fn of fileNames) {
       const node = this._nodeMap.get(fn);
       if (!node) {
         continue;
       }
       try {
-        await this._treeView.reveal(this._toItem(node), { expand: true, select: false });
+        await this._treeView.reveal(this._toItem(node, oq), { expand: true, select: false });
       } catch {
         // Hidden view or element not yet visible
       }
@@ -82,6 +91,9 @@ export class PlaceTreeProvider
       : this.vscode.TreeItemCollapsibleState.None;
     const treeItem = new this.vscode.TreeItem(item.name || item.fileName, collapsible);
     treeItem.id = item.fileName;
+    if (item.activeIssueCount > 0) {
+      treeItem.description = formatIssueCountLabel(item.activeIssueCount);
+    }
     treeItem.iconPath = new this.vscode.ThemeIcon("globe");
     treeItem.resourceUri = this.vscode.Uri.file(item.filePath);
     treeItem.contextValue = "place";
@@ -115,14 +127,17 @@ export class PlaceTreeProvider
         ...config.folders.settings.replace(/\/+$/, "").split("/"),
       );
 
-      return this._tree.map((n) => this._toItem(n));
+      const oq = await listOpenQuestions(this.rootPath);
+      this._issuesForTree = oq;
+      return this._tree.map((n) => this._toItem(n, oq));
     }
 
     const node = this._nodeMap.get(element.fileName);
     if (!node) {
       return [];
     }
-    return node.children.map((n) => this._toItem(n));
+    const oq = this._issuesForTree ?? (await listOpenQuestions(this.rootPath));
+    return node.children.map((n) => this._toItem(n, oq));
   }
 
   async getParent(element: PlaceItem): Promise<PlaceItem | undefined> {
@@ -133,7 +148,8 @@ export class PlaceTreeProvider
       await this.getChildren();
     }
     const parentNode = this._nodeMap.get(element.parentFileName);
-    return parentNode ? this._toItem(parentNode) : undefined;
+    const oq = this._issuesForTree ?? (await listOpenQuestions(this.rootPath));
+    return parentNode ? this._toItem(parentNode, oq) : undefined;
   }
 
   handleDrag(
@@ -207,7 +223,7 @@ export class PlaceTreeProvider
     }
   }
 
-  private _toItem(node: PlaceTreeNode): PlaceItem {
+  private _toItem(node: PlaceTreeNode, oq: OpenQuestionRecord[]): PlaceItem {
     return {
       kind: "place",
       fileName: node.profile.fileName,
@@ -215,6 +231,7 @@ export class PlaceTreeProvider
       filePath: path.join(this._settingsDir, node.profile.fileName),
       hasChildren: node.children.length > 0,
       parentFileName: node.profile.parentFileName,
+      activeIssueCount: countActiveQuestionsLinkedToEntity(oq, "place", node.profile.fileName),
     };
   }
 }

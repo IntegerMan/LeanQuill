@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  countActiveQuestionsLinkedToEntity,
   countOpenQuestionsLinkedToChapterRef,
   countOpenQuestionsLinkedToEntity,
   parseOpenQuestionFile,
@@ -21,13 +22,14 @@ function baseRecord(partial: Partial<OpenQuestionRecord> & Pick<OpenQuestionReco
   return {
     fileName: `${partial.id}.md`,
     id: partial.id,
-    issueSchemaType: partial.issueSchemaType ?? "author-note",
+    issueSchemaType: partial.issueSchemaType ?? "question",
     title: partial.title,
     body: partial.body ?? "",
     status: partial.status ?? "open",
     createdAt: partial.createdAt ?? now,
     updatedAt: partial.updatedAt ?? now,
     association: partial.association ?? { kind: "book" },
+    dismissedReason: partial.dismissedReason,
     staleHint: partial.staleHint,
   };
 }
@@ -40,8 +42,20 @@ test("round-trip book-wide author-note (lq_book_wide + book association)", () =>
   });
   const raw = serializeOpenQuestionFile(orig);
   const back = parseOpenQuestionFile(orig.fileName, raw);
-  assert.match(raw, /type:\s*author-note/);
+  assert.match(raw, /type:\s*question/);
   assert.equal(back.association.kind, "book");
+});
+
+test("serialize persists task issue type in frontmatter", () => {
+  const orig = baseRecord({
+    id: "fix-todo",
+    title: "Revise chapter 2 opening",
+    issueSchemaType: "task",
+  });
+  const raw = serializeOpenQuestionFile(orig);
+  assert.match(raw, /type:\s*task/);
+  const back = parseOpenQuestionFile(orig.fileName, raw);
+  assert.equal(back.issueSchemaType, "task");
 });
 
 test("round-trip character-linked question uses lq_character_file", () => {
@@ -132,6 +146,16 @@ test("countOpenQuestionsLinkedToEntity uses basename match", () => {
   assert.equal(countOpenQuestionsLinkedToEntity(qs, "place", "inn.md"), 1);
 });
 
+test("countActiveQuestionsLinkedToEntity includes open+deferred only (D-06)", () => {
+  const qs = [
+    baseRecord({ id: "o", title: "t", association: { kind: "character", fileName: "hero.md" }, status: "open" }),
+    baseRecord({ id: "def", title: "t2", association: { kind: "character", fileName: "hero.md" }, status: "deferred" }),
+    baseRecord({ id: "r", title: "t3", association: { kind: "character", fileName: "hero.md" }, status: "resolved" }),
+    baseRecord({ id: "x", title: "t4", association: { kind: "character", fileName: "hero.md" }, status: "dismissed" }),
+  ];
+  assert.equal(countActiveQuestionsLinkedToEntity(qs, "character", "hero.md"), 2);
+});
+
 test("countOpenQuestionsLinkedToChapterRef matches chapter and selection", () => {
   const qs = [
     baseRecord({
@@ -149,10 +173,25 @@ test("countOpenQuestionsLinkedToChapterRef matches chapter and selection", () =>
   assert.equal(countOpenQuestionsLinkedToChapterRef(qs, "manuscript/other.md"), 0);
 });
 
-test("Phase 14 statuses: open deferred resolved only (no dismissed in Phase 14)", () => {
+test("Phase 14 statuses: open deferred resolved round-trip", () => {
   for (const status of ["open", "deferred", "resolved"] as const) {
     const orig = baseRecord({ id: `oq-${status}`, title: "T", status });
     const back = parseOpenQuestionFile(orig.fileName, serializeOpenQuestionFile(orig));
     assert.equal(back.status, status);
   }
+});
+
+test("ISSUE-02: dismissed status and dismissed_reason round-trip (issue-schema)", () => {
+  const orig = baseRecord({
+    id: "oq-dismissed",
+    title: "Won't fix",
+    status: "dismissed",
+    dismissedReason: "Out of scope for this draft.",
+  });
+  const raw = serializeOpenQuestionFile(orig);
+  assert.match(raw, /status:\s*dismissed/);
+  assert.match(raw, /dismissed_reason:\s*.+Out of scope/);
+  const back = parseOpenQuestionFile(orig.fileName, raw);
+  assert.equal(back.status, "dismissed");
+  assert.equal(back.dismissedReason, "Out of scope for this draft.");
 });

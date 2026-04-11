@@ -9,7 +9,8 @@ import {
   isAncestorOf,
 } from "./outlineStore";
 import { SafeFileSystem } from "./safeFileSystem";
-import { countOpenQuestionsByChapter, listOpenQuestions } from "./openQuestionStore";
+import { formatIssueCountLabel } from "./formatIssueCountLabel";
+import { countActiveIssuesByChapter, listOpenQuestions } from "./openQuestionStore";
 import { OutlineNode, OutlineIndex, ChapterStatus } from "./types";
 
 const STATUS_ICONS: Record<ChapterStatus, string> = {
@@ -35,7 +36,7 @@ function openQuestionCountSuffix(fileName: string, counts: Record<string, number
   const key = normalizeOutlinePath(fileName);
   const n = counts[key];
   if (n && n > 0) {
-    return ` · ${n} issue${n === 1 ? "" : "s"}`;
+    return ` · ${formatIssueCountLabel(n)}`;
   }
   return "";
 }
@@ -522,7 +523,7 @@ export class OutlineWebviewProvider implements VSCode.WebviewViewProvider {
     const index = await readOutlineIndex(this.rootPath);
     const orphanFiles = await this.discoverOrphans(index);
     const oqList = await listOpenQuestions(this.rootPath);
-    const chapterOpenIssueCounts = countOpenQuestionsByChapter(oqList);
+    const chapterOpenIssueCounts = countActiveIssuesByChapter(oqList);
     const nonce = crypto.randomUUID().replace(/-/g, "");
 
     const cspSource = this.view.webview.cspSource;

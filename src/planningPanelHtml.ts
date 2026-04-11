@@ -1,5 +1,7 @@
 import type { ChapterPickerOption } from "./chapterPickerOptions";
 import { escapeHtml } from "./htmlUtils";
+import type { IssueListFilter } from "./issueFilters";
+import { formatIssueCountLabel } from "./formatIssueCountLabel";
 import { renderOpenQuestionsHtml, type SerializableOpenQuestionRow } from "./openQuestionsHtml";
 import { buildPlaceTree, type PlaceTreeNode } from "./placeStore";
 import {
@@ -186,7 +188,7 @@ export const PLANNING_TAB_LABELS: Record<string, string> = {
   characters: "Characters",
   places: "Places",
   threads: "Threads",
-  openQuestions: "Open questions",
+  openQuestions: "Issues",
 };
 
 const TAB_LABELS = PLANNING_TAB_LABELS;
@@ -314,6 +316,7 @@ function renderThreadsTab(
   threads: ThreadProfile[],
   selectedFileName: string | undefined,
   chapterPickerOptions: ChapterPickerOption[],
+  threadOpenIssueCounts: Record<string, number> = {},
 ): string {
   const sorted = [...threads].sort((a, b) =>
     (a.title || a.fileName).localeCompare(b.title || b.fileName, undefined, { sensitivity: "base" }),
@@ -322,15 +325,16 @@ function renderThreadsTab(
   const labelsAttr = escapeHtml(JSON.stringify(Object.fromEntries(chapterPickerOptions.map((o) => [o.path, o.title]))));
 
   const listItems = sorted
-    .map(
-      (p) =>
-        `<div class="thread-list-item${p.fileName === effectiveSelected ? " thread-list-item--selected" : ""}"
+    .map((p) => {
+      const n = threadOpenIssueCounts[p.fileName] ?? 0;
+      const issueSuffix = n > 0 ? ` · ${formatIssueCountLabel(n)}` : "";
+      return `<div class="thread-list-item${p.fileName === effectiveSelected ? " thread-list-item--selected" : ""}"
            data-action="thread:select"
            data-open-question-row-context="thread"
            data-file="${escapeHtml(p.fileName)}">
-        ${escapeHtml(p.title || "(untitled)")}
-      </div>`,
-    )
+        ${escapeHtml(p.title || "(untitled)")}${issueSuffix}
+      </div>`;
+    })
     .join("");
 
   const listPane = `<div class="thread-list">
@@ -622,6 +626,9 @@ export function renderPlanningHtml(
   nonce: string,
   cspSource: string,
   activeTab: string,
+  issueListFilter: IssueListFilter = "active",
+  issueTotalCount = 0,
+  threadOpenIssueCounts: Record<string, number> = {},
 ): string {
   const tabBar = TAB_IDS.map(
     (id) =>
@@ -641,9 +648,12 @@ export function renderPlanningHtml(
     } else if (id === "places") {
       content = renderPlacesTab(places, selectedPlaceFileName);
     } else if (id === "threads") {
-      content = renderThreadsTab(threads, selectedThreadFileName, chapterPickerOptions);
+      content = renderThreadsTab(threads, selectedThreadFileName, chapterPickerOptions, threadOpenIssueCounts);
     } else if (id === "openQuestions") {
-      content = renderOpenQuestionsHtml(openQuestions, "planning", nonce, cspSource, false);
+      content = renderOpenQuestionsHtml(openQuestions, "planning", nonce, cspSource, false, {
+        currentFilter: issueListFilter,
+        totalIssueCount: issueTotalCount,
+      });
     } else {
       content = renderStubTab(TAB_LABELS[id]);
     }

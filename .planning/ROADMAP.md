@@ -15,13 +15,13 @@
 | 5 | Place and Setting Reference | Author can manage place and setting profiles in the planning workspace Places tab | PLACE-01 | 2 criteria |
 | 6 | Threads and Themes | Author can manage narrative threads and thematic arcs in the planning workspace Threads tab | THREAD-01 | 2 criteria |
 | 7 | Global Knowledge Reference | Author can continuously consult and edit project knowledge notes during planning and drafting | KNOW-01, KNOW-02, KNOW-03 | 3 criteria |
-| 8 | Issue Capture, Triage, and Editor Signals | Author can capture, triage, and spatially resolve editorial/research issues from one workflow | ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03 | 5 criteria |
+| 8 | Issue Capture, Triage, and Editor Signals | Author can capture editorial and research concerns, triage them over time, and resolve them in-context inside the editor. | ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03 | 5 criteria |
 | 9 | AI Safety Rails and Persona Baseline | Project is AI-ready with explicit persona configuration and manuscript write-block protections established | PER-01 | 3 criteria |
 | 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
 | 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
 | 12 | Standardized Research Workflow and Results Repository | Author can capture standardized research findings and store them in a consistent project repository for later planning and drafting use | RES-01, RES-02 | 2 criteria |
 | 13 | LeanPub Workspace Initialization | Author can initialize a LeanPub workspace with manuscript scaffold from the sidebar | INIT-01, INIT-02 | 3 criteria |
-| 14 | Open Questions | 6/6 | Complete   | 2026-04-10 |
+| 14 | Open Questions | Author can create open-question notes associated with the book, characters, threads, places, manuscript files, or text selections — with list, navigation, and status updates. | ISSUE-01 (partial), ISSUE-02 (partial) | 4 criteria |
 
 ## Phases
 
@@ -32,7 +32,7 @@
 - [x] **Phase 5: Place and Setting Reference** - Populate Places tab with location/setting management. (completed 2026-04-09)
 - [x] **Phase 6: Threads and Themes** - Populate planning workspace with Themes + Threads tabs, `themes.yaml`, and thread markdown under `folders.threads`. (completed 2026-04-09)
 - [ ] **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
-- [ ] **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators.
+- [x] **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators. (completed 2026-04-11)
 - [ ] **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
 - [ ] **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
 - [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
@@ -192,15 +192,23 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 2, Phase 7
 **Requirements:** ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03
+**Plans:** 5/5 plans executed
+
+Plans:
+- [x] 08-01-PLAN.md — Wave 0 tests: migration, filters, span resolve stubs + extended store/count tests.
+- [x] 08-02-PLAN.md — v3 migration, `.leanquill/issues/{type}/` store, full statuses, span resolver implementation.
+- [x] 08-03-PLAN.md — Dual-host master–detail UI: filters, dismiss, D-14 new issue, PLAN-03 research rows.
+- [x] 08-04-PLAN.md — Sidebar + outline **X Issues** active counts (D-09); Threads tab counts in 08-03.
+- [x] 08-05-PLAN.md — Extension wiring: migrate-on-activate, watcher, gutter controller, Issues at cursor (D-12 spike).
 
 **Success criteria:**
 1. Author can create issue records manually as chapter-attached or project-wide using the full issue schema.
 2. Author can triage issues as open, deferred, or dismissed (with optional rationale) and see status reflected immediately.
 3. Issue views can be filtered by open, deferred, dismissed, or all.
 4. Issues with valid `span_hint` fragments appear as gutter indicators in the manuscript editor at relevant text locations.
-5. Author can create and triage `research-question` issue type entries alongside other issue types.
+5. Author can link issues to research files and see them in the same triage lists as other issues (PLAN-03 via associations per D-15/D-16 — no separate `research-question` type).
 
-**Notes:** Issue tracking and gutter decorations are intentionally grouped per research sequencing guidance.
+**Notes:** Issue tracking and gutter decorations are intentionally grouped per research sequencing guidance. On-disk layout uses per-type folders under `.leanquill/issues/` with v3 migration from Phase 14 `open-questions/` (see `08-CONTEXT.md`).
 
 ---
 
@@ -331,3 +339,12 @@ Plans:
 | 14. Open Questions | 0/6 | Not started | - |
 
 ## Backlog
+
+### Phase 999.1: Sidebar tree issue drill-down beyond counts (BACKLOG)
+
+**Goal:** Beyond Phase 8’s per-node **“X Issues”** counts in outline, characters, places, threads (and similar trees), authors can **drill into** issues from the tree — e.g. expand to issue rows, open an issue from the tree, or other tree-native affordances — without replacing the unified triage list.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)

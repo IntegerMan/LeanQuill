@@ -22,7 +22,8 @@ function underFolder(rel: string, folderYaml: string): boolean {
 }
 
 /**
- * When workspace files are renamed, keep open-question frontmatter in sync (entity basenames + chapter_ref).
+ * When workspace files are renamed, keep issue markdown frontmatter in sync (entity basenames + chapter_ref).
+ * Author issues are stored under `.leanquill/issues/{type-slug}/*.md` (v3 layout); listing skips `sessions/`.
  */
 export async function handleOpenQuestionWorkspaceRename(
   rootPath: string,
