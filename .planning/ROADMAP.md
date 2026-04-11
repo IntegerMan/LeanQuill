@@ -15,13 +15,13 @@
 | 5 | Place and Setting Reference | Author can manage place and setting profiles in the planning workspace Places tab | PLACE-01 | 2 criteria |
 | 6 | Threads and Themes | Author can manage narrative threads and thematic arcs in the planning workspace Threads tab | THREAD-01 | 2 criteria |
 | 7 | Global Knowledge Reference | Author can continuously consult and edit project knowledge notes during planning and drafting | KNOW-01, KNOW-02, KNOW-03 | 3 criteria |
-| 8 | Issue Capture, Triage, and Editor Signals | 5/5 | Complete | 2026-04-11 |
+| 8 | Issue Capture, Triage, and Editor Signals | Author can capture editorial and research concerns, triage them over time, and resolve them in-context inside the editor. | ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03 | 5 criteria |
 | 9 | AI Safety Rails and Persona Baseline | Project is AI-ready with explicit persona configuration and manuscript write-block protections established | PER-01 | 3 criteria |
 | 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
 | 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
 | 12 | Standardized Research Workflow and Results Repository | Author can capture standardized research findings and store them in a consistent project repository for later planning and drafting use | RES-01, RES-02 | 2 criteria |
 | 13 | LeanPub Workspace Initialization | Author can initialize a LeanPub workspace with manuscript scaffold from the sidebar | INIT-01, INIT-02 | 3 criteria |
-| 14 | Open Questions | 6/6 | Complete   | 2026-04-10 |
+| 14 | Open Questions | Author can create open-question notes associated with the book, characters, threads, places, manuscript files, or text selections — with list, navigation, and status updates. | ISSUE-01 (partial), ISSUE-02 (partial) | 4 criteria |
 
 ## Phases
 

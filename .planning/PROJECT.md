@@ -16,8 +16,9 @@ An author working in a LeanPub markdown repo can see the status of every chapter
 - **INIT-02** — Validated in Phase 13: chapter order refresh after scaffold; `Book.txt` under `manuscript/`.
 - **THREAD-01** — Validated in Phase 6: Themes + Threads planning tabs, `.leanquill/themes.yaml`, thread markdown under `folders.threads`, chapter picker from outline manuscript paths.
 - **PLACE-01** — Validated in Phase 5 plan 05-03: Places tab in Planning Workspace with region grouping, CRUD, manuscript paths + outline beat ids, `showPlace` API.
-- **ISSUE-01 (partial)** — Validated in Phase 14: author-created **open questions** as `author-note` markdown under `.leanquill/open-questions/` with chapter, selection (`chapter_ref` + `span_hint`), book-wide, and character/place/thread associations (`lq_*` keys). Full unified issue model / Phase 8 capture remains future work.
-- **ISSUE-02 (partial)** — Validated in Phase 14: triage limited to **open**, **deferred**, and **resolved** for open questions. Dismiss with reason, default filters, and gutter `span_hint` decorations remain Phase 8+.
+- **ISSUE-01** — Validated in Phase 8: unified author issues under `.leanquill/issues/{type}/` with v3 migration from Phase 14 layout; full `issue-schema.md` fields; chapter, selection (`chapter_ref` + `span_hint`), book-wide, entity, and research associations (`lq_*`, `lq_research_file`).
+- **ISSUE-02** — Validated in Phase 8: full triage lifecycle including **dismissed** with optional rationale, D-06 filter semantics, dual-host master–detail UI (Planning + bottom panel).
+- **ISSUE-03** — Validated in Phase 8: `span_hint` resolution and in-editor gutter indicators plus **LeanQuill: Issues at cursor** command (D-12; hover/command primary navigation).
 
 ### Active
 
@@ -30,9 +31,6 @@ An author working in a LeanPub markdown repo can see the status of every chapter
 - [ ] **CHAR-01**: Author can manage character profiles in the planning workspace Characters tab with visibility into chapter/beat associations
 - [ ] **KNOW-01**: Author can view a read-only global knowledge pane (characters, settings, timeline, research) parsed from configured notes folders
 - [ ] **KNOW-02**: Known entity names (characters, locations) are hyperlinked in the knowledge pane for quick navigation
-- [ ] **ISSUE-01**: *(partial — see Validated)* Full issue capture beyond author open-questions (AI sessions, master list, etc.) — Phase 8+
-- [ ] **ISSUE-02**: *(partial — see Validated)* Dismiss workflow, filtering views, and full triage UX — Phase 8+
-- [ ] **ISSUE-03**: Open issues with `span_hint` references are shown as in-margin gutter indicators in the editor
 - [ ] **SESS-01**: Author can close a session — recording optional chapter status change and notes for next session
 
 <!-- Track 2: AI Review Workflows (Beta) -->
@@ -107,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 — Phase 14: ISSUE-01/02 partial validated (open questions store, dual hosts, commands, outline counts); Phase 5 Places validation unchanged.*
+*Last updated: 2026-04-11 — Phase 8 complete: ISSUE-01/02/03/04 and PLAN-03 (issues storage, triage UI, filters, gutter, research-linked rows); next roadmap focus Phase 11 outline/card usability.*
