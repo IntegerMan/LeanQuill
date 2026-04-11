@@ -1281,7 +1281,7 @@ export class PlanningPanelProvider {
       case "thread":
         return `Thread · ${association.fileName}`;
       case "research":
-        return `Research · ${association.fileName}`;
+        return path.basename(association.fileName) || association.fileName;
       case "chapter":
         return `Chapter · ${association.chapterRef}`;
       case "selection":
@@ -1294,13 +1294,19 @@ export class PlanningPanelProvider {
   private _toOpenQuestionRow(r: OpenQuestionRecord): SerializableOpenQuestionRow {
     const line = (r.body || "").split("\n")[0]?.trim() ?? "";
     const preview = line.length > 120 ? `${line.slice(0, 120)}…` : line;
+    const chip = this._openQuestionAssociationChip(r.association);
     return {
       id: r.id,
       title: r.title,
       preview: preview || " ",
+      body: r.body ?? "",
       status: r.status,
-      associationChip: this._openQuestionAssociationChip(r.association),
+      issueType: r.issueSchemaType,
+      associationChip: chip,
+      associationChips: [chip],
       issueTypeLabel: displayIssueTypeLabel(r.issueSchemaType),
+      dismissedReason: r.dismissedReason,
+      relativeIssuePath: r.fileName,
       stale: Boolean(r.staleHint),
     };
   }

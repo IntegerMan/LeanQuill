@@ -1,4 +1,5 @@
 import * as crypto from "node:crypto";
+import * as path from "node:path";
 import type * as vscode from "vscode";
 import { displayIssueTypeLabel, leanQuillIssueFileAbsolutePath, listOpenQuestions } from "./openQuestionStore";
 import { renderOpenQuestionsHtml, type SerializableOpenQuestionRow } from "./openQuestionsHtml";
@@ -40,7 +41,10 @@ export class OpenQuestionsPanelViewProvider implements vscode.WebviewViewProvide
     const list = await listOpenQuestions(this.rootPath);
     const rows = this._rows(list);
     const nonce = crypto.randomBytes(16).toString("hex");
-    const html = renderOpenQuestionsHtml(rows, "panel", nonce, this._view.webview.cspSource, true);
+    const html = renderOpenQuestionsHtml(rows, "panel", nonce, this._view.webview.cspSource, true, {
+      currentFilter: "active",
+      totalIssueCount: list.length,
+    });
     this._view.webview.html = html;
   }
 
@@ -55,7 +59,7 @@ export class OpenQuestionsPanelViewProvider implements vscode.WebviewViewProvide
       case "thread":
         return `Thread · ${association.fileName}`;
       case "research":
-        return `Research · ${association.fileName}`;
+        return path.basename(association.fileName) || association.fileName;
       case "chapter":
         return `Chapter · ${association.chapterRef}`;
       case "selection":
@@ -68,13 +72,19 @@ export class OpenQuestionsPanelViewProvider implements vscode.WebviewViewProvide
   private _toRow(r: OpenQuestionRecord): SerializableOpenQuestionRow {
     const line = (r.body || "").split("\n")[0]?.trim() ?? "";
     const preview = line.length > 120 ? `${line.slice(0, 120)}…` : line;
+    const chip = this._associationChip(r.association);
     return {
       id: r.id,
       title: r.title,
       preview: preview || " ",
+      body: r.body ?? "",
       status: r.status,
-      associationChip: this._associationChip(r.association),
+      issueType: r.issueSchemaType,
+      associationChip: chip,
+      associationChips: [chip],
       issueTypeLabel: displayIssueTypeLabel(r.issueSchemaType),
+      dismissedReason: r.dismissedReason,
+      relativeIssuePath: r.fileName,
       stale: Boolean(r.staleHint),
     };
   }
