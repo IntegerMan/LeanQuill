@@ -331,3 +331,12 @@ Plans:
 | 14. Open Questions | 0/6 | Not started | - |
 
 ## Backlog
+
+### Phase 999.1: Sidebar tree issue drill-down beyond counts (BACKLOG)
+
+**Goal:** Beyond Phase 8’s per-node **“X Issues”** counts in outline, characters, places, threads (and similar trees), authors can **drill into** issues from the tree — e.g. expand to issue rows, open an issue from the tree, or other tree-native affordances — without replacing the unified triage list.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
