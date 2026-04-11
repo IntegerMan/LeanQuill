@@ -198,7 +198,7 @@ Plans:
 - [x] 08-01-PLAN.md — Wave 0 tests: migration, filters, span resolve stubs + extended store/count tests.
 - [x] 08-02-PLAN.md — v3 migration, `.leanquill/issues/{type}/` store, full statuses, span resolver implementation.
 - [ ] 08-03-PLAN.md — Dual-host master–detail UI: filters, dismiss, D-14 new issue, PLAN-03 research rows.
-- [ ] 08-04-PLAN.md — Sidebar + outline **X Issues** active counts (D-09); Threads tab counts in 08-03.
+- [x] 08-04-PLAN.md — Sidebar + outline **X Issues** active counts (D-09); Threads tab counts in 08-03.
 - [ ] 08-05-PLAN.md — Extension wiring: migrate-on-activate, watcher, gutter controller, Issues at cursor (D-12 spike).
 
 **Success criteria:**
