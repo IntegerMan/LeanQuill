@@ -643,7 +643,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const lq_assoc_kind = question.association.kind;
       if (lq_assoc_kind === "book") {
         await vscode.commands.executeCommand("leanquill.openPlanningWorkspace");
-        await planningPanel.showThemes();
+        await planningPanel.revealOpenQuestionRow(question.id);
         return;
       }
       if (lq_assoc_kind === "character") {

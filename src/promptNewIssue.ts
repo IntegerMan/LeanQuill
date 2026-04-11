@@ -5,12 +5,21 @@ import { displayIssueTypeLabel } from "./openQuestionStore";
 export type NewIssuePromptFields = { title: string; issueType: string };
 
 /**
- * Prompts for issue type (QuickPick) then title (InputBox).
+ * Prompts for title (InputBox) then issue type (QuickPick).
  * Used by extension commands and Issues webviews so creation is consistent.
  */
 export async function promptNewIssueTitleAndType(
   vscodeApi: typeof vscode,
 ): Promise<NewIssuePromptFields | undefined> {
+  const title = await vscodeApi.window.showInputBox({
+    title: "New issue",
+    prompt: "Issue title",
+    placeHolder: "Short label for this issue",
+    value: "",
+  });
+  if (!title?.trim()) {
+    return undefined;
+  }
   const items = AUTHOR_ISSUE_TYPES.map((slug) => ({
     label: displayIssueTypeLabel(slug),
     description: slug,
@@ -21,15 +30,6 @@ export async function promptNewIssueTitleAndType(
   });
   const issueType = picked?.description?.trim();
   if (!issueType) {
-    return undefined;
-  }
-  const title = await vscodeApi.window.showInputBox({
-    title: "New issue",
-    prompt: "Issue title",
-    placeHolder: "Short label for this issue",
-    value: "",
-  });
-  if (!title?.trim()) {
     return undefined;
   }
   return { title: title.trim(), issueType };
