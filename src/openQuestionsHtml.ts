@@ -2,7 +2,7 @@
  * Shared Open Questions webview markup + client script (Planning tab + panel host, D-02).
  *
  * postMessage protocol (always include `host: 'planning' | 'panel'`):
- * - openQuestion:openEditor — `{ type, host, id }` (open `.leanquill/open-questions/*.md` in editor)
+ * - openQuestion:openEditor — `{ type, host, id }` (open `.leanquill/issues/{type}/*.md` in editor)
  * - openQuestion:refresh — `{ type, host }`
  * - openQuestion:new-question — `{ type, host }`
  */

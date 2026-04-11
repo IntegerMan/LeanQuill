@@ -1,9 +1,8 @@
 import * as crypto from "node:crypto";
 import type * as vscode from "vscode";
-import { displayIssueTypeLabel, listOpenQuestions, OPEN_QUESTIONS_DIR } from "./openQuestionStore";
+import { displayIssueTypeLabel, leanQuillIssueFileAbsolutePath, listOpenQuestions } from "./openQuestionStore";
 import { renderOpenQuestionsHtml, type SerializableOpenQuestionRow } from "./openQuestionsHtml";
 import type { OpenQuestionRecord } from "./types";
-import * as path from "node:path";
 
 /**
  * Bottom-panel host for Open Questions (D-02). Uses the same HTML builder and
@@ -93,7 +92,7 @@ export class OpenQuestionsPanelViewProvider implements vscode.WebviewViewProvide
     if (!q) {
       return;
     }
-    const abs = path.join(this.rootPath, ...OPEN_QUESTIONS_DIR.split("/"), q.fileName);
+    const abs = leanQuillIssueFileAbsolutePath(this.rootPath, q.fileName);
     const uri = this.vscodeApi.Uri.file(abs);
     const doc = await this.vscodeApi.workspace.openTextDocument(uri);
     await this.vscodeApi.window.showTextDocument(doc, { preview: false });

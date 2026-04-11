@@ -13,7 +13,7 @@ import { OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTr
 import { OutlineWebviewProvider } from "./outlineWebviewPanel";
 import { PlanningPanelProvider } from "./planningPanel";
 import { OpenQuestionsPanelViewProvider } from "./openQuestionsPanel";
-import { createOpenQuestion, getOpenQuestion, OPEN_QUESTIONS_DIR } from "./openQuestionStore";
+import { createOpenQuestion, getOpenQuestion, LEANQUILL_ISSUES_DIR } from "./openQuestionStore";
 import { handleOpenQuestionWorkspaceDelete, handleOpenQuestionWorkspaceRename } from "./openQuestionWorkspaceSync";
 import { SafeFileSystem } from "./safeFileSystem";
 import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlForSetup } from "./projectConfig";
@@ -343,7 +343,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   settingsWatcher.onDidDelete(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
 
   const openQuestionsWatcher = vscode.workspace.createFileSystemWatcher(
-    new vscode.RelativePattern(rootPath, `${OPEN_QUESTIONS_DIR}/**/*.md`),
+    new vscode.RelativePattern(rootPath, `${LEANQUILL_ISSUES_DIR}/**/*.md`),
   );
   openQuestionsWatcher.onDidCreate(() => void refreshOpenQuestionSurfaces());
   openQuestionsWatcher.onDidChange(() => void refreshOpenQuestionSurfaces());

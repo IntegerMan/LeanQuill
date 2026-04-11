@@ -13,7 +13,7 @@ import {
   deleteOpenQuestionsForEntity,
   displayIssueTypeLabel,
   listOpenQuestions,
-  OPEN_QUESTIONS_DIR,
+  leanQuillIssueFileAbsolutePath,
 } from "./openQuestionStore";
 import {
   readProjectConfigWithDefaults,
@@ -1264,7 +1264,7 @@ export class PlanningPanelProvider {
     if (!q) {
       return;
     }
-    const abs = path.join(this.rootPath, ...OPEN_QUESTIONS_DIR.split("/"), q.fileName);
+    const abs = leanQuillIssueFileAbsolutePath(this.rootPath, q.fileName);
     const uri = this.vscodeApi.Uri.file(abs);
     const doc = await this.vscodeApi.workspace.openTextDocument(uri);
     await this.vscodeApi.window.showTextDocument(doc, { preview: false });

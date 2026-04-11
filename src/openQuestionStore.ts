@@ -2,11 +2,72 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { ChapterStatusIndex, OpenQuestionAssociation, OpenQuestionRecord, OpenQuestionStatus } from "./types";
 import type { SafeFileSystem } from "./safeFileSystem";
+import { isActiveForSidebarCount } from "./issueFilters";
+import type { SpanHintResolution } from "./spanHintResolve";
+import { resolveSpanHintInDocument } from "./spanHintResolve";
 import { escapeYamlString, stripYamlQuotes } from "./yamlUtils";
 
-export const OPEN_QUESTIONS_DIR = ".leanquill/open-questions";
+/** Root for typed issue markdown: `.leanquill/issues/{type-slug}/*.md` (D-01). */
+export const LEANQUILL_ISSUES_DIR = ".leanquill/issues";
 
 const VALID_STATUSES: OpenQuestionStatus[] = ["open", "deferred", "resolved", "dismissed"];
+
+export type { SpanHintResolution } from "./spanHintResolve";
+
+/** Absolute path to an issue file given its repo-relative path e.g. `question/foo.md`. */
+export function leanQuillIssueFileAbsolutePath(rootPath: string, relativeIssuePath: string): string {
+  const parts = relativeIssuePath.split(/[/\\]/).filter(Boolean);
+  return path.join(rootPath, ...LEANQUILL_ISSUES_DIR.split("/"), ...parts);
+}
+
+export function normalizeIssueTypeSlug(raw: string): string {
+  const s = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return s || "question";
+}
+
+function issuesRootAbs(rootPath: string): string {
+  return path.join(rootPath, ...LEANQUILL_ISSUES_DIR.split("/"));
+}
+
+async function listIssueMarkdownRelativePaths(issuesRoot: string): Promise<string[]> {
+  const out: string[] = [];
+  let entries;
+  try {
+    entries = await fs.readdir(issuesRoot, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  for (const ent of entries) {
+    const name = ent.name;
+    if (name.startsWith(".")) {
+      continue;
+    }
+    if (!ent.isDirectory()) {
+      continue;
+    }
+    if (name === "sessions") {
+      continue;
+    }
+    const typeDir = path.join(issuesRoot, name);
+    let files: string[];
+    try {
+      files = await fs.readdir(typeDir);
+    } catch {
+      continue;
+    }
+    for (const f of files) {
+      if (!f.endsWith(".md")) {
+        continue;
+      }
+      out.push(`${name}/${f}`.split(path.sep).join("/"));
+    }
+  }
+  return out;
+}
 
 /** Human-readable label for issue-schema `type` (list UI). */
 export function displayIssueTypeLabel(issueSchemaType: string): string {
@@ -19,10 +80,6 @@ export function displayIssueTypeLabel(issueSchemaType: string): string {
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(" ");
-}
-
-function openQuestionsAbs(rootPath: string): string {
-  return path.join(rootPath, ...OPEN_QUESTIONS_DIR.split("/"));
 }
 
 function normalizePathSeparators(p: string): string {
@@ -122,7 +179,7 @@ function frontmatterFieldsForAssociation(association: OpenQuestionAssociation): 
 }
 
 /**
- * Parse a single open-question markdown file (`type: author-note`).
+ * Parse a single issue markdown file under `.leanquill/issues/{type}/`.
  */
 export function parseOpenQuestionFile(fileName: string, content: string): OpenQuestionRecord {
   const normalized = content.replace(/\r\n/g, "\n");
@@ -159,7 +216,10 @@ export function parseOpenQuestionFile(fileName: string, content: string): OpenQu
   const createdAt = scalars.created_at || new Date().toISOString();
   const updatedAt = scalars.updated_at || createdAt;
   const association = associationFromFrontmatter(scalars);
-  const issueSchemaType = (scalars.type || "author-note").trim() || "author-note";
+  const normFn = fileName.replace(/\\/g, "/");
+  const segments = normFn.split("/").filter(Boolean);
+  const folderSlug = segments.length >= 2 ? segments[0] : undefined;
+  const issueSchemaType = ((scalars.type || folderSlug || "question").trim() || "question");
   const dismissedReasonRaw = scalars.dismissed_reason?.trim();
   const dismissedReason =
     dismissedReasonRaw && dismissedReasonRaw.length > 0 ? dismissedReasonRaw : undefined;
@@ -241,7 +301,7 @@ export function serializeOpenQuestionFile(record: OpenQuestionRecord): string {
 export function countOpenQuestionsByChapter(questions: OpenQuestionRecord[]): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const q of questions) {
-    if (q.status !== "open" && q.status !== "deferred") {
+    if (!isActiveForSidebarCount(q.status)) {
       continue;
     }
     let chapterRef: string | undefined;
@@ -285,19 +345,13 @@ export function mergeOpenQuestionCountsIntoChapterStatusIndex(
 }
 
 export async function listOpenQuestions(rootPath: string): Promise<OpenQuestionRecord[]> {
-  const dir = openQuestionsAbs(rootPath);
-  let entries: string[];
-  try {
-    entries = await fs.readdir(dir);
-  } catch {
-    return [];
-  }
-
+  const root = issuesRootAbs(rootPath);
+  const relPaths = await listIssueMarkdownRelativePaths(root);
   const records: OpenQuestionRecord[] = [];
-  for (const entry of entries.filter((e) => e.endsWith(".md"))) {
-    const filePath = path.join(dir, entry);
+  for (const rel of relPaths) {
+    const filePath = path.join(root, ...rel.split("/"));
     const content = await fs.readFile(filePath, "utf8");
-    records.push(parseOpenQuestionFile(entry, content));
+    records.push(parseOpenQuestionFile(rel, content));
   }
 
   records.sort((a, b) => {
@@ -316,18 +370,19 @@ export async function getOpenQuestion(rootPath: string, id: string): Promise<Ope
 export async function createOpenQuestion(
   safeFs: SafeFileSystem,
   rootPath: string,
-  input: { title: string; association: OpenQuestionAssociation },
+  input: { title: string; association: OpenQuestionAssociation; issueType?: string },
 ): Promise<OpenQuestionRecord> {
-  const dir = openQuestionsAbs(rootPath);
+  const typeSlug = normalizeIssueTypeSlug(input.issueType ?? "question");
+  const dir = path.join(issuesRootAbs(rootPath), typeSlug);
   await safeFs.mkdir(dir);
 
   const base = slugifyOpenQuestionBase(input.title);
-  let slug = `${base}.md`;
+  let fileBase = `${base}.md`;
   let attempt = 2;
   while (true) {
     try {
-      await fs.access(path.join(dir, slug));
-      slug = `${base}-${attempt}.md`;
+      await fs.access(path.join(dir, fileBase));
+      fileBase = `${base}-${attempt}.md`;
       attempt++;
     } catch {
       break;
@@ -335,11 +390,12 @@ export async function createOpenQuestion(
   }
 
   const now = new Date().toISOString();
-  const id = path.basename(slug, ".md");
+  const id = path.basename(fileBase, ".md");
+  const relPath = `${typeSlug}/${fileBase}`.split(path.sep).join("/");
   const record: OpenQuestionRecord = {
-    fileName: slug,
+    fileName: relPath,
     id,
-    issueSchemaType: "author-note",
+    issueSchemaType: typeSlug,
     title: input.title.trim(),
     body: "",
     status: "open",
@@ -348,21 +404,21 @@ export async function createOpenQuestion(
     association: input.association,
   };
 
-  await safeFs.writeFile(path.join(dir, slug), serializeOpenQuestionFile(record));
+  await safeFs.writeFile(path.join(dir, fileBase), serializeOpenQuestionFile(record));
   return record;
 }
 
 export async function saveOpenQuestion(record: OpenQuestionRecord, rootPath: string, safeFs: SafeFileSystem): Promise<void> {
-  const dir = openQuestionsAbs(rootPath);
   const next: OpenQuestionRecord = {
     ...record,
     updatedAt: new Date().toISOString(),
   };
-  await safeFs.writeFile(path.join(dir, next.fileName), serializeOpenQuestionFile(next));
+  const abs = leanQuillIssueFileAbsolutePath(rootPath, next.fileName);
+  await safeFs.writeFile(abs, serializeOpenQuestionFile(next));
 }
 
 export async function deleteOpenQuestion(fileName: string, rootPath: string, safeFs: SafeFileSystem): Promise<void> {
-  const filePath = path.join(openQuestionsAbs(rootPath), fileName);
+  const filePath = leanQuillIssueFileAbsolutePath(rootPath, fileName);
   if (!safeFs.canWrite(filePath, true)) {
     throw new Error(`Blocked delete outside LeanQuill boundary: ${filePath}`);
   }
@@ -457,6 +513,21 @@ export async function patchEntityFileNameInOpenQuestions(
     }
   }
   return n;
+}
+
+/**
+ * Resolve `span_hint` for a selection-linked issue when manuscript text is available (D-13).
+ * Consumers may set `record.staleHint` from the outcome when rendering lists.
+ */
+export function resolveOpenQuestionSelectionSpan(
+  record: OpenQuestionRecord,
+  manuscriptText: string,
+  preferredStartIndex?: number,
+): SpanHintResolution | undefined {
+  if (record.association.kind !== "selection") {
+    return undefined;
+  }
+  return resolveSpanHintInDocument(manuscriptText, record.association.spanHint ?? "", preferredStartIndex);
 }
 
 export async function patchChapterRefInOpenQuestions(

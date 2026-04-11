@@ -21,7 +21,7 @@ function baseRecord(partial: Partial<OpenQuestionRecord> & Pick<OpenQuestionReco
   return {
     fileName: `${partial.id}.md`,
     id: partial.id,
-    issueSchemaType: partial.issueSchemaType ?? "author-note",
+    issueSchemaType: partial.issueSchemaType ?? "question",
     title: partial.title,
     body: partial.body ?? "",
     status: partial.status ?? "open",
@@ -41,7 +41,7 @@ test("round-trip book-wide author-note (lq_book_wide + book association)", () =>
   });
   const raw = serializeOpenQuestionFile(orig);
   const back = parseOpenQuestionFile(orig.fileName, raw);
-  assert.match(raw, /type:\s*author-note/);
+  assert.match(raw, /type:\s*question/);
   assert.equal(back.association.kind, "book");
 });
 
