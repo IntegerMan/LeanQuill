@@ -2,21 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 14
-status: completed
-stopped_at: Phase 8 context gathered
-last_updated: "2026-04-11T01:25:23.755Z"
+current_phase: 08
+status: executing
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-04-11T01:47:28.205Z"
 progress:
   total_phases: 15
   completed_phases: 8
-  total_plans: 31
-  completed_plans: 30
+  total_plans: 36
+  completed_plans: 31
 ---
 
 # Project State: LeanQuill
 
-**Current phase:** 14
-**Status:** Milestone complete
+**Current phase:** 08
+**Status:** Ready to execute
 
 ## Project Reference
 
@@ -27,8 +27,8 @@ progress:
 
 ## Current Position
 
-Phase: 14 (Open Questions) — EXECUTING
-Plan: Not started
+Phase: 08 (issue-capture-triage-and-editor-signals) — EXECUTING
+Plan: 2 of 5
 
 - Phase 6 (Threads and Themes) already **complete** (2026-04-09)
 - **Next:** Phase 7 — Global Knowledge Reference (not started)
@@ -46,7 +46,7 @@ Plan: Not started
 | 5 | Place and Setting Reference | Completed | 2026-04-09 |
 | 6 | Threads and Themes | Completed | 2026-04-09 |
 | 7 | Global Knowledge Reference | Not Started | - |
-| 8 | Issue Capture, Triage, and Editor Signals | Not Started | - |
+| 8 | Issue Capture, Triage, and Editor Signals | In Progress | - |
 | 9 | AI Safety Rails and Persona Baseline | Not Started | - |
 | 10 | AI Review and Advisory Workflows | Not Started | - |
 | 11 | Outline and Card Usability Improvements | Not Started | - |
@@ -68,6 +68,7 @@ Plan: Not started
 | Phase 05-place-and-setting-reference P02 | 28min | 3 tasks | 3 files |
 | Phase 05-place-and-setting-reference P03 | 25min | 2 tasks | 2 files |
 | Phase 05-place-and-setting-reference P04 | 18min | 2 tasks | 2 files |
+| Phase 08 P01 | 25min | 3 tasks | 9 files |
 
 ## Decisions Log
 
@@ -83,6 +84,8 @@ Plan: Not started
 | 2026-04-10 | PLACE-01 still open after 05-02 | Hybrid scans landed; Places webview and extension wiring remain in 05-03–05-04 |
 | 2026-04-10 | Scoped character webview listeners to the Characters tab panel | Places tab reuses `char-*` layout; avoids duplicate `.char-container` capturing clicks |
 | 2026-04-10 | Split 05-03 commits: minimal `_renderPanel` wiring in task 1 | `renderPlanningHtml` signature needs TS call site so `npm run build` stays green |
+| 2026-04-10 | OpenQuestionRecord supports `dismissed` and optional `dismissedReason` | Phase 08-01 ISSUE-02 tests and issue-schema alignment |
+| 2026-04-10 | Chapter sidebar counts use open + deferred (D-06) in `countOpenQuestionsByChapter` | Phase 08-01; deferred no longer excluded from per-chapter active counts |
 
 ## Accumulated Context
 
@@ -102,5 +105,5 @@ Plan: Not started
 - Last updated: 2026-04-10
 - Next checkpoint: `/gsd-discuss-phase 7` or `/gsd-plan-phase 7` for Global Knowledge Reference; optional `/gsd-verify-work 5` for conversational UAT
 
-Last session: 2026-04-11T01:25:23.732Z
-Stopped at: Phase 8 context gathered
+Last session: 2026-04-11T01:47:28.198Z
+Stopped at: Completed 08-01-PLAN.md
