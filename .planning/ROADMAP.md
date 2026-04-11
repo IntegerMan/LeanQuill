@@ -192,15 +192,23 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 2, Phase 7
 **Requirements:** ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03
+**Plans:** 5 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Wave 0 tests: migration, filters, span resolve stubs + extended store/count tests.
+- [ ] 08-02-PLAN.md — v3 migration, `.leanquill/issues/{type}/` store, full statuses, span resolver implementation.
+- [ ] 08-03-PLAN.md — Dual-host master–detail UI: filters, dismiss, D-14 new issue, PLAN-03 research rows.
+- [ ] 08-04-PLAN.md — Sidebar + outline + planning Threads **X Issues** active counts (D-09).
+- [ ] 08-05-PLAN.md — Extension wiring: migrate-on-activate, watcher, gutter controller, Issues at cursor (D-12 spike).
 
 **Success criteria:**
 1. Author can create issue records manually as chapter-attached or project-wide using the full issue schema.
 2. Author can triage issues as open, deferred, or dismissed (with optional rationale) and see status reflected immediately.
 3. Issue views can be filtered by open, deferred, dismissed, or all.
 4. Issues with valid `span_hint` fragments appear as gutter indicators in the manuscript editor at relevant text locations.
-5. Author can create and triage `research-question` issue type entries alongside other issue types.
+5. Author can link issues to research files and see them in the same triage lists as other issues (PLAN-03 via associations per D-15/D-16 — no separate `research-question` type).
 
-**Notes:** Issue tracking and gutter decorations are intentionally grouped per research sequencing guidance.
+**Notes:** Issue tracking and gutter decorations are intentionally grouped per research sequencing guidance. On-disk layout uses per-type folders under `.leanquill/issues/` with v3 migration from Phase 14 `open-questions/` (see `08-CONTEXT.md`).
 
 ---
 
