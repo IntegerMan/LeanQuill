@@ -3,40 +3,73 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
-import { migrateIssuesLayoutV3IfNeeded } from "../src/issueMigration";
+import {
+  migrateIssuesLayoutV3IfNeeded,
+  MIGRATION_V3_MARKER_FILENAME,
+} from "../src/issueMigration";
 import { SafeFileSystem } from "../src/safeFileSystem";
 
 /**
  * D-01–D-03: legacy `.leanquill/open-questions/*.md` → `.leanquill/issues/question/*.md`,
- * idempotent marker (e.g. `.leanquill/issues/.migration-v3.json`) so a second run is a no-op.
- * Phase 08-01 only asserts stub `{ ran: false }`; filesystem assertions below are documented for 08-02.
+ * idempotent marker under `.leanquill/issues/` so a second run is a no-op.
  */
 
-test("migrateIssuesLayoutV3IfNeeded stub: legacy .leanquill/open-questions present but ran false", async () => {
+function minimalIssueMd(typeLine: string): string {
+  return ["---", "id: foo", typeLine, "status: open", "title: Q", "created_at: 2026-01-01T00:00:00.000Z", "---", ""].join(
+    "\n",
+  );
+}
+
+test("migrateIssuesLayoutV3IfNeeded moves legacy open-questions to issues/question and writes marker", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "lq-mig-"));
   const legacyDir = path.join(root, ".leanquill", "open-questions");
   await fs.mkdir(legacyDir, { recursive: true });
-  const minimal = [
-    "---",
-    "id: foo",
-    "type: author-note",
-    "status: open",
-    "title: Q",
-    "created_at: 2026-01-01T00:00:00.000Z",
-    "---",
-    "",
-  ].join("\n");
-  await fs.writeFile(path.join(legacyDir, "foo.md"), minimal, "utf8");
+  await fs.writeFile(path.join(legacyDir, "foo.md"), minimalIssueMd("type: author-note"), "utf8");
 
   const safeFs = new SafeFileSystem(root);
   const first = await migrateIssuesLayoutV3IfNeeded(root, safeFs);
-  assert.deepEqual(first, { ran: false });
+  assert.equal(first.ran, true);
 
-  // Post-08-02: expect `foo.md` under `.leanquill/issues/question/`, legacy dir removed or empty,
-  // marker file written. Second call: idempotent — `{ ran: false }` and no duplicate moves.
+  const dest = path.join(root, ".leanquill", "issues", "question", "foo.md");
+  await fs.access(dest);
+  const text = await fs.readFile(dest, "utf8");
+  assert.match(text, /type:\s*question/);
+
+  const markerPath = path.join(root, ".leanquill", "issues", MIGRATION_V3_MARKER_FILENAME);
+  const markerRaw = await fs.readFile(markerPath, "utf8");
+  const marker = JSON.parse(markerRaw) as { version: number; completedAt: string };
+  assert.equal(marker.version, 3);
+  assert.ok(marker.completedAt);
+
+  await assert.rejects(() => fs.access(path.join(legacyDir, "foo.md")));
+
   const second = await migrateIssuesLayoutV3IfNeeded(root, safeFs);
-  assert.deepEqual(second, { ran: false });
+  assert.equal(second.ran, false);
+});
 
-  // Conflict case (08-02): legacy `open-questions/same.md` and pre-existing
-  // `.leanquill/issues/question/same.md` — planner must define merge/rename behavior.
+test("migrateIssuesLayoutV3IfNeeded renames on conflict with existing issues/question file", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "lq-mig-"));
+  const legacyDir = path.join(root, ".leanquill", "open-questions");
+  await fs.mkdir(legacyDir, { recursive: true });
+  const issuesQuestion = path.join(root, ".leanquill", "issues", "question");
+  await fs.mkdir(issuesQuestion, { recursive: true });
+  await fs.writeFile(path.join(issuesQuestion, "same.md"), minimalIssueMd("type: question"), "utf8");
+  await fs.writeFile(path.join(legacyDir, "same.md"), minimalIssueMd("type: author-note"), "utf8");
+
+  const safeFs = new SafeFileSystem(root);
+  const first = await migrateIssuesLayoutV3IfNeeded(root, safeFs);
+  assert.equal(first.ran, true);
+
+  await fs.access(path.join(issuesQuestion, "same-2.md"));
+  const moved = await fs.readFile(path.join(issuesQuestion, "same-2.md"), "utf8");
+  assert.match(moved, /type:\s*question/);
+});
+
+test("migrateIssuesLayoutV3IfNeeded is no-op when legacy dir is absent", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "lq-mig-"));
+  await fs.mkdir(path.join(root, ".leanquill"), { recursive: true });
+  const safeFs = new SafeFileSystem(root);
+  const r = await migrateIssuesLayoutV3IfNeeded(root, safeFs);
+  assert.equal(r.ran, false);
+  await assert.rejects(() => fs.access(path.join(root, ".leanquill", "issues", MIGRATION_V3_MARKER_FILENAME)));
 });
