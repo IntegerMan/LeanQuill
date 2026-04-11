@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  countActiveQuestionsLinkedToEntity,
   countOpenQuestionsLinkedToChapterRef,
   countOpenQuestionsLinkedToEntity,
   parseOpenQuestionFile,
@@ -131,6 +132,16 @@ test("countOpenQuestionsLinkedToEntity uses basename match", () => {
   assert.equal(countOpenQuestionsLinkedToEntity(qs, "character", "notes/characters/hero.md"), 1);
   assert.equal(countOpenQuestionsLinkedToEntity(qs, "character", "hero.md"), 1);
   assert.equal(countOpenQuestionsLinkedToEntity(qs, "place", "inn.md"), 1);
+});
+
+test("countActiveQuestionsLinkedToEntity includes open+deferred only (D-06)", () => {
+  const qs = [
+    baseRecord({ id: "o", title: "t", association: { kind: "character", fileName: "hero.md" }, status: "open" }),
+    baseRecord({ id: "def", title: "t2", association: { kind: "character", fileName: "hero.md" }, status: "deferred" }),
+    baseRecord({ id: "r", title: "t3", association: { kind: "character", fileName: "hero.md" }, status: "resolved" }),
+    baseRecord({ id: "x", title: "t4", association: { kind: "character", fileName: "hero.md" }, status: "dismissed" }),
+  ];
+  assert.equal(countActiveQuestionsLinkedToEntity(qs, "character", "hero.md"), 2);
 });
 
 test("countOpenQuestionsLinkedToChapterRef matches chapter and selection", () => {

@@ -434,14 +434,21 @@ export async function deleteOpenQuestion(fileName: string, rootPath: string, saf
   }
 }
 
-export function countOpenQuestionsLinkedToEntity(
+/** Entity / research sidebar counts: open + deferred only (D-06), basename match on `fileName`. */
+export function countActiveQuestionsLinkedToEntity(
   questions: OpenQuestionRecord[],
   kind: "character" | "place" | "thread" | "research",
   fileName: string,
 ): number {
   const base = path.basename(fileName);
-  return questions.filter((q) => q.association.kind === kind && q.association.fileName === base).length;
+  return questions.filter(
+    (q) =>
+      isActiveForSidebarCount(q.status) && q.association.kind === kind && q.association.fileName === base,
+  ).length;
 }
+
+/** @deprecated Use `countActiveQuestionsLinkedToEntity` — kept for existing imports; semantics are active-only since Phase 08. */
+export const countOpenQuestionsLinkedToEntity = countActiveQuestionsLinkedToEntity;
 
 export function countOpenQuestionsLinkedToChapterRef(questions: OpenQuestionRecord[], chapterRef: string): number {
   const norm = normalizePathSeparators(chapterRef);

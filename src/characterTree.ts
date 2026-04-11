@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { listCharacters } from "./characterStore";
+import { countActiveQuestionsLinkedToEntity, listOpenQuestions } from "./openQuestionStore";
 import { readProjectConfig } from "./projectConfig";
 
 export interface CharacterItem {
@@ -8,6 +9,8 @@ export interface CharacterItem {
   fileName: string;
   name: string;
   filePath: string;
+  /** Open + deferred issues linked to this profile (D-06 / D-09). */
+  activeIssueCount: number;
 }
 
 export class CharacterTreeProvider implements VSCode.TreeDataProvider<CharacterItem> {
@@ -31,6 +34,9 @@ export class CharacterTreeProvider implements VSCode.TreeDataProvider<CharacterI
       item.name || item.fileName,
       this.vscode.TreeItemCollapsibleState.None,
     );
+    if (item.activeIssueCount > 0) {
+      treeItem.description = `${item.activeIssueCount} Issues`;
+    }
     treeItem.iconPath = new this.vscode.ThemeIcon("person");
     treeItem.contextValue = "character";
     treeItem.command = {
@@ -57,11 +63,13 @@ export class CharacterTreeProvider implements VSCode.TreeDataProvider<CharacterI
       ...config.folders.characters.replace(/\/+$/, "").split("/"),
     );
 
+    const oq = await listOpenQuestions(this.rootPath);
     return profiles.map((p) => ({
       kind: "character" as const,
       fileName: p.fileName,
       name: p.name || p.fileName.replace(/\.md$/, ""),
       filePath: path.join(charsDir, p.fileName),
+      activeIssueCount: countActiveQuestionsLinkedToEntity(oq, "character", p.fileName),
     }));
   }
 }

@@ -243,7 +243,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const researchFolder = (config?.folders.research ?? "research/leanquill").replace(/\/+$/, "");
   const researchDir = path.join(rootPath, ...researchFolder.split("/"));
-  const researchTreeProvider = new ResearchTreeProvider(vscode, researchDir);
+  const researchTreeProvider = new ResearchTreeProvider(vscode, rootPath, researchDir);
   const characterTreeProvider = new CharacterTreeProvider(vscode, rootPath);
 
   const setupViewProvider = new LeanQuillActionsProvider();
