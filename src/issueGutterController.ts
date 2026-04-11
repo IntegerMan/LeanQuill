@@ -232,7 +232,7 @@ export class IssueGutterController implements vscode.Disposable {
     return md;
   }
 
-  private async refresh(): Promise<void> {
+  public async refresh(): Promise<void> {
     const { vscodeApi } = this;
     const editor = vscodeApi.window.activeTextEditor;
     if (!editor) {

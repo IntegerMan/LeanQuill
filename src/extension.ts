@@ -362,15 +362,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   settingsWatcher.onDidChange(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
   settingsWatcher.onDidDelete(() => { void planningPanel.refresh(); placeTreeProvider.refresh(); });
 
+  const issueGutterController = new IssueGutterController(vscode, rootPath, context.extensionUri);
+  issueGutterController.register(context);
+
   const issuesMarkdownWatcher = vscode.workspace.createFileSystemWatcher(
     new vscode.RelativePattern(rootPath, ".leanquill/issues/**/*.md"),
   );
-  issuesMarkdownWatcher.onDidCreate(() => void refreshOpenQuestionSurfaces());
-  issuesMarkdownWatcher.onDidChange(() => void refreshOpenQuestionSurfaces());
-  issuesMarkdownWatcher.onDidDelete(() => void refreshOpenQuestionSurfaces());
-
-  const issueGutterController = new IssueGutterController(vscode, rootPath, context.extensionUri);
-  issueGutterController.register(context);
+  const refreshIssuesAndGutter = (): void => {
+    void refreshOpenQuestionSurfaces();
+    void issueGutterController.refresh();
+  };
+  issuesMarkdownWatcher.onDidCreate(refreshIssuesAndGutter);
+  issuesMarkdownWatcher.onDidChange(refreshIssuesAndGutter);
+  issuesMarkdownWatcher.onDidDelete(refreshIssuesAndGutter);
 
   const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
     const appName = vscode.env.appName ?? "";
