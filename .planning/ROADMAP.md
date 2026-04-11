@@ -15,7 +15,7 @@
 | 5 | Place and Setting Reference | Author can manage place and setting profiles in the planning workspace Places tab | PLACE-01 | 2 criteria |
 | 6 | Threads and Themes | Author can manage narrative threads and thematic arcs in the planning workspace Threads tab | THREAD-01 | 2 criteria |
 | 7 | Global Knowledge Reference | Author can continuously consult and edit project knowledge notes during planning and drafting | KNOW-01, KNOW-02, KNOW-03 | 3 criteria |
-| 8 | Issue Capture, Triage, and Editor Signals | 1/5 | In Progress|  |
+| 8 | Issue Capture, Triage, and Editor Signals | 5/5 | Complete | 2026-04-11 |
 | 9 | AI Safety Rails and Persona Baseline | Project is AI-ready with explicit persona configuration and manuscript write-block protections established | PER-01 | 3 criteria |
 | 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
 | 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
@@ -32,7 +32,7 @@
 - [x] **Phase 5: Place and Setting Reference** - Populate Places tab with location/setting management. (completed 2026-04-09)
 - [x] **Phase 6: Threads and Themes** - Populate planning workspace with Themes + Threads tabs, `themes.yaml`, and thread markdown under `folders.threads`. (completed 2026-04-09)
 - [ ] **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
-- [ ] **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators.
+- [x] **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators. (completed 2026-04-11)
 - [ ] **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
 - [ ] **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
 - [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
@@ -192,14 +192,14 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 2, Phase 7
 **Requirements:** ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03
-**Plans:** 1/5 plans executed
+**Plans:** 5/5 plans executed
 
 Plans:
 - [x] 08-01-PLAN.md — Wave 0 tests: migration, filters, span resolve stubs + extended store/count tests.
 - [x] 08-02-PLAN.md — v3 migration, `.leanquill/issues/{type}/` store, full statuses, span resolver implementation.
 - [x] 08-03-PLAN.md — Dual-host master–detail UI: filters, dismiss, D-14 new issue, PLAN-03 research rows.
 - [x] 08-04-PLAN.md — Sidebar + outline **X Issues** active counts (D-09); Threads tab counts in 08-03.
-- [ ] 08-05-PLAN.md — Extension wiring: migrate-on-activate, watcher, gutter controller, Issues at cursor (D-12 spike).
+- [x] 08-05-PLAN.md — Extension wiring: migrate-on-activate, watcher, gutter controller, Issues at cursor (D-12 spike).
 
 **Success criteria:**
 1. Author can create issue records manually as chapter-attached or project-wide using the full issue schema.

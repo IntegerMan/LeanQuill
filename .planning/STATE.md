@@ -3,20 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 08
-status: executing
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-04-11T02:00:44.151Z"
+status: verifying
+stopped_at: Completed 08-05-PLAN.md
+last_updated: "2026-04-11T02:05:12.985Z"
 progress:
   total_phases: 15
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 36
-  completed_plans: 34
+  completed_plans: 35
 ---
 
 # Project State: LeanQuill
 
 **Current phase:** 08
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 
 ## Project Reference
 
@@ -72,6 +72,7 @@ Plan: 5 of 5
 | Phase 08-issue-capture-triage-and-editor-signals P02 | 40min | 3 tasks | 14 files |
 | Phase 08 P04 | 20min | 3 tasks | 8 files |
 | Phase 08-issue-capture-triage-and-editor-signals P03 | 45 min | 3 tasks | 6 files |
+| Phase 08-issue-capture-triage-and-editor-signals P05 | 22min | 3 tasks | 6 files |
 
 ## Decisions Log
 
@@ -95,6 +96,7 @@ Plan: 5 of 5
 | 2026-04-10 | `countActiveQuestionsLinkedToEntity` is canonical; `countOpenQuestionsLinkedToEntity` kept as compatibility alias | Phase 08-04 entity sidebar counts |
 | 2026-04-11 | Planning Issues tab and bottom panel share `leanquill.issueListFilter` in workspaceState for aligned D-06 filtering | Phase 08-03 dual-host parity |
 | 2026-04-11 | Webview **New issue** uses title → QuickPick on `AUTHOR_ISSUE_TYPES` instead of only `leanquill.newOpenQuestion` | Phase 08-03 D-14 |
+| 2026-04-11 | D-12 gutter navigation: **Issues at cursor** command + trusted Markdown hover links; no gutter glyph `onClick` on VS Code ^1.90 (Pitfall 3) | Phase 08-05 |
 
 ## Accumulated Context
 
@@ -114,5 +116,5 @@ Plan: 5 of 5
 - Last updated: 2026-04-11
 - Next checkpoint: `/gsd-discuss-phase 7` or `/gsd-plan-phase 7` for Global Knowledge Reference; optional `/gsd-verify-work 5` for conversational UAT
 
-Last session: 2026-04-11T02:00:35.478Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-04-11T02:05:12.976Z
+Stopped at: Completed 08-05-PLAN.md
