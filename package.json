@@ -139,52 +139,52 @@
       },
       {
         "command": "leanquill.newOpenQuestion",
-        "title": "LeanQuill: New issue (book-wide)",
+        "title": "New Issue",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromChapter",
-        "title": "LeanQuill: New issue from chapter",
+        "title": "New Issue",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromOutline",
-        "title": "LeanQuill: New issue from outline",
+        "title": "New Issue",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromSelection",
-        "title": "LeanQuill: New issue from selection",
+        "title": "New Issue",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromCharacter",
-        "title": "LeanQuill: New issue from character",
+        "title": "New Issue",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromPlace",
-        "title": "LeanQuill: New issue from place",
+        "title": "New Issue",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromThread",
-        "title": "LeanQuill: New issue from thread",
+        "title": "New Issue",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.newOpenQuestionFromResearch",
-        "title": "LeanQuill: New issue from research",
+        "title": "New Issue",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.issuesAtCursor",
-        "title": "LeanQuill: Issues at cursor",
+        "title": "Issues at Cursor",
         "category": "LeanQuill"
       },
       {
         "command": "leanquill.openQuestionTarget",
-        "title": "LeanQuill: Open issue target",
+        "title": "Open Issue Target",
         "category": "LeanQuill"
       }
     ],

@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type * as VSCode from "vscode";
+import { formatIssueCountLabel } from "./formatIssueCountLabel";
 import { countActiveQuestionsLinkedToEntity, listOpenQuestions } from "./openQuestionStore";
 
 export interface ResearchItem {
@@ -133,7 +134,7 @@ export class ResearchTreeProvider implements VSCode.TreeDataProvider<ResearchIte
     );
     const datePart = formatCreatedDate(item.created);
     treeItem.description =
-      item.activeIssueCount > 0 ? `${datePart} · ${item.activeIssueCount} Issues` : datePart;
+      item.activeIssueCount > 0 ? `${datePart} · ${formatIssueCountLabel(item.activeIssueCount)}` : datePart;
     treeItem.iconPath = new this.vscode.ThemeIcon("book");
     treeItem.contextValue = "research";
     treeItem.command = {

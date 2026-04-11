@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { getChapterStatusEntry } from "./chapterStatus";
+import { formatIssueCountLabel } from "./formatIssueCountLabel";
 import { ChapterStatus, ChapterStatusIndex } from "./types";
 
 function naturalSort(a: string, b: string): number {
@@ -22,7 +23,7 @@ function deriveTitle(chapterPath: string): string {
 }
 
 function issueCountText(count: number): string {
-  return `${count} Issues`;
+  return formatIssueCountLabel(count);
 }
 
 export interface ChapterTreeRow {

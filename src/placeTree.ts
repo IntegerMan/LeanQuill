@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { listPlaces, buildPlaceTree, placeReparentWouldCycle, savePlace, PlaceTreeNode } from "./placeStore";
+import { formatIssueCountLabel } from "./formatIssueCountLabel";
 import { countActiveQuestionsLinkedToEntity, listOpenQuestions } from "./openQuestionStore";
 import { readProjectConfig, readProjectConfigWithDefaults } from "./projectConfig";
 import type { OpenQuestionRecord } from "./types";
@@ -91,7 +92,7 @@ export class PlaceTreeProvider
     const treeItem = new this.vscode.TreeItem(item.name || item.fileName, collapsible);
     treeItem.id = item.fileName;
     if (item.activeIssueCount > 0) {
-      treeItem.description = `${item.activeIssueCount} Issues`;
+      treeItem.description = formatIssueCountLabel(item.activeIssueCount);
     }
     treeItem.iconPath = new this.vscode.ThemeIcon("globe");
     treeItem.resourceUri = this.vscode.Uri.file(item.filePath);

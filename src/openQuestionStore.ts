@@ -75,6 +75,9 @@ export function displayIssueTypeLabel(issueSchemaType: string): string {
   if (t === "author-note" || t === "question") {
     return "Question";
   }
+  if (t === "task") {
+    return "Task";
+  }
   return t
     .split(/[-_]+/)
     .filter(Boolean)

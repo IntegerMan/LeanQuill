@@ -46,6 +46,18 @@ test("round-trip book-wide author-note (lq_book_wide + book association)", () =>
   assert.equal(back.association.kind, "book");
 });
 
+test("serialize persists task issue type in frontmatter", () => {
+  const orig = baseRecord({
+    id: "fix-todo",
+    title: "Revise chapter 2 opening",
+    issueSchemaType: "task",
+  });
+  const raw = serializeOpenQuestionFile(orig);
+  assert.match(raw, /type:\s*task/);
+  const back = parseOpenQuestionFile(orig.fileName, raw);
+  assert.equal(back.issueSchemaType, "task");
+});
+
 test("round-trip character-linked question uses lq_character_file", () => {
   const orig = baseRecord({
     id: "oq-char",

@@ -16,6 +16,7 @@ import { OpenQuestionsPanelViewProvider } from "./openQuestionsPanel";
 import { IssueGutterController } from "./issueGutterController";
 import { migrateIssuesLayoutV3IfNeeded } from "./issueMigration";
 import { createOpenQuestion, getOpenQuestion } from "./openQuestionStore";
+import { promptNewIssueTitleAndType } from "./promptNewIssue";
 import { handleOpenQuestionWorkspaceDelete, handleOpenQuestionWorkspaceRename } from "./openQuestionWorkspaceSync";
 import { SafeFileSystem } from "./safeFileSystem";
 import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlForSetup } from "./projectConfig";
@@ -477,14 +478,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
 
   const newOpenQuestionCommand = vscode.commands.registerCommand("leanquill.newOpenQuestion", async () => {
-    const title = await vscode.window.showInputBox({ prompt: "Open question title" });
-    if (!title?.trim()) {
-      return;
-    }
     try {
+      const fields = await promptNewIssueTitleAndType(vscode);
+      if (!fields) {
+        return;
+      }
       const rec = await createOpenQuestion(safeFileSystem, rootPath, {
-        title: title.trim(),
+        title: fields.title,
         association: { kind: "book" },
+        issueType: fields.issueType,
       });
       await planningPanel.showOpenQuestion(rec.id);
       await refreshOpenQuestionSurfaces();
@@ -507,18 +509,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const chapterPath = normalizePath(String(args?.chapterPath ?? ""));
       if (!chapterPath.startsWith("manuscript/")) {
         await vscode.window.showErrorMessage(
-          "Open questions from the outline must target a manuscript chapter file.",
+          "New issues from the outline must target a manuscript chapter file.",
         );
         return;
       }
-      const title = await vscode.window.showInputBox({ prompt: "Open question title" });
-      if (!title?.trim()) {
+      const fields = await promptNewIssueTitleAndType(vscode);
+      if (!fields) {
         return;
       }
       try {
         const rec = await createOpenQuestion(safeFileSystem, rootPath, {
-          title: title.trim(),
+          title: fields.title,
           association: { kind: "chapter", chapterRef: chapterPath },
+          issueType: fields.issueType,
         });
         await planningPanel.showOpenQuestion(rec.id);
         await refreshOpenQuestionSurfaces();
@@ -545,17 +548,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       const span_hint = editor.document.getText(editor.selection);
       if (!span_hint.trim()) {
-        await vscode.window.showErrorMessage("Select text in the manuscript to anchor this question.");
+        await vscode.window.showErrorMessage("Select text in the manuscript to anchor this issue.");
         return;
       }
-      const title = await vscode.window.showInputBox({ prompt: "Open question title" });
-      if (!title?.trim()) {
+      const fields = await promptNewIssueTitleAndType(vscode);
+      if (!fields) {
         return;
       }
       try {
         const rec = await createOpenQuestion(safeFileSystem, rootPath, {
-          title: title.trim(),
+          title: fields.title,
           association: { kind: "selection", chapterRef: chapter_ref, spanHint: span_hint },
+          issueType: fields.issueType,
         });
         await planningPanel.showOpenQuestion(rec.id);
         await refreshOpenQuestionSurfaces();
@@ -573,8 +577,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (!fileName?.trim()) {
       return;
     }
-    const title = await vscode.window.showInputBox({ prompt: "Open question title" });
-    if (!title?.trim()) {
+    const fields = await promptNewIssueTitleAndType(vscode);
+    if (!fields) {
       return;
     }
     const association =
@@ -586,7 +590,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             ? ({ kind: "research" as const, fileName: fileName.trim() })
             : ({ kind: "thread" as const, fileName: fileName.trim() });
     try {
-      const rec = await createOpenQuestion(safeFileSystem, rootPath, { title: title.trim(), association });
+      const rec = await createOpenQuestion(safeFileSystem, rootPath, {
+        title: fields.title,
+        association,
+        issueType: fields.issueType,
+      });
       await planningPanel.showOpenQuestion(rec.id);
       await refreshOpenQuestionSurfaces();
     } catch (error: unknown) {
@@ -634,9 +642,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       // Navigation reads lq_assoc_kind plus lq_character_file / lq_place_file / lq_thread_file / chapter_ref / span_hint from disk via getOpenQuestion.
       const lq_assoc_kind = question.association.kind;
       if (lq_assoc_kind === "book") {
-        // Book-wide targets use chapter_ref project-wide in the markdown file; reveal in Planning workspace.
         await vscode.commands.executeCommand("leanquill.openPlanningWorkspace");
-        await planningPanel.revealOpenQuestionRow(question.id);
+        await planningPanel.showThemes();
         return;
       }
       if (lq_assoc_kind === "character") {

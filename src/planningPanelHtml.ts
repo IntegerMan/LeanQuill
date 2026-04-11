@@ -1,6 +1,7 @@
 import type { ChapterPickerOption } from "./chapterPickerOptions";
 import { escapeHtml } from "./htmlUtils";
 import type { IssueListFilter } from "./issueFilters";
+import { formatIssueCountLabel } from "./formatIssueCountLabel";
 import { renderOpenQuestionsHtml, type SerializableOpenQuestionRow } from "./openQuestionsHtml";
 import { buildPlaceTree, type PlaceTreeNode } from "./placeStore";
 import {
@@ -326,7 +327,7 @@ function renderThreadsTab(
   const listItems = sorted
     .map((p) => {
       const n = threadOpenIssueCounts[p.fileName] ?? 0;
-      const issueSuffix = n > 0 ? ` · ${n} Issues` : "";
+      const issueSuffix = n > 0 ? ` · ${formatIssueCountLabel(n)}` : "";
       return `<div class="thread-list-item${p.fileName === effectiveSelected ? " thread-list-item--selected" : ""}"
            data-action="thread:select"
            data-open-question-row-context="thread"

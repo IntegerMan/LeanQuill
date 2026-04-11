@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { listCharacters } from "./characterStore";
+import { formatIssueCountLabel } from "./formatIssueCountLabel";
 import { countActiveQuestionsLinkedToEntity, listOpenQuestions } from "./openQuestionStore";
 import { readProjectConfig } from "./projectConfig";
 
@@ -35,7 +36,7 @@ export class CharacterTreeProvider implements VSCode.TreeDataProvider<CharacterI
       this.vscode.TreeItemCollapsibleState.None,
     );
     if (item.activeIssueCount > 0) {
-      treeItem.description = `${item.activeIssueCount} Issues`;
+      treeItem.description = formatIssueCountLabel(item.activeIssueCount);
     }
     treeItem.iconPath = new this.vscode.ThemeIcon("person");
     treeItem.contextValue = "character";

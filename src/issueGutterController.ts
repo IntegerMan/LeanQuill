@@ -3,7 +3,7 @@
  *
  * ISSUE-04 D-12 spike: VS Code `TextEditorDecorationType` gutter icons do not expose a stable
  * per-decoration `onClick` in the public API for `engines.vscode ^1.90`. D-12 navigation for
- * stacked anchors is therefore implemented via **`LeanQuill: Issues at cursor`**
+ * stacked anchors is therefore implemented via **`LeanQuill: Issues at Cursor`**
  * (`leanquill.issuesAtCursor`) and optional **command links** in hover `MarkdownString`; literal
  * gutter glyph click is **not** wired here — hover + command/hover link are the primary UX (see
  * 08-RESEARCH Pitfall 3).
@@ -223,7 +223,7 @@ export class IssueGutterController implements vscode.Disposable {
   private hoverForStacked(count: number): vscode.MarkdownString {
     const md = new this.vscodeApi.MarkdownString(undefined, true);
     md.isTrusted = true;
-    md.appendMarkdown(`${count} issues — use **LeanQuill: Issues at cursor** or `);
+    md.appendMarkdown(`${count} issues — use **LeanQuill: Issues at Cursor** or `);
     md.appendMarkdown("[choose…](command:leanquill.issuesAtCursor)");
     return md;
   }

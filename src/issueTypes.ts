@@ -4,6 +4,7 @@
  */
 export const AUTHOR_ISSUE_TYPES: readonly string[] = [
   "question",
+  "task",
   "continuity",
   "copy-edit",
   "voice",

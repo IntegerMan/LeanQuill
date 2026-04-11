@@ -1,9 +1,8 @@
 import * as crypto from "node:crypto";
-import * as path from "node:path";
 import type * as vscode from "vscode";
 import type { IssueListFilter, IssueStatus } from "./issueFilters";
 import { matchesIssueFilter } from "./issueFilters";
-import { AUTHOR_ISSUE_TYPES } from "./issueTypes";
+import { associationKindLabel, associationSourceDisplayText } from "./issueAssociationDisplay";
 import {
   createOpenQuestion,
   displayIssueTypeLabel,
@@ -11,6 +10,13 @@ import {
   listOpenQuestions,
   saveOpenQuestion,
 } from "./openQuestionStore";
+import { readProjectIdentity } from "./projectConfig";
+import {
+  confirmAndDeleteIssueById,
+  executeOpenIssueTargetCommand,
+  pickIssueStatusAndSave,
+} from "./openQuestionWebviewHost";
+import { promptNewIssueTitleAndType } from "./promptNewIssue";
 import { renderOpenQuestionsHtml, type SerializableOpenQuestionRow } from "./openQuestionsHtml";
 import type { OpenQuestionRecord } from "./types";
 import type { SafeFileSystem } from "./safeFileSystem";
@@ -65,7 +71,8 @@ export class OpenQuestionsPanelViewProvider implements vscode.WebviewViewProvide
     }
     const list = await listOpenQuestions(this.rootPath);
     const filtered = list.filter((q) => matchesIssueFilter(q.status as IssueStatus, this._issueListFilter));
-    const rows = this._rows(filtered);
+    const identity = await readProjectIdentity(this.rootPath);
+    const rows = this._rows(filtered, identity.workingTitle);
     const nonce = crypto.randomBytes(16).toString("hex");
     const html = renderOpenQuestionsHtml(rows, "panel", nonce, this._view.webview.cspSource, true, {
       currentFilter: this._issueListFilter,
@@ -74,31 +81,10 @@ export class OpenQuestionsPanelViewProvider implements vscode.WebviewViewProvide
     this._view.webview.html = html;
   }
 
-  private _associationChip(association: OpenQuestionRecord["association"]): string {
-    switch (association.kind) {
-      case "book":
-        return "Book";
-      case "character":
-        return `Character · ${association.fileName}`;
-      case "place":
-        return `Place · ${association.fileName}`;
-      case "thread":
-        return `Thread · ${association.fileName}`;
-      case "research":
-        return path.basename(association.fileName) || association.fileName;
-      case "chapter":
-        return `Chapter · ${association.chapterRef}`;
-      case "selection":
-        return `Selection · ${association.chapterRef}`;
-      default:
-        return "Book";
-    }
-  }
-
-  private _toRow(r: OpenQuestionRecord): SerializableOpenQuestionRow {
+  private _toRow(r: OpenQuestionRecord, bookWorkingTitle: string): SerializableOpenQuestionRow {
     const line = (r.body || "").split("\n")[0]?.trim() ?? "";
     const preview = line.length > 120 ? `${line.slice(0, 120)}…` : line;
-    const chip = this._associationChip(r.association);
+    const sourceText = associationSourceDisplayText(r.association, bookWorkingTitle);
     return {
       id: r.id,
       title: r.title,
@@ -106,8 +92,9 @@ export class OpenQuestionsPanelViewProvider implements vscode.WebviewViewProvide
       body: r.body ?? "",
       status: r.status,
       issueType: r.issueSchemaType,
-      associationChip: chip,
-      associationChips: [chip],
+      associationTypeLabel: associationKindLabel(r.association.kind),
+      associationChip: sourceText,
+      associationChips: [sourceText],
       issueTypeLabel: displayIssueTypeLabel(r.issueSchemaType),
       dismissedReason: r.dismissedReason,
       relativeIssuePath: r.fileName,
@@ -115,8 +102,8 @@ export class OpenQuestionsPanelViewProvider implements vscode.WebviewViewProvide
     };
   }
 
-  private _rows(list: OpenQuestionRecord[]): SerializableOpenQuestionRow[] {
-    return list.map((r) => this._toRow(r));
+  private _rows(list: OpenQuestionRecord[], bookWorkingTitle: string): SerializableOpenQuestionRow[] {
+    return list.map((r) => this._toRow(r, bookWorkingTitle));
   }
 
   private async _openInEditor(id: string): Promise<void> {
@@ -186,28 +173,14 @@ export class OpenQuestionsPanelViewProvider implements vscode.WebviewViewProvide
   }
 
   private async _createNewIssueFromPanel(): Promise<void> {
-    const title = await this.vscodeApi.window.showInputBox({
-      prompt: "Issue title",
-      placeHolder: "Short name for this issue",
-    });
-    if (!title?.trim()) {
-      return;
-    }
-    const items = AUTHOR_ISSUE_TYPES.map((slug) => ({
-      label: displayIssueTypeLabel(slug),
-      description: slug,
-    }));
-    const picked = await this.vscodeApi.window.showQuickPick(items, {
-      placeHolder: "Issue type",
-    });
-    const typeSlug = picked?.description?.trim();
-    if (!typeSlug) {
+    const fields = await promptNewIssueTitleAndType(this.vscodeApi);
+    if (!fields) {
       return;
     }
     await createOpenQuestion(this.safeFs, this.rootPath, {
-      title: title.trim(),
+      title: fields.title,
       association: { kind: "book" },
-      issueType: typeSlug,
+      issueType: fields.issueType,
     });
     await this.refresh();
   }
@@ -249,6 +222,28 @@ export class OpenQuestionsPanelViewProvider implements vscode.WebviewViewProvide
 
       case "openQuestion:new-question":
         await this._createNewIssueFromPanel();
+        break;
+
+      case "openQuestion:openTarget":
+        await executeOpenIssueTargetCommand(this.vscodeApi, String(msg.id ?? ""));
+        break;
+
+      case "openQuestion:delete": {
+        const deleted = await confirmAndDeleteIssueById(
+          this.vscodeApi,
+          this.rootPath,
+          this.safeFs,
+          String(msg.id ?? ""),
+        );
+        if (deleted) {
+          await this.refresh();
+        }
+        break;
+      }
+
+      case "openQuestion:editStatus":
+        await pickIssueStatusAndSave(this.vscodeApi, this.rootPath, this.safeFs, String(msg.id ?? ""));
+        await this.refresh();
         break;
 
       default:

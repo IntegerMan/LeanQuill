@@ -36,6 +36,7 @@ body: string                  # markdown description — the actionable feedback
 | Type | Description | Evidence Required |
 |------|------------|---------------------|
 | `question` | Author-captured question or self-identified weakness (unified type for migrated Phase 14 open questions; replaces long-term `author-note` for new files) | No |
+| `task` | Author-tracked to-do or follow-up work item (not necessarily a “question”) | No |
 | `continuity` | Internal story contradiction or timeline conflict | No |
 | `copy-edit` | Grammar, spelling, punctuation, or sentence-level clarity | No |
 | `voice` | Phrasing that drifts from author's established style | No |

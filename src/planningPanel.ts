@@ -7,10 +7,10 @@ import { listPlaces, createPlace, placeReparentWouldCycle, savePlace, deletePlac
 import { buildChapterPickerOptions } from "./chapterPickerOptions";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml, PLANNING_TAB_LABELS } from "./planningPanelHtml";
+import { associationKindLabel, associationSourceDisplayText } from "./issueAssociationDisplay";
 import type { SerializableOpenQuestionRow } from "./openQuestionsHtml";
 import type { IssueListFilter, IssueStatus } from "./issueFilters";
 import { matchesIssueFilter } from "./issueFilters";
-import { AUTHOR_ISSUE_TYPES } from "./issueTypes";
 import {
   countOpenQuestionsLinkedToEntity,
   createOpenQuestion,
@@ -20,6 +20,12 @@ import {
   leanQuillIssueFileAbsolutePath,
   saveOpenQuestion,
 } from "./openQuestionStore";
+import {
+  confirmAndDeleteIssueById,
+  executeOpenIssueTargetCommand,
+  pickIssueStatusAndSave,
+} from "./openQuestionWebviewHost";
+import { promptNewIssueTitleAndType } from "./promptNewIssue";
 import {
   readProjectConfigWithDefaults,
   readProjectIdentity,
@@ -399,7 +405,10 @@ export class PlanningPanelProvider {
     const filteredOpenQuestions = openQuestionRecords.filter((q) =>
       matchesIssueFilter(q.status as IssueStatus, this._issueListFilter),
     );
-    const openQuestionRows = this._openQuestionSerializableRows(filteredOpenQuestions);
+    const openQuestionRows = this._openQuestionSerializableRows(
+      filteredOpenQuestions,
+      projectIdentity.workingTitle,
+    );
     const threadOpenIssueCounts: Record<string, number> = {};
     for (const t of threads) {
       const n = countOpenQuestionsLinkedToEntity(openQuestionRecords, "thread", t.fileName);
@@ -651,6 +660,28 @@ export class PlanningPanelProvider {
 
       case "openQuestion:new-question":
         await this._createNewIssueFromPanel();
+        break;
+
+      case "openQuestion:openTarget":
+        await executeOpenIssueTargetCommand(this.vscodeApi, String(msg.id ?? ""));
+        break;
+
+      case "openQuestion:delete": {
+        const deleted = await confirmAndDeleteIssueById(
+          this.vscodeApi,
+          this.rootPath,
+          this.safeFs,
+          String(msg.id ?? ""),
+        );
+        if (deleted) {
+          await this._renderPanel();
+        }
+        break;
+      }
+
+      case "openQuestion:editStatus":
+        await pickIssueStatusAndSave(this.vscodeApi, this.rootPath, this.safeFs, String(msg.id ?? ""));
+        await this._renderPanel();
         break;
 
       case "openQuestionRowContext": {
@@ -1317,31 +1348,10 @@ export class PlanningPanelProvider {
     await this.vscodeApi.window.showTextDocument(doc, { preview: false });
   }
 
-  private _openQuestionAssociationChip(association: OpenQuestionRecord["association"]): string {
-    switch (association.kind) {
-      case "book":
-        return "Book";
-      case "character":
-        return `Character · ${association.fileName}`;
-      case "place":
-        return `Place · ${association.fileName}`;
-      case "thread":
-        return `Thread · ${association.fileName}`;
-      case "research":
-        return path.basename(association.fileName) || association.fileName;
-      case "chapter":
-        return `Chapter · ${association.chapterRef}`;
-      case "selection":
-        return `Selection · ${association.chapterRef}`;
-      default:
-        return "Book";
-    }
-  }
-
-  private _toOpenQuestionRow(r: OpenQuestionRecord): SerializableOpenQuestionRow {
+  private _toOpenQuestionRow(r: OpenQuestionRecord, bookWorkingTitle: string): SerializableOpenQuestionRow {
     const line = (r.body || "").split("\n")[0]?.trim() ?? "";
     const preview = line.length > 120 ? `${line.slice(0, 120)}…` : line;
-    const chip = this._openQuestionAssociationChip(r.association);
+    const sourceText = associationSourceDisplayText(r.association, bookWorkingTitle);
     return {
       id: r.id,
       title: r.title,
@@ -1349,8 +1359,9 @@ export class PlanningPanelProvider {
       body: r.body ?? "",
       status: r.status,
       issueType: r.issueSchemaType,
-      associationChip: chip,
-      associationChips: [chip],
+      associationTypeLabel: associationKindLabel(r.association.kind),
+      associationChip: sourceText,
+      associationChips: [sourceText],
       issueTypeLabel: displayIssueTypeLabel(r.issueSchemaType),
       dismissedReason: r.dismissedReason,
       relativeIssuePath: r.fileName,
@@ -1358,8 +1369,11 @@ export class PlanningPanelProvider {
     };
   }
 
-  private _openQuestionSerializableRows(list: OpenQuestionRecord[]): SerializableOpenQuestionRow[] {
-    return list.map((r) => this._toOpenQuestionRow(r));
+  private _openQuestionSerializableRows(
+    list: OpenQuestionRecord[],
+    bookWorkingTitle: string,
+  ): SerializableOpenQuestionRow[] {
+    return list.map((r) => this._toOpenQuestionRow(r, bookWorkingTitle));
   }
 
   private async _saveOpenQuestionDetail(msg: Record<string, unknown>): Promise<void> {
@@ -1414,28 +1428,14 @@ export class PlanningPanelProvider {
   }
 
   private async _createNewIssueFromPanel(): Promise<void> {
-    const title = await this.vscodeApi.window.showInputBox({
-      prompt: "Issue title",
-      placeHolder: "Short name for this issue",
-    });
-    if (!title?.trim()) {
-      return;
-    }
-    const items = AUTHOR_ISSUE_TYPES.map((slug) => ({
-      label: displayIssueTypeLabel(slug),
-      description: slug,
-    }));
-    const picked = await this.vscodeApi.window.showQuickPick(items, {
-      placeHolder: "Issue type",
-    });
-    const typeSlug = picked?.description?.trim();
-    if (!typeSlug) {
+    const fields = await promptNewIssueTitleAndType(this.vscodeApi);
+    if (!fields) {
       return;
     }
     await createOpenQuestion(this.safeFs, this.rootPath, {
-      title: title.trim(),
+      title: fields.title,
       association: { kind: "book" },
-      issueType: typeSlug,
+      issueType: fields.issueType,
     });
     await this._renderPanel();
   }

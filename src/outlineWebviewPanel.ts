@@ -9,6 +9,7 @@ import {
   isAncestorOf,
 } from "./outlineStore";
 import { SafeFileSystem } from "./safeFileSystem";
+import { formatIssueCountLabel } from "./formatIssueCountLabel";
 import { countActiveIssuesByChapter, listOpenQuestions } from "./openQuestionStore";
 import { OutlineNode, OutlineIndex, ChapterStatus } from "./types";
 
@@ -35,7 +36,7 @@ function openQuestionCountSuffix(fileName: string, counts: Record<string, number
   const key = normalizeOutlinePath(fileName);
   const n = counts[key];
   if (n && n > 0) {
-    return ` · ${n} Issues`;
+    return ` · ${formatIssueCountLabel(n)}`;
   }
   return "";
 }
