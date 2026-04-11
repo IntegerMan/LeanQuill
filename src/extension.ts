@@ -269,7 +269,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.workspaceState,
   );
 
-  const openQuestionsPanelProvider = new OpenQuestionsPanelViewProvider(vscode, context.extensionUri, rootPath);
+  const openQuestionsPanelProvider = new OpenQuestionsPanelViewProvider(
+    vscode,
+    context.extensionUri,
+    rootPath,
+    context.workspaceState,
+    safeFileSystem,
+  );
 
   const refreshOpenQuestionSurfaces = async (): Promise<void> => {
     await planningPanel.refresh();
