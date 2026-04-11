@@ -261,7 +261,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   outlineWebviewRef.current = outlineWebviewProvider;
 
-  planningPanel = new PlanningPanelProvider(vscode, context.extensionUri, rootPath, safeFileSystem);
+  planningPanel = new PlanningPanelProvider(
+    vscode,
+    context.extensionUri,
+    rootPath,
+    safeFileSystem,
+    context.workspaceState,
+  );
 
   const openQuestionsPanelProvider = new OpenQuestionsPanelViewProvider(vscode, context.extensionUri, rootPath);
 

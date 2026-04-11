@@ -8,12 +8,17 @@ import { buildChapterPickerOptions } from "./chapterPickerOptions";
 import { readOutlineIndex, writeOutlineIndex, findNodeById } from "./outlineStore";
 import { renderPlanningHtml, PLANNING_TAB_LABELS } from "./planningPanelHtml";
 import type { SerializableOpenQuestionRow } from "./openQuestionsHtml";
+import type { IssueListFilter, IssueStatus } from "./issueFilters";
+import { matchesIssueFilter } from "./issueFilters";
+import { AUTHOR_ISSUE_TYPES } from "./issueTypes";
 import {
   countOpenQuestionsLinkedToEntity,
+  createOpenQuestion,
   deleteOpenQuestionsForEntity,
   displayIssueTypeLabel,
   listOpenQuestions,
   leanQuillIssueFileAbsolutePath,
+  saveOpenQuestion,
 } from "./openQuestionStore";
 import {
   readProjectConfigWithDefaults,
@@ -69,12 +74,26 @@ export class PlanningPanelProvider {
   private _threadDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   private _threadUpdateLock: Promise<void> = Promise.resolve();
 
+  private _issueListFilter: IssueListFilter = "active";
+
   constructor(
     private readonly vscodeApi: typeof VSCode,
     private readonly extensionUri: VSCode.Uri,
     private readonly rootPath: string,
     private readonly safeFs: SafeFileSystem,
-  ) {}
+    private readonly _workspaceState?: VSCode.Memento,
+  ) {
+    const saved = this._workspaceState?.get<string>("leanquill.issueListFilter");
+    if (
+      saved === "active" ||
+      saved === "open" ||
+      saved === "deferred" ||
+      saved === "dismissed" ||
+      saved === "all"
+    ) {
+      this._issueListFilter = saved;
+    }
+  }
 
   public async show(): Promise<void> {
     const vscode = this.vscodeApi;
@@ -377,7 +396,17 @@ export class PlanningPanelProvider {
       this._selectedPlaceFileName = undefined;
     }
     const openQuestionRecords = await listOpenQuestions(this.rootPath);
-    const openQuestionRows = this._openQuestionSerializableRows(openQuestionRecords);
+    const filteredOpenQuestions = openQuestionRecords.filter((q) =>
+      matchesIssueFilter(q.status as IssueStatus, this._issueListFilter),
+    );
+    const openQuestionRows = this._openQuestionSerializableRows(filteredOpenQuestions);
+    const threadOpenIssueCounts: Record<string, number> = {};
+    for (const t of threads) {
+      const n = countOpenQuestionsLinkedToEntity(openQuestionRecords, "thread", t.fileName);
+      if (n > 0) {
+        threadOpenIssueCounts[t.fileName] = n;
+      }
+    }
     const nonce = crypto.randomBytes(16).toString("hex");
     const cspSource = this._panel.webview.cspSource;
     this._panel.webview.html = renderPlanningHtml(
@@ -396,6 +425,9 @@ export class PlanningPanelProvider {
       nonce,
       cspSource,
       this._activeTab,
+      this._issueListFilter,
+      openQuestionRecords.length,
+      threadOpenIssueCounts,
     );
     this._syncPlanningPanelTitle();
   }
@@ -598,12 +630,27 @@ export class PlanningPanelProvider {
         await this._renderPanel();
         break;
 
-      case "openQuestion:new-question":
-        try {
-          await this.vscodeApi.commands.executeCommand("leanquill.newOpenQuestion");
-        } catch {
-          /* Command registers in phase 14-06 */
+      case "openQuestion:setFilter": {
+        const f = String(msg.filter ?? "");
+        const allowed: IssueListFilter[] = ["active", "open", "deferred", "dismissed", "all"];
+        if (allowed.includes(f as IssueListFilter)) {
+          this._issueListFilter = f as IssueListFilter;
+          void this._workspaceState?.update("leanquill.issueListFilter", this._issueListFilter);
+          await this._renderPanel();
         }
+        break;
+      }
+
+      case "openQuestion:saveDetail":
+        await this._saveOpenQuestionDetail(msg);
+        break;
+
+      case "openQuestion:dismiss":
+        await this._dismissOpenQuestion(String(msg.id ?? ""), String(msg.dismissedReason ?? ""));
+        break;
+
+      case "openQuestion:new-question":
+        await this._createNewIssueFromPanel();
         break;
 
       case "openQuestionRowContext": {
@@ -1315,4 +1362,81 @@ export class PlanningPanelProvider {
     return list.map((r) => this._toOpenQuestionRow(r));
   }
 
+  private async _saveOpenQuestionDetail(msg: Record<string, unknown>): Promise<void> {
+    const id = String(msg.id ?? "");
+    if (!id) {
+      return;
+    }
+    const list = await listOpenQuestions(this.rootPath);
+    const q = list.find((x) => x.id === id);
+    if (!q) {
+      return;
+    }
+    const status = String(msg.status ?? "open");
+    if (!["open", "deferred", "dismissed", "resolved"].includes(status)) {
+      return;
+    }
+    const title = String(msg.title ?? "");
+    const body = String(msg.body ?? "");
+    const drRaw = String(msg.dismissedReason ?? "").trim();
+    const next: OpenQuestionRecord = {
+      ...q,
+      title,
+      body,
+      status: status as OpenQuestionRecord["status"],
+      dismissedReason:
+        status === "dismissed" ? (drRaw.length > 0 ? drRaw : undefined) : undefined,
+    };
+    await saveOpenQuestion(next, this.rootPath, this.safeFs);
+    await this._renderPanel();
+  }
+
+  private async _dismissOpenQuestion(id: string, dismissedReason: string): Promise<void> {
+    if (!id) {
+      return;
+    }
+    const list = await listOpenQuestions(this.rootPath);
+    const q = list.find((x) => x.id === id);
+    if (!q) {
+      return;
+    }
+    const dr = dismissedReason.trim();
+    await saveOpenQuestion(
+      {
+        ...q,
+        status: "dismissed",
+        dismissedReason: dr.length > 0 ? dr : undefined,
+      },
+      this.rootPath,
+      this.safeFs,
+    );
+    await this._renderPanel();
+  }
+
+  private async _createNewIssueFromPanel(): Promise<void> {
+    const title = await this.vscodeApi.window.showInputBox({
+      prompt: "Issue title",
+      placeHolder: "Short name for this issue",
+    });
+    if (!title?.trim()) {
+      return;
+    }
+    const items = AUTHOR_ISSUE_TYPES.map((slug) => ({
+      label: displayIssueTypeLabel(slug),
+      description: slug,
+    }));
+    const picked = await this.vscodeApi.window.showQuickPick(items, {
+      placeHolder: "Issue type",
+    });
+    const typeSlug = picked?.description?.trim();
+    if (!typeSlug) {
+      return;
+    }
+    await createOpenQuestion(this.safeFs, this.rootPath, {
+      title: title.trim(),
+      association: { kind: "book" },
+      issueType: typeSlug,
+    });
+    await this._renderPanel();
+  }
 }
