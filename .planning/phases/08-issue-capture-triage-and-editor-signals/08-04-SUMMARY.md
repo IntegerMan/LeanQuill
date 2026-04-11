@@ -70,7 +70,7 @@ Each task was committed atomically:
 2. **Task 2: outlineWebviewPanel.ts — Issues suffix on rows** - `4c8ade6` (feat)
 3. **Task 3: characterTree, placeTree, researchTree descriptions (D-09)** - `db1e2fb` (feat)
 
-**Plan metadata:** _(see final `docs(08-04)` commit after STATE/ROADMAP update)_
+**Plan metadata:** `b9f9064` (docs: complete plan — SUMMARY, STATE, ROADMAP, REQUIREMENTS)
 
 ## Files Created/Modified
 
