@@ -348,3 +348,12 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.2: Import Claude Desktop research into LeanQuill Research notes (BACKLOG)
+
+**Goal:** Author can bring external research produced in Claude Desktop into the project’s standardized Research notes: a **Research** sidebar import path, plus a **chat skill or agent** (following existing Research agent patterns) exposed on **all supported chat protocols**, so disparate exports consolidate into the same on-disk research format used elsewhere in LeanQuill.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
