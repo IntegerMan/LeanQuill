@@ -357,3 +357,12 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.3: Investigate LeanPub APIs for LeanQuill integration (BACKLOG)
+
+**Goal:** Research LeanPub’s public APIs and integration surfaces to identify capabilities that align with LeanQuill — e.g. book/project management, preview generation workflows, and automation such as **GitHub (or repo) webhooks** — and document which options are viable candidates for future phases versus out of scope.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
