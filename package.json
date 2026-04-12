@@ -118,7 +118,7 @@
       },
       {
         "command": "leanquill.startImportResearch",
-        "title": "LeanQuill: Import External Research",
+        "title": "Import External Research",
         "category": "LeanQuill",
         "icon": "$(cloud-download)"
       },

@@ -241,7 +241,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // (writeHarnessEntryPoints is idempotent — skips existing files)
     void writeHarnessEntryPoints(rootPath).catch(() => { /* non-critical */ });
     // Backfill any bundled workflows missing from pre-upgrade workspaces (never overwrites)
-    void ensureLeanquillWorkflows(rootPath).catch(() => { /* non-critical */ });
+    void ensureLeanquillWorkflows(rootPath, safeFileSystem).catch(() => { /* non-critical */ });
   } else {
     safeFileSystem.allowPath(DEFAULT_THREADS_FOLDER, ".md");
     safeFileSystem.allowPath(DEFAULT_SETTINGS_FOLDER, ".md");

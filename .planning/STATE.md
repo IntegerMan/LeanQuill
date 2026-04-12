@@ -27,7 +27,7 @@ progress:
 
 ## Current Position
 
-Phase: 15 (import-claude-desktop-research) — EXECUTING
+Phase: 16 (Marketplace preview and publish pipeline) — PLANNING
 Plan: Not started
 
 - Phase 8 (Issue Capture, Triage, and Editor Signals) **complete** (2026-04-11); verification `08-VERIFICATION.md` status **passed**

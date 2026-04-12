@@ -230,21 +230,33 @@ const LEANQUILL_WORKFLOW_SPECS: ReadonlyArray<{ fileName: string; content: strin
 /**
  * Creates any missing bundled workflow files under `.leanquill/workflows/`.
  * Does not overwrite existing files (safe for customized or newer-on-disk copies).
+ * Uses an atomic exclusive-create write ('wx' flag) to avoid race conditions.
  */
-export async function ensureLeanquillWorkflows(rootPath: string): Promise<void> {
+export async function ensureLeanquillWorkflows(
+  rootPath: string,
+  safeFs: SafeFileSystem = new SafeFileSystem(rootPath),
+): Promise<void> {
   const workflowsDir = path.join(rootPath, ".leanquill", "workflows");
   let ensuredDir = false;
   for (const { fileName, content } of LEANQUILL_WORKFLOW_SPECS) {
     const target = path.join(workflowsDir, fileName);
-    const exists = await fs.stat(target).then(() => true).catch(() => false);
-    if (exists) {
-      continue;
-    }
     if (!ensuredDir) {
-      await fs.mkdir(workflowsDir, { recursive: true });
+      await safeFs.mkdir(workflowsDir);
       ensuredDir = true;
     }
-    await fs.writeFile(target, content, "utf8");
+    // Honour the SafeFileSystem boundary before writing.
+    if (!safeFs.canWrite(target, true)) {
+      throw new Error(`Blocked write outside LeanQuill boundary: ${target}`);
+    }
+    // Atomic no-clobber write: 'wx' flag fails with EEXIST if the file already
+    // exists, guaranteeing we never overwrite even under a concurrent write.
+    try {
+      await fs.writeFile(target, content, { encoding: "utf8", flag: "wx" });
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw err;
+      }
+    }
   }
 }
 
