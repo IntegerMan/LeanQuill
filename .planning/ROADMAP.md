@@ -366,3 +366,12 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.4: Marketplace preview release with docs and repeatable publish pipeline (BACKLOG)
+
+**Goal:** Ship the extension to the **Visual Studio Marketplace** as a **preview** with complete **documentation**, **getting-started** guidance, and all **marketplace/supporting artifacts** (listing copy, icons, license alignment, etc.), and establish **CI/CD** (or documented automation) so preview and future releases can be published **repeatably** with minimal manual friction.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
