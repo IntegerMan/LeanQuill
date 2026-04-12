@@ -218,16 +218,34 @@ For PDF, DOCX, or other formats you cannot read as text, ask the user to paste e
 Produce one markdown research note per import, matching \`research.md\` unless you are only returning text for manual save (D-11).
 `;
 
-/** Creates `.leanquill/workflows/import-external-research.md` when missing (pre–phase-15 workspaces only had research.md). */
-export async function ensureImportExternalResearchWorkflow(rootPath: string): Promise<void> {
+/**
+ * Canonical `.leanquill/workflows/*.md` files shipped with the extension.
+ * Add entries here when introducing new harness-backed workflows so activation backfill and fresh init stay in sync.
+ */
+const LEANQUILL_WORKFLOW_SPECS: ReadonlyArray<{ fileName: string; content: string }> = [
+  { fileName: "research.md", content: RESEARCH_WORKFLOW_CONTENT },
+  { fileName: "import-external-research.md", content: RESEARCH_IMPORT_WORKFLOW_CONTENT },
+];
+
+/**
+ * Creates any missing bundled workflow files under `.leanquill/workflows/`.
+ * Does not overwrite existing files (safe for customized or newer-on-disk copies).
+ */
+export async function ensureLeanquillWorkflows(rootPath: string): Promise<void> {
   const workflowsDir = path.join(rootPath, ".leanquill", "workflows");
-  const target = path.join(workflowsDir, "import-external-research.md");
-  const exists = await fs.stat(target).then(() => true).catch(() => false);
-  if (exists) {
-    return;
+  let ensuredDir = false;
+  for (const { fileName, content } of LEANQUILL_WORKFLOW_SPECS) {
+    const target = path.join(workflowsDir, fileName);
+    const exists = await fs.stat(target).then(() => true).catch(() => false);
+    if (exists) {
+      continue;
+    }
+    if (!ensuredDir) {
+      await fs.mkdir(workflowsDir, { recursive: true });
+      ensuredDir = true;
+    }
+    await fs.writeFile(target, content, "utf8");
   }
-  await fs.mkdir(workflowsDir, { recursive: true });
-  await fs.writeFile(target, RESEARCH_IMPORT_WORKFLOW_CONTENT, "utf8");
 }
 
 export async function writeHarnessEntryPoints(rootPath: string): Promise<void> {
@@ -522,16 +540,10 @@ async function initializeProject(rootPath: string, input: InitInput): Promise<{ 
   const projectYamlPath = path.join(rootPath, ".leanquill", "project.yaml");
   await safeFs.writeFile(projectYamlPath, projectYaml);
 
-  // Create canonical research workflow
   await safeFs.mkdir(path.join(rootPath, ".leanquill", "workflows"));
-  await safeFs.writeFile(
-    path.join(rootPath, ".leanquill", "workflows", "research.md"),
-    RESEARCH_WORKFLOW_CONTENT,
-  );
-  await safeFs.writeFile(
-    path.join(rootPath, ".leanquill", "workflows", "import-external-research.md"),
-    RESEARCH_IMPORT_WORKFLOW_CONTENT,
-  );
+  for (const { fileName, content } of LEANQUILL_WORKFLOW_SPECS) {
+    await safeFs.writeFile(path.join(rootPath, ".leanquill", "workflows", fileName), content);
+  }
 
   // Generate harness entry points (outside SafeFileSystem boundary — config files)
   await writeHarnessEntryPoints(rootPath);

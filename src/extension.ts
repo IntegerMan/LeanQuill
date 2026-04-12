@@ -21,7 +21,7 @@ import { handleOpenQuestionWorkspaceDelete, handleOpenQuestionWorkspaceRename } 
 import { SafeFileSystem } from "./safeFileSystem";
 import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlForSetup } from "./projectConfig";
 import { buildHarnessDraftQuery, buildHarnessFallbackHint } from "./harnessChatDraft";
-import { ensureImportExternalResearchWorkflow, migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
+import { ensureLeanquillWorkflows, migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
 import { ResearchTreeProvider, type ResearchItem } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
 import { PlaceTreeProvider } from "./placeTree";
@@ -240,8 +240,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Ensure harness entry points exist for projects initialized before phase 12
     // (writeHarnessEntryPoints is idempotent — skips existing files)
     void writeHarnessEntryPoints(rootPath).catch(() => { /* non-critical */ });
-    // Import workflow was added in phase 15 — backfill for existing workspaces that only have research.md
-    void ensureImportExternalResearchWorkflow(rootPath).catch(() => { /* non-critical */ });
+    // Backfill any bundled workflows missing from pre-upgrade workspaces (never overwrites)
+    void ensureLeanquillWorkflows(rootPath).catch(() => { /* non-critical */ });
   } else {
     safeFileSystem.allowPath(DEFAULT_THREADS_FOLDER, ".md");
     safeFileSystem.allowPath(DEFAULT_SETTINGS_FOLDER, ".md");
