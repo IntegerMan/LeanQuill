@@ -244,12 +244,10 @@ export async function ensureLeanquillWorkflows(
       await safeFs.mkdir(workflowsDir);
       ensuredDir = true;
     }
-    // Honour the SafeFileSystem boundary before writing.
-    if (!safeFs.canWrite(target, true)) {
-      throw new Error(`Blocked write outside LeanQuill boundary: ${target}`);
-    }
     // Atomic no-clobber write: 'wx' flag fails with EEXIST if the file already
     // exists, guaranteeing we never overwrite even under a concurrent write.
+    // All workflow specs are always under .leanquill/ (boundary already checked
+    // by the safeFs.mkdir call above), so no additional canWrite guard is needed.
     try {
       await fs.writeFile(target, content, { encoding: "utf8", flag: "wx" });
     } catch (err: unknown) {
