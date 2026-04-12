@@ -22,6 +22,8 @@
 | 12 | Standardized Research Workflow and Results Repository | Author can capture standardized research findings and store them in a consistent project repository for later planning and drafting use | RES-01, RES-02 | 2 criteria |
 | 13 | LeanPub Workspace Initialization | Author can initialize a LeanPub workspace with manuscript scaffold from the sidebar | INIT-01, INIT-02 | 3 criteria |
 | 14 | Open Questions | Author can create open-question notes associated with the book, characters, threads, places, manuscript files, or text selections — with list, navigation, and status updates. | ISSUE-01 (partial), ISSUE-02 (partial) | 4 criteria |
+| 15 | Import Claude Desktop research | Author can bring external research produced in Claude Desktop into the project’s standardized Research notes via a Research sidebar import path and a chat skill or agent on all supported protocols, consolidating into the same on-disk research format | TBD | TBD |
+| 16 | Marketplace preview and publish pipeline | Author can install a VS Code Marketplace **preview** with documentation, getting-started guidance, and supporting listing artifacts; CI/CD or documented automation makes preview and future releases repeatable | TBD | TBD |
 
 ## Phases
 
@@ -38,8 +40,9 @@
 - [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
 - [x] **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
 - [x] **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing. (completed 2026-04-09)
-- [x] **Phase 14: Open Questions** - Author-created open-question notes linked to book, characters, threads, places, or manuscript selections with list view, navigation, and status management.
- (completed 2026-04-10)
+- [x] **Phase 14: Open Questions** - Author-created open-question notes linked to book, characters, threads, places, or manuscript selections with list view, navigation, and status management. (completed 2026-04-10)
+- [ ] **Phase 15: Import Claude Desktop research** - Research sidebar import plus chat skill or agent across protocols into standardized research notes.
+- [ ] **Phase 16: Marketplace preview and publish pipeline** - Marketplace preview listing, docs, getting started, artifacts, and repeatable CI/CD.
 
 ## Phase Details
 
@@ -320,6 +323,36 @@ Plans:
 
 **Notes:** Promoted from backlog (999.1). Complements command-based init from Phase 1 with a discoverable sidebar path.
 
+---
+
+### Phase 15: Import Claude Desktop research into LeanQuill Research notes
+
+**Goal:** Author can bring external research produced in Claude Desktop into the project’s standardized Research notes: a **Research** sidebar import path, plus a **chat skill or agent** (following existing Research agent patterns) exposed on **all supported chat protocols**, so disparate exports consolidate into the same on-disk research format used elsewhere in LeanQuill.
+**UI hint:** yes
+**Depends on:** Phase 12
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 15 to break down)
+
+**Notes:** Promoted from backlog (999.2).
+
+---
+
+### Phase 16: Marketplace preview release with docs and repeatable publish pipeline
+
+**Goal:** Ship the extension to the **Visual Studio Marketplace** as a **preview** with complete **documentation**, **getting-started** guidance, and all **marketplace/supporting artifacts** (listing copy, icons, license alignment, etc.), and establish **CI/CD** (or documented automation) so preview and future releases can be published **repeatably** with minimal manual friction.
+**UI hint:** yes
+**Depends on:** Phase 1
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 16 to break down)
+
+**Notes:** Promoted from backlog (999.4).
+
 ## Progress Table
 
 | Phase | Plans Complete | Status | Completed |
@@ -337,6 +370,8 @@ Plans:
 | 12. Standardized Research Workflow and Results Repository | 2/2 | Completed | 2026-04-05 |
 | 14. Open Questions | 6/6 | Completed | 2026-04-09 |
 | 14. Open Questions | 0/6 | Not started | - |
+| 15. Import Claude Desktop research | 0/0 | Not started | - |
+| 16. Marketplace preview and publish pipeline | 0/0 | Not started | - |
 
 ## Backlog
 
@@ -349,27 +384,9 @@ Plans:
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
-### Phase 999.2: Import Claude Desktop research into LeanQuill Research notes (BACKLOG)
-
-**Goal:** Author can bring external research produced in Claude Desktop into the project’s standardized Research notes: a **Research** sidebar import path, plus a **chat skill or agent** (following existing Research agent patterns) exposed on **all supported chat protocols**, so disparate exports consolidate into the same on-disk research format used elsewhere in LeanQuill.
-**Requirements:** TBD
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
 ### Phase 999.3: Investigate LeanPub APIs for LeanQuill integration (BACKLOG)
 
 **Goal:** Research LeanPub’s public APIs and integration surfaces to identify capabilities that align with LeanQuill — e.g. book/project management, preview generation workflows, and automation such as **GitHub (or repo) webhooks** — and document which options are viable candidates for future phases versus out of scope.
-**Requirements:** TBD
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
-
-### Phase 999.4: Marketplace preview release with docs and repeatable publish pipeline (BACKLOG)
-
-**Goal:** Ship the extension to the **Visual Studio Marketplace** as a **preview** with complete **documentation**, **getting-started** guidance, and all **marketplace/supporting artifacts** (listing copy, icons, license alignment, etc.), and establish **CI/CD** (or documented automation) so preview and future releases can be published **repeatably** with minimal manual friction.
 **Requirements:** TBD
 **Plans:** 0 plans
 
