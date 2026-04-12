@@ -218,6 +218,18 @@ For PDF, DOCX, or other formats you cannot read as text, ask the user to paste e
 Produce one markdown research note per import, matching \`research.md\` unless you are only returning text for manual save (D-11).
 `;
 
+/** Creates `.leanquill/workflows/import-external-research.md` when missing (pre–phase-15 workspaces only had research.md). */
+export async function ensureImportExternalResearchWorkflow(rootPath: string): Promise<void> {
+  const workflowsDir = path.join(rootPath, ".leanquill", "workflows");
+  const target = path.join(workflowsDir, "import-external-research.md");
+  const exists = await fs.stat(target).then(() => true).catch(() => false);
+  if (exists) {
+    return;
+  }
+  await fs.mkdir(workflowsDir, { recursive: true });
+  await fs.writeFile(target, RESEARCH_IMPORT_WORKFLOW_CONTENT, "utf8");
+}
+
 export async function writeHarnessEntryPoints(rootPath: string): Promise<void> {
   const copilotDir = path.join(rootPath, ".github", "agents");
   const copilotFile = path.join(copilotDir, "researcher.agent.md");
