@@ -168,13 +168,54 @@ sources: [<list of URLs or references used>]
 
 ## Harness Setup
 
-This workflow is invoked via harness-specific entry points:
+This workflow is invoked via harness-specific entry points. Prefer the **leanquill-researcher** entry points for new setups; older \`researcher\` files may still exist from earlier LeanQuill versions and are left untouched.
 
-- **Copilot:** \`.github/agents/researcher.agent.md\`
-- **Cursor:** \`.cursor/skills/researcher/SKILL.md\`
-- **Claude:** \`.claude/agents/researcher.md\`
+- **Copilot (legacy):** \`.github/agents/researcher.agent.md\`
+- **Cursor (legacy):** \`.cursor/skills/researcher/SKILL.md\`
+- **Claude (legacy):** \`.claude/agents/researcher.md\`
+- **Copilot (recommended):** \`.github/agents/leanquill-researcher.agent.md\`
+- **Cursor (recommended):** \`.cursor/skills/leanquill-researcher/SKILL.md\`
+- **Claude (recommended):** \`.claude/agents/leanquill-researcher.md\`
 
-All three entry points read this file and execute the process above.
+All entry points read this file (\`research.md\`) and execute the process above.
+`;
+
+const RESEARCH_IMPORT_WORKFLOW_CONTENT = `---
+name: LeanQuill Import External Research Workflow
+version: 1
+---
+
+# LeanQuill Import External Research Workflow
+
+Import external research (another AI session, PDF, document, or pasted notes) and normalize it into LeanQuill's structured research note format.
+
+## Canonical format
+
+1. Read \`.leanquill/workflows/research.md\` for the **Result File Format** — frontmatter keys \`name\`, \`query\`, \`created\`, \`tags\`, \`sources\` and body sections (**Summary**, **Sub-topics**, **Sources**, **Open Questions**, **Project Relevancy**). Your deliverable must follow that shape.
+
+2. Read \`.leanquill/project.yaml\` and resolve \`folders.research\` (relative to the workspace root). That directory is the save location for research \`.md\` files.
+
+## Normalization rules (D-07–D-12)
+
+- **D-07 — Map without dropping content:** Map external material into the Result File Format. Content that does not map cleanly still belongs in the file: park it under **Summary** and/or a \`### Imported content\` subsection so nothing is silently discarded.
+
+- **D-08 — \`created\`:** Use an ISO 8601 timestamp at import time unless the source provides an explicit, reliable date you can trust.
+
+- **D-09 — \`sources\`:** Include URLs or references when obvious; otherwise use an empty YAML list \`[]\`.
+
+- **D-10 — \`query\`:** Prefer the user's stated topic; otherwise infer from headings or opening lines. If still unclear, use a visible placeholder such as \`(import — topic to be confirmed)\`.
+
+- **D-11 — Save location:** Prefer writing the final \`.md\` under \`folders.research\`. If this environment cannot write files, output the complete markdown only and instruct the user to save it under that folder manually.
+
+- **D-12 — Collisions:** Before writing, list existing \`*.md\` files in \`folders.research\`. Name files \`{topic-slug}-{YYYY-MM-DD}.md\`. If that name exists, pick a new distinct slug (e.g. append \`-2\`, \`-alt\`) — **never overwrite** an existing file.
+
+## Binary or unreadable sources
+
+For PDF, DOCX, or other formats you cannot read as text, ask the user to paste excerpts or provide plain text so you can still apply the rules above.
+
+## Output
+
+Produce one markdown research note per import, matching \`research.md\` unless you are only returning text for manual save (D-11).
 `;
 
 export async function writeHarnessEntryPoints(rootPath: string): Promise<void> {
@@ -260,10 +301,163 @@ Name the file \`{topic-slug}-{YYYY-MM-DD}.md\` and save it inside the \`folders.
 **Do not save files to the workspace root or any other location. Always save inside the research folder.**
 `;
 
+  const copilotImportFile = path.join(copilotDir, "leanquill-import-research.agent.md");
+  const copilotImportContent = `---
+name: leanquill-import-research
+description: "LeanQuill-Import-Research — import external research and normalize it into LeanQuill research notes"
+tools: ['read', 'write', 'search', 'web']
+---
+
+You are the LeanQuill import-research agent.
+
+## Your job
+
+Normalize external research into a single structured markdown file per the LeanQuill import workflow.
+
+## Step 1 — Find the research folder
+
+Read \`.leanquill/project.yaml\` and extract \`folders.research\`. That path is relative to the workspace root (default \`research/leanquill/\`).
+
+## Step 2 — Follow the canonical import workflow
+
+Read \`.leanquill/workflows/import-external-research.md\` first, then perform import normalization exactly as described there (including D-07–D-12). Do not substitute a different workflow file.
+
+## Step 3 — Save or hand off
+
+Write the result under \`folders.research\` when possible; otherwise output markdown for the user to save manually, as the workflow specifies.
+`;
+
+  const cursorImportDir = path.join(rootPath, ".cursor", "skills", "leanquill-import-research");
+  const cursorImportFile = path.join(cursorImportDir, "SKILL.md");
+  const cursorImportContent = `---
+name: leanquill-import-research
+description: "LeanQuill-Import-Research — import external research and normalize it into LeanQuill research notes"
+---
+
+<cursor_skill_adapter>
+## A. Skill Invocation
+- This skill is invoked when the user mentions \`leanquill-import-research\` or asks to import external research into LeanQuill.
+- Treat all user text after the skill mention as the import context (source text, file paths, or instructions).
+
+## B. Execution
+Read \`.leanquill/workflows/import-external-research.md\` first, then follow it end-to-end. Read \`folders.research\` from \`.leanquill/project.yaml\` before saving.
+</cursor_skill_adapter>
+`;
+
+  const claudeImportFile = path.join(claudeDir, "leanquill-import-research.md");
+  const claudeImportContent = `---
+name: leanquill-import-research
+description: "LeanQuill-Import-Research — import external research and normalize it into LeanQuill research notes"
+tools: Read, Write, Edit, Bash, Grep, Glob, WebSearch, WebFetch
+---
+
+You are the LeanQuill import-research agent.
+
+## Your job
+
+Normalize external research into a single structured markdown file per the LeanQuill import workflow.
+
+## Step 1 — Find the research folder
+
+Read \`.leanquill/project.yaml\` and extract \`folders.research\`.
+
+## Step 2 — Follow the canonical import workflow
+
+Read \`.leanquill/workflows/import-external-research.md\` first, then perform import normalization exactly as described there. Do not substitute a different workflow file.
+
+## Step 3 — Save or hand off
+
+Write the result under \`folders.research\` when possible; otherwise output markdown for the user to save manually, as the workflow specifies.
+`;
+
+  const copilotLqResearcherFile = path.join(copilotDir, "leanquill-researcher.agent.md");
+  const copilotLqResearcherContent = `---
+name: leanquill-researcher
+description: "LeanQuill-Researcher — run the LeanQuill research workflow with web search and structured research notes"
+tools: ['read', 'write', 'search', 'web']
+---
+
+You are the LeanQuill research agent.
+
+## Your job
+
+Research the given topic using web search and produce a structured markdown result file saved to the project's research folder.
+
+## Step 1 — Find the research folder
+
+Read \`.leanquill/project.yaml\` and extract \`folders.research\`. Default is \`research/leanquill/\`.
+
+## Step 2 — Follow the canonical workflow
+
+Read \`.leanquill/workflows/research.md\` for the full research process and output format.
+
+## Step 3 — Save the result file
+
+Name the file \`{topic-slug}-{YYYY-MM-DD}.md\` and save it inside \`folders.research\`.
+
+**Do not save files to the workspace root or any other location. Always save inside the research folder.**
+`;
+
+  const cursorLqResearcherDir = path.join(rootPath, ".cursor", "skills", "leanquill-researcher");
+  const cursorLqResearcherFile = path.join(cursorLqResearcherDir, "SKILL.md");
+  const cursorLqResearcherContent = `---
+name: leanquill-researcher
+description: "LeanQuill-Researcher — run the LeanQuill research workflow with web search and structured research notes"
+---
+
+<cursor_skill_adapter>
+## A. Skill Invocation
+- This skill is invoked when the user mentions \`leanquill-researcher\` or asks for LeanQuill research for their book.
+- Treat all user text after the skill mention as the research query.
+
+## B. Find the research folder
+Read \`.leanquill/project.yaml\` and extract \`folders.research\`. Save the result file there.
+
+## C. Execution
+Read \`.leanquill/workflows/research.md\` for the full research process and output format.
+Save the result file as \`{topic-slug}-{YYYY-MM-DD}.md\` inside the \`folders.research\` directory.
+Do not save files anywhere else — always use the research folder from project.yaml.
+</cursor_skill_adapter>
+`;
+
+  const claudeLqResearcherFile = path.join(claudeDir, "leanquill-researcher.md");
+  const claudeLqResearcherContent = `---
+name: leanquill-researcher
+description: "LeanQuill-Researcher — run the LeanQuill research workflow with web search and structured research notes"
+tools: Read, Write, Edit, Bash, Grep, Glob, WebSearch, WebFetch
+---
+
+You are the LeanQuill research agent.
+
+## Your job
+
+Research the given topic and produce a structured markdown result file saved to the project's research folder.
+
+## Step 1 — Find the research folder
+
+Read \`.leanquill/project.yaml\` and extract \`folders.research\`.
+
+## Step 2 — Follow the canonical workflow
+
+Read \`.leanquill/workflows/research.md\` for the full research process and output format.
+
+## Step 3 — Save the result file
+
+Name the file \`{topic-slug}-{YYYY-MM-DD}.md\` and save it inside \`folders.research\`.
+
+**Do not save files to the workspace root or any other location. Always save inside the research folder.**
+`;
+
   const entries: Array<{ file: string; dir: string; content: string }> = [
     { file: copilotFile, dir: copilotDir, content: copilotContent },
     { file: cursorFile, dir: cursorDir, content: cursorContent },
     { file: claudeFile, dir: claudeDir, content: claudeContent },
+    { file: copilotImportFile, dir: copilotDir, content: copilotImportContent },
+    { file: cursorImportFile, dir: cursorImportDir, content: cursorImportContent },
+    { file: claudeImportFile, dir: claudeDir, content: claudeImportContent },
+    { file: copilotLqResearcherFile, dir: copilotDir, content: copilotLqResearcherContent },
+    { file: cursorLqResearcherFile, dir: cursorLqResearcherDir, content: cursorLqResearcherContent },
+    { file: claudeLqResearcherFile, dir: claudeDir, content: claudeLqResearcherContent },
   ];
 
   for (const { file, dir, content } of entries) {
@@ -321,6 +515,10 @@ async function initializeProject(rootPath: string, input: InitInput): Promise<{ 
   await safeFs.writeFile(
     path.join(rootPath, ".leanquill", "workflows", "research.md"),
     RESEARCH_WORKFLOW_CONTENT,
+  );
+  await safeFs.writeFile(
+    path.join(rootPath, ".leanquill", "workflows", "import-external-research.md"),
+    RESEARCH_IMPORT_WORKFLOW_CONTENT,
   );
 
   // Generate harness entry points (outside SafeFileSystem boundary — config files)

@@ -23,7 +23,7 @@
 | 12  | Standardized Research Workflow and Results Repository | Author can capture standardized research findings and store them in a consistent project repository for later planning and drafting use                                                                                                                   | RES-01, RES-02                                  | 2 criteria       |
 | 13  | LeanPub Workspace Initialization                      | Author can initialize a LeanPub workspace with manuscript scaffold from the sidebar                                                                                                                                                                       | INIT-01, INIT-02                                | 3 criteria       |
 | 14  | Open Questions                                        | Author can create open-question notes associated with the book, characters, threads, places, manuscript files, or text selections — with list, navigation, and status updates.                                                                            | ISSUE-01 (partial), ISSUE-02 (partial)          | 4 criteria       |
-| 15  | Import Claude Desktop research                        | Author can bring external research produced in Claude Desktop into the project’s standardized Research notes via a Research sidebar import path and a chat skill or agent on all supported protocols, consolidating into the same on-disk research format | TBD                                             | TBD (see phase plans) |
+| 15  | Import Claude Desktop research                        | 4/4 | Complete    | 2026-04-12 |
 | 16  | Marketplace preview and publish pipeline              | Author can install a VS Code Marketplace **preview** with documentation, getting-started guidance, and supporting listing artifacts; CI/CD or documented automation makes preview and future releases repeatable                                          | TBD                                             | TBD              |
 
 
@@ -356,14 +356,14 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 12
 **Requirements:** TBD
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 
-- [ ] 15-01-PLAN.md — Canonical `import-external-research` workflow + three harness entry points (`leanquill-import-research`) in `initialize.ts` / `writeHarnessEntryPoints`
-- [ ] 15-02-PLAN.md — `harnessChatDraft.ts`, `leanquill.startImportResearch`, `package.json` view title + activation + Research `viewsWelcome`
-- [ ] 15-03-PLAN.md — D-05 `leanquill-researcher` harness trio + chat draft/fallback alignment (parallel files; no auto-migration of legacy `researcher` paths)
-- [ ] 15-04-PLAN.md — Unit tests for draft helpers + `15-VERIFICATION.md` manual UAT checklist (checkpoint)
+- [x] 15-01-PLAN.md — Canonical `import-external-research` workflow + three harness entry points (`leanquill-import-research`) in `initialize.ts` / `writeHarnessEntryPoints`
+- [x] 15-02-PLAN.md — `harnessChatDraft.ts`, `leanquill.startImportResearch`, `package.json` view title + activation + Research `viewsWelcome`
+- [x] 15-03-PLAN.md — D-05 `leanquill-researcher` harness trio + chat draft/fallback alignment (parallel files; no auto-migration of legacy `researcher` paths)
+- [x] 15-04-PLAN.md — Unit tests for draft helpers + `15-VERIFICATION.md` manual UAT checklist (checkpoint)
 
 **Notes:** Promoted from backlog (999.2).
 
