@@ -6,40 +6,45 @@
 
 ## Summary Table
 
-| # | Phase | Goal | Requirements | Success Criteria |
-|---|-------|------|--------------|------------------|
-| 1 | Foundation and Safe Init | Author can bootstrap a LeanQuill project on a reliable local-first foundation with enforced file safety boundaries | INIT-01, INIT-02 | 3 criteria |
-| 2 | Core Chapter Workflow | Author can navigate chapters, open files, and manage chapter state from VS Code sidebars | CHAP-01, CHAP-02, CHAP-03, CHAP-04 | 4 criteria |
-| 3 | Outline and Beat Planning | Author can plan long-form structure in a dedicated Scrivener-style planning workspace | PLAN-01, PLAN-02 | 3 criteria |
-| 4 | Character Reference | Author can manage character profiles in the planning workspace Characters tab | CHAR-01 | 2 criteria |
-| 5 | Place and Setting Reference | Author can manage place and setting profiles in the planning workspace Places tab | PLACE-01 | 2 criteria |
-| 6 | Threads and Themes | Author can manage narrative threads and thematic arcs in the planning workspace Threads tab | THREAD-01 | 2 criteria |
-| 7 | Global Knowledge Reference | Author can continuously consult and edit project knowledge notes during planning and drafting | KNOW-01, KNOW-02, KNOW-03 | 3 criteria |
-| 8 | Issue Capture, Triage, and Editor Signals | Author can capture editorial and research concerns, triage them over time, and resolve them in-context inside the editor. | ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03 | 5 criteria |
-| 9 | AI Safety Rails and Persona Baseline | Project is AI-ready with explicit persona configuration and manuscript write-block protections established | PER-01 | 3 criteria |
-| 10 | AI Review and Advisory Workflows | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability | AIR-01, AIR-02, AIR-03, ISSUE-05 | 5 criteria |
-| 11 | Outline and Card Usability Improvements | Author can insert, remove, reorder cards and update outline hierarchy from planning views | PLAN-02 | 3 criteria |
-| 12 | Standardized Research Workflow and Results Repository | Author can capture standardized research findings and store them in a consistent project repository for later planning and drafting use | RES-01, RES-02 | 2 criteria |
-| 13 | LeanPub Workspace Initialization | Author can initialize a LeanPub workspace with manuscript scaffold from the sidebar | INIT-01, INIT-02 | 3 criteria |
-| 14 | Open Questions | Author can create open-question notes associated with the book, characters, threads, places, manuscript files, or text selections — with list, navigation, and status updates. | ISSUE-01 (partial), ISSUE-02 (partial) | 4 criteria |
+
+| #   | Phase                                                 | Goal                                                                                                                                                                                                                                                      | Requirements                                    | Success Criteria |
+| --- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------- |
+| 1   | Foundation and Safe Init                              | Author can bootstrap a LeanQuill project on a reliable local-first foundation with enforced file safety boundaries                                                                                                                                        | INIT-01, INIT-02                                | 3 criteria       |
+| 2   | Core Chapter Workflow                                 | Author can navigate chapters, open files, and manage chapter state from VS Code sidebars                                                                                                                                                                  | CHAP-01, CHAP-02, CHAP-03, CHAP-04              | 4 criteria       |
+| 3   | Outline and Beat Planning                             | Author can plan long-form structure in a dedicated Scrivener-style planning workspace                                                                                                                                                                     | PLAN-01, PLAN-02                                | 3 criteria       |
+| 4   | Character Reference                                   | Author can manage character profiles in the planning workspace Characters tab                                                                                                                                                                             | CHAR-01                                         | 2 criteria       |
+| 5   | Place and Setting Reference                           | Author can manage place and setting profiles in the planning workspace Places tab                                                                                                                                                                         | PLACE-01                                        | 2 criteria       |
+| 6   | Threads and Themes                                    | Author can manage narrative threads and thematic arcs in the planning workspace Threads tab                                                                                                                                                               | THREAD-01                                       | 2 criteria       |
+| 7   | Global Knowledge Reference                            | Author can continuously consult and edit project knowledge notes during planning and drafting                                                                                                                                                             | KNOW-01, KNOW-02, KNOW-03                       | 3 criteria       |
+| 8   | Issue Capture, Triage, and Editor Signals             | Author can capture editorial and research concerns, triage them over time, and resolve them in-context inside the editor.                                                                                                                                 | ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, PLAN-03 | 5 criteria       |
+| 9   | AI Safety Rails and Persona Baseline                  | Project is AI-ready with explicit persona configuration and manuscript write-block protections established                                                                                                                                                | PER-01                                          | 3 criteria       |
+| 10  | AI Review and Advisory Workflows                      | Author can run persona reviews, issue-focused AI discussions, and story intelligence updates with auditability                                                                                                                                            | AIR-01, AIR-02, AIR-03, ISSUE-05                | 5 criteria       |
+| 11  | Outline and Card Usability Improvements               | Author can insert, remove, reorder cards and update outline hierarchy from planning views                                                                                                                                                                 | PLAN-02                                         | 3 criteria       |
+| 12  | Standardized Research Workflow and Results Repository | Author can capture standardized research findings and store them in a consistent project repository for later planning and drafting use                                                                                                                   | RES-01, RES-02                                  | 2 criteria       |
+| 13  | LeanPub Workspace Initialization                      | Author can initialize a LeanPub workspace with manuscript scaffold from the sidebar                                                                                                                                                                       | INIT-01, INIT-02                                | 3 criteria       |
+| 14  | Open Questions                                        | Author can create open-question notes associated with the book, characters, threads, places, manuscript files, or text selections — with list, navigation, and status updates.                                                                            | ISSUE-01 (partial), ISSUE-02 (partial)          | 4 criteria       |
+| 15  | Import Claude Desktop research                        | Author can import Claude Desktop research into the planning workflow for later review and use                                                                                                                                                             | TBD                                             | TBD              |
+| 16  | Marketplace preview and publish pipeline              | Author can install a VS Code Marketplace **preview** with documentation, getting-started guidance, and supporting listing artifacts; CI/CD or documented automation makes preview and future releases repeatable                                          | TBD                                             | TBD              |
+
 
 ## Phases
 
-- [x] **Phase 1: Foundation and Safe Init** - Scaffold LeanQuill files, chapter ordering detection, and safe IO boundaries.
-- [x] **Phase 2: Core Chapter Workflow** - Deliver chapter tree navigation and chapter context basics.
-- [x] **Phase 3: Outline and Beat Planning** - Deliver standalone Scrivener-style planning webview.
-- [x] **Phase 4: Character Reference** - Populate Characters tab with character profile management. (completed 2026-04-09)
-- [x] **Phase 5: Place and Setting Reference** - Populate Places tab with location/setting management. (completed 2026-04-09)
-- [x] **Phase 6: Threads and Themes** - Populate planning workspace with Themes + Threads tabs, `themes.yaml`, and thread markdown under `folders.threads`. (completed 2026-04-09)
-- [ ] **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
-- [x] **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators. (completed 2026-04-11)
-- [ ] **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
-- [ ] **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
-- [ ] **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
-- [x] **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
-- [x] **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing. (completed 2026-04-09)
-- [x] **Phase 14: Open Questions** - Author-created open-question notes linked to book, characters, threads, places, or manuscript selections with list view, navigation, and status management.
- (completed 2026-04-10)
+- **Phase 1: Foundation and Safe Init** - Scaffold LeanQuill files, chapter ordering detection, and safe IO boundaries.
+- **Phase 2: Core Chapter Workflow** - Deliver chapter tree navigation and chapter context basics.
+- **Phase 3: Outline and Beat Planning** - Deliver standalone Scrivener-style planning webview.
+- **Phase 4: Character Reference** - Populate Characters tab with character profile management. (completed 2026-04-09)
+- **Phase 5: Place and Setting Reference** - Populate Places tab with location/setting management. (completed 2026-04-09)
+- **Phase 6: Threads and Themes** - Populate planning workspace with Themes + Threads tabs, `themes.yaml`, and thread markdown under `folders.threads`. (completed 2026-04-09)
+- **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
+- **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators. (completed 2026-04-11)
+- **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
+- **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
+- **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
+- **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
+- **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing. (completed 2026-04-09)
+- **Phase 14: Open Questions** - Author-created open-question notes linked to book, characters, threads, places, or manuscript selections with list view, navigation, and status management. (completed 2026-04-10)
+- **Phase 15: Import Claude Desktop research** - Research sidebar import plus chat skill or agent across protocols into standardized research notes.
+- **Phase 16: Marketplace preview and publish pipeline** - Marketplace preview listing, docs, getting started, artifacts, and repeatable CI/CD.
 
 ## Phase Details
 
@@ -51,6 +56,7 @@
 **Requirements:** INIT-01, INIT-02
 
 **Success criteria:**
+
 1. Author runs a single initialize command and sees `.leanquill/` and `project.yaml` created with valid defaults.
 2. Chapter order is resolved from `Book.txt` when present, otherwise falls back automatically to alphabetical manuscript ordering.
 3. Unsafe write attempts targeting manuscript paths are blocked by the extension boundary and do not alter manuscript files.
@@ -68,12 +74,14 @@
 **Plans:** 4 plans
 
 Plans:
-- [x] 02-01-PLAN.md - Define chapter status contracts and persistence foundation.
-- [x] 02-02-PLAN.md - Build chapter tree provider with ordering, grouping, and open behavior.
-- [x] 02-03-PLAN.md - Build Chapter Context webview provider aligned to approved UI contract.
-- [x] 02-04-PLAN.md - Wire manifest and extension integration for end-to-end chapter workflow.
+
+- 02-01-PLAN.md - Define chapter status contracts and persistence foundation.
+- 02-02-PLAN.md - Build chapter tree provider with ordering, grouping, and open behavior.
+- 02-03-PLAN.md - Build Chapter Context webview provider aligned to approved UI contract.
+- 02-04-PLAN.md - Wire manifest and extension integration for end-to-end chapter workflow.
 
 **Success criteria:**
+
 1. Sidebar shows all chapters in project order with current status and open issue count per chapter.
 2. Clicking a chapter in the tree opens the linked manuscript file in the editor.
 3. Author can update chapter status inline from the tree or Chapter Context Pane and see the new status immediately.
@@ -92,12 +100,14 @@ Plans:
 **Plans:** 3 plans (1 descoped)
 
 Plans:
-- [x] 03-01-PLAN.md — Types, data store, and Book.txt sync foundation.
-- [x] 03-02-PLAN.md — Sidebar outline tree with drag-and-drop reordering.
-- [x] 03-03-PLAN.md — Planning webview panel with tabs and beat card grid.
+
+- 03-01-PLAN.md — Types, data store, and Book.txt sync foundation.
+- 03-02-PLAN.md — Sidebar outline tree with drag-and-drop reordering.
+- 03-03-PLAN.md — Planning webview panel with tabs and beat card grid.
 - [~] 03-04-PLAN.md — ~~Beat editor~~ (descoped — beats removed from scope). Extension wiring absorbed into plans 01-03.
 
 **Success criteria:**
+
 1. Author can open a Scrivener-style outline webview with hierarchical Parts -> Chapters.
 2. Author can drag and drop outline nodes and switch between outline and notecard views while preserving order/state.
 3. ~~For each beat, author can set what/who/where/why fields and toggle candidate vs committed status.~~ (descoped)
@@ -115,11 +125,13 @@ Plans:
 **Plans:** 3/3 plans complete
 
 Plans:
-- [x] 04-01-PLAN.md — CharacterProfile types, ProjectConfig.folders.characters, and characterStore CRUD + manuscript scanning.
-- [x] 04-02-PLAN.md — Characters tab HTML with list/detail layout and PlanningPanel message handlers.
-- [x] 04-03-PLAN.md — Extension wiring: SafeFileSystem allowance, manuscript watchers, and leanquill.newCharacter command.
+
+- 04-01-PLAN.md — CharacterProfile types, ProjectConfig.folders.characters, and characterStore CRUD + manuscript scanning.
+- 04-02-PLAN.md — Characters tab HTML with list/detail layout and PlanningPanel message handlers.
+- 04-03-PLAN.md — Extension wiring: SafeFileSystem allowance, manuscript watchers, and leanquill.newCharacter command.
 
 **Success criteria:**
+
 1. Author can open the Characters tab in the planning webview and create, edit, and organize character entries with author-defined fields.
 2. Character entries show which chapters and beats reference each character, giving the author visibility into character presence across the story.
 
@@ -136,12 +148,14 @@ Plans:
 **Plans:** 4/4 plans complete
 
 Plans:
-- [x] 05-01-PLAN.md — PlaceProfile, `folders.settings`, `placeStore` CRUD + tests (no scans).
-- [x] 05-02-PLAN.md — Hybrid linking: `scanManuscriptFileForPlaces` + `scanOutlineIndexForPlaces` + fixture tests (05-RESEARCH Option C).
-- [x] 05-03-PLAN.md — Places tab webview + `PlanningPanel` `place:*` handlers + `showPlace` (Characters-tab parity + beat id list).
-- [x] 05-04-PLAN.md — Extension wiring: SafeFs allowPath, watcher, outline/manuscript hooks, `leanquill.newPlace`.
+
+- 05-01-PLAN.md — PlaceProfile, `folders.settings`, `placeStore` CRUD + tests (no scans).
+- 05-02-PLAN.md — Hybrid linking: `scanManuscriptFileForPlaces` + `scanOutlineIndexForPlaces` + fixture tests (05-RESEARCH Option C).
+- 05-03-PLAN.md — Places tab webview + `PlanningPanel` `place:`* handlers + `showPlace` (Characters-tab parity + beat id list).
+- 05-04-PLAN.md — Extension wiring: SafeFs allowPath, watcher, outline/manuscript hooks, `leanquill.newPlace`.
 
 **Success criteria:**
+
 1. Author can open the Places tab in the planning webview and create, edit, and organize location/setting entries with author-defined fields.
 2. Place entries show which chapters and beats reference each location, giving the author visibility into setting usage across the story.
 
@@ -158,11 +172,13 @@ Plans:
 **Plans:** 3/3 plans complete
 
 Plans:
-- [x] 06-01-PLAN.md — ThreadProfile/ThemesDocument types, `folders.threads`, `themes.yaml` + `threadStore` + chapter picker helper + tests.
-- [x] 06-02-PLAN.md — Planning webview: Themes + Threads tabs (tab order D-05), HTML + `PlanningPanel` message handlers.
-- [x] 06-03-PLAN.md — Extension wiring: SafeFs threads path, watcher, `leanquill.newThread` / `leanquill.newTheme` commands.
+
+- 06-01-PLAN.md — ThreadProfile/ThemesDocument types, `folders.threads`, `themes.yaml` + `threadStore` + chapter picker helper + tests.
+- 06-02-PLAN.md — Planning webview: Themes + Threads tabs (tab order D-05), HTML + `PlanningPanel` message handlers.
+- 06-03-PLAN.md — Extension wiring: SafeFs threads path, watcher, `leanquill.newThread` / `leanquill.newTheme` commands.
 
 **Success criteria:**
+
 1. Author can open the **Themes** and **Threads** tabs in the planning webview and create, edit, and organize book-level theme framing and per-thread profiles with author-defined fields (per `06-CONTEXT.md`).
 2. Thread entries show which **chapter files** each thread touches (author-maintained `touchesChapters`); theme entries may optionally link to chapters only — visibility into how concepts and subplots weave through the narrative at **chapter** granularity (beats are not a linking unit in v1).
 
@@ -178,6 +194,7 @@ Plans:
 **Requirements:** KNOW-01, KNOW-02, KNOW-03
 
 **Success criteria:**
+
 1. Author can open a Global Knowledge Pane that renders parsed markdown from configured notes folders.
 2. Known entities (characters/locations) are clickable and navigate quickly to their source notes.
 3. Notes remain editable through the normal editing flow; planning-stage chapters do not force notes into read-only mode.
@@ -195,13 +212,15 @@ Plans:
 **Plans:** 5/5 plans executed
 
 Plans:
-- [x] 08-01-PLAN.md — Wave 0 tests: migration, filters, span resolve stubs + extended store/count tests.
-- [x] 08-02-PLAN.md — v3 migration, `.leanquill/issues/{type}/` store, full statuses, span resolver implementation.
-- [x] 08-03-PLAN.md — Dual-host master–detail UI: filters, dismiss, D-14 new issue, PLAN-03 research rows.
-- [x] 08-04-PLAN.md — Sidebar + outline **X Issues** active counts (D-09); Threads tab counts in 08-03.
-- [x] 08-05-PLAN.md — Extension wiring: migrate-on-activate, watcher, gutter controller, Issues at cursor (D-12 spike).
+
+- 08-01-PLAN.md — Wave 0 tests: migration, filters, span resolve stubs + extended store/count tests.
+- 08-02-PLAN.md — v3 migration, `.leanquill/issues/{type}/` store, full statuses, span resolver implementation.
+- 08-03-PLAN.md — Dual-host master–detail UI: filters, dismiss, D-14 new issue, PLAN-03 research rows.
+- 08-04-PLAN.md — Sidebar + outline **X Issues** active counts (D-09); Threads tab counts in 08-03.
+- 08-05-PLAN.md — Extension wiring: migrate-on-activate, watcher, gutter controller, Issues at cursor (D-12 spike).
 
 **Success criteria:**
+
 1. Author can create issue records manually as chapter-attached or project-wide using the full issue schema.
 2. Author can triage issues as open, deferred, or dismissed (with optional rationale) and see status reflected immediately.
 3. Issue views can be filtered by open, deferred, dismissed, or all.
@@ -220,6 +239,7 @@ Plans:
 **Requirements:** PER-01
 
 **Success criteria:**
+
 1. Project contains a persona library in `.leanquill/personas/` with three packaged defaults (casual-reader, avid-genre-fan, copy-editor).
 2. Author can enable/disable personas per project through project configuration and include custom personas matching schema.
 3. AI tool execution surface is constrained so writes are allowed only in approved `.leanquill/` targets, never manuscript paths.
@@ -234,6 +254,7 @@ Plans:
 **Requirements:** AIR-01, AIR-02, AIR-03, ISSUE-05
 
 **Success criteria:**
+
 1. Author can trigger chapter review from chapter tree or chat command and receive timestamped issue-session output plus chat log.
 2. Author can run post-write story intelligence update that adds note backlinks for entities/events without modifying manuscript files.
 3. Author can right-click an issue and open a focused "Chat about this" conversation scoped to that issue and relevant chapter context.
@@ -250,7 +271,8 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 11 to break down)
+
+- TBD (run /gsd-plan-phase 11 to break down)
 
 ---
 
@@ -263,10 +285,12 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [x] 12-01-PLAN.md — Config foundation, schema v2 migration, SafeFileSystem extension for research folder.
-- [x] 12-02-PLAN.md — Research sidebar TreeView, quick-start button, extension wiring.
+
+- 12-01-PLAN.md — Config foundation, schema v2 migration, SafeFileSystem extension for research folder.
+- 12-02-PLAN.md — Research sidebar TreeView, quick-start button, extension wiring.
 
 **Success criteria:**
+
 1. Extension manages a research folder at configurable path (default research/leanquill/) with automatic schema migration from v1 to v2.
 2. Sidebar Research section lists detected research markdown files with name and creation date; clicking opens them in the editor.
 3. Plus button on Research section opens AI chat pre-populated with the appropriate research invocation command for the active harness.
@@ -282,14 +306,16 @@ Plans:
 **Plans:** 6/6 plans complete
 
 Plans:
-- [x] 14-01-PLAN.md — Wave 0 tests: `openQuestionStore` + chapter open-count helpers (ISSUE-01/02 partial, D-03).
-- [x] 14-02-PLAN.md — Types, `openQuestionStore`, `writeChapterStatusEntry` pitfall fix, green unit tests.
-- [x] 14-03-PLAN.md — Shared `openQuestionsHtml` (14-UI-SPEC, D-02 protocol).
-- [x] 14-04-PLAN.md — Planning workspace Open questions tab + handlers (D-01, D-02).
-- [x] 14-05-PLAN.md — Panel `WebviewViewProvider` + `package.json` panel container (D-02).
-- [x] 14-06-PLAN.md — Commands, context menus, outline row counts (D-03/D-04), navigation (D-05), watchers.
+
+- 14-01-PLAN.md — Wave 0 tests: `openQuestionStore` + chapter open-count helpers (ISSUE-01/02 partial, D-03).
+- 14-02-PLAN.md — Types, `openQuestionStore`, `writeChapterStatusEntry` pitfall fix, green unit tests.
+- 14-03-PLAN.md — Shared `openQuestionsHtml` (14-UI-SPEC, D-02 protocol).
+- 14-04-PLAN.md — Planning workspace Open questions tab + handlers (D-01, D-02).
+- 14-05-PLAN.md — Panel `WebviewViewProvider` + `package.json` panel container (D-02).
+- 14-06-PLAN.md — Commands, context menus, outline row counts (D-03/D-04), navigation (D-05), watchers.
 
 **Success criteria:**
+
 1. Author can create open-question notes and associate them with nothing (book-wide), a character, a thread, a place, a manuscript file, or a specific text selection from a manuscript file.
 2. Author can view a consolidated issues list showing all open questions with their association context.
 3. Author can navigate from the issues list to the associated entity or manuscript location.
@@ -308,35 +334,76 @@ Plans:
 **Plans:** 4/4 plans complete
 
 Plans:
-- [x] 13-01-PLAN.md — Project.yaml Setup validation + `leanpubScaffold` module (Book.txt/ch1 rules, D-05/D-07/D-11/D-18).
-- [x] 13-02-PLAN.md — `setWorkspaceContext` keys + `package.json` viewsWelcome readiness gating (D-02/D-04, copy partial D-03).
-- [x] 13-03-PLAN.md — `showCards`, unified `runInitializeFlow` (scaffold-only vs full init), extension wiring, chapter-order refresh (D-08–D-17, INIT-01/02).
-- [x] 13-04-PLAN.md — Unit tests (`leanpubScaffold`, `validateProjectYamlForSetup`) + D-03 copy audit.
+
+- 13-01-PLAN.md — Project.yaml Setup validation + `leanpubScaffold` module (Book.txt/ch1 rules, D-05/D-07/D-11/D-18).
+- 13-02-PLAN.md — `setWorkspaceContext` keys + `package.json` viewsWelcome readiness gating (D-02/D-04, copy partial D-03).
+- 13-03-PLAN.md — `showCards`, unified `runInitializeFlow` (scaffold-only vs full init), extension wiring, chapter-order refresh (D-08–D-17, INIT-01/02).
+- 13-04-PLAN.md — Unit tests (`leanpubScaffold`, `validateProjectYamlForSetup`) + D-03 copy audit.
 
 **Success criteria:**
+
 1. When the workspace lacks LeanPub manuscript scaffolding, the author can trigger initialization from the sidebar.
 2. Initialization creates `manuscript/`, a valid `Book.txt`, and at least one placeholder chapter file consistent with `Book.txt` ordering.
 3. Operation respects existing SafeFileSystem boundaries (no unsafe writes outside approved targets).
 
 **Notes:** Promoted from backlog (999.1). Complements command-based init from Phase 1 with a discoverable sidebar path.
 
+---
+
+### Phase 15: Import Claude Desktop research into LeanQuill Research notes
+
+**Goal:** Author can bring external research produced in Claude Desktop into the project’s standardized Research notes: a **Research** sidebar import path, plus a **chat skill or agent** (following existing Research agent patterns) exposed on **all supported chat protocols**, so disparate exports consolidate into the same on-disk research format used elsewhere in LeanQuill.
+**UI hint:** yes
+**Depends on:** Phase 12
+**Requirements:** TBD
+**Plans:** 4/4 plans complete
+
+Plans:
+
+- [x] 15-01-PLAN.md — Canonical `import-external-research` workflow + three harness entry points (`leanquill-import-research`) in `initialize.ts` / `writeHarnessEntryPoints`
+- [x] 15-02-PLAN.md — `harnessChatDraft.ts`, `leanquill.startImportResearch`, `package.json` view title + activation + Research `viewsWelcome`
+- [x] 15-03-PLAN.md — D-05 `leanquill-researcher` harness trio + chat draft/fallback alignment (parallel files; no auto-migration of legacy `researcher` paths)
+- [x] 15-04-PLAN.md — Unit tests for draft helpers + `15-VERIFICATION.md` manual UAT checklist (checkpoint)
+
+**Notes:** Promoted from backlog (999.2).
+
+---
+
+### Phase 16: Marketplace preview release with docs and repeatable publish pipeline
+
+**Goal:** Ship the extension to the **Visual Studio Marketplace** as a **preview** with complete **documentation**, **getting-started** guidance, and all **marketplace/supporting artifacts** (listing copy, icons, license alignment, etc.), and establish **CI/CD** (or documented automation) so preview and future releases can be published **repeatably** with minimal manual friction.
+**UI hint:** yes
+**Depends on:** Phase 1
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+
+- TBD (run /gsd-plan-phase 16 to break down)
+
+**Notes:** Promoted from backlog (999.4).
+
 ## Progress Table
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Foundation and Safe Init | 0/0 | Completed | 2026-03-29 |
-| 3. Outline and Beat Planning | 3/3 | Completed | 2026-04-05 |
-| 4. Character Reference | 3/3 | Completed | 2026-04-09 |
-| 5. Place and Setting Reference | 4/4 | Completed | 2026-04-09 |
-| 6. Threads and Themes | 3/3 | Completed | 2026-04-09 |
-| 7. Global Knowledge Reference | 0/0 | Not started | - |
-| 8. Issue Capture, Triage, and Editor Signals | 0/0 | Not started | - |
-| 9. AI Safety Rails and Persona Baseline | 0/0 | Not started | - |
-| 10. AI Review and Advisory Workflows | 0/0 | Not started | - |
-| 11. Outline and Card Usability Improvements | 0/0 | Not started | - |
-| 12. Standardized Research Workflow and Results Repository | 2/2 | Completed | 2026-04-05 |
-| 14. Open Questions | 6/6 | Completed | 2026-04-09 |
-| 14. Open Questions | 0/6 | Not started | - |
+
+| Phase                                                     | Plans Complete | Status      | Completed  |
+| --------------------------------------------------------- | -------------- | ----------- | ---------- |
+| 1. Foundation and Safe Init                               | 0/0            | Completed   | 2026-03-29 |
+| 3. Outline and Beat Planning                              | 3/3            | Completed   | 2026-04-05 |
+| 4. Character Reference                                    | 3/3            | Completed   | 2026-04-09 |
+| 5. Place and Setting Reference                            | 4/4            | Completed   | 2026-04-09 |
+| 6. Threads and Themes                                     | 3/3            | Completed   | 2026-04-09 |
+| 7. Global Knowledge Reference                             | 0/0            | Not started | -          |
+| 8. Issue Capture, Triage, and Editor Signals              | 0/0            | Not started | -          |
+| 9. AI Safety Rails and Persona Baseline                   | 0/0            | Not started | -          |
+| 10. AI Review and Advisory Workflows                      | 0/0            | Not started | -          |
+| 11. Outline and Card Usability Improvements               | 0/0            | Not started | -          |
+| 12. Standardized Research Workflow and Results Repository | 2/2            | Completed   | 2026-04-05 |
+| 14. Open Questions                                        | 6/6            | Completed   | 2026-04-09 |
+| 14. Open Questions                                        | 0/6            | Not started | -          |
+| 15. Import Claude Desktop research                        | 0/4            | Not started | -          |
+| 16. Marketplace preview and publish pipeline              | 0/0            | Not started | -          |
+
 
 ## Backlog
 
@@ -347,4 +414,16 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+- TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.3: Investigate LeanPub APIs for LeanQuill integration (BACKLOG)
+
+**Goal:** Research LeanPub’s public APIs and integration surfaces to identify capabilities that align with LeanQuill — e.g. book/project management, preview generation workflows, and automation such as **GitHub (or repo) webhooks** — and document which options are viable candidates for future phases versus out of scope.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+
+- TBD (promote with /gsd-review-backlog when ready)
+

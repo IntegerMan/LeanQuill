@@ -20,7 +20,8 @@ import { promptNewIssueTitleAndType } from "./promptNewIssue";
 import { handleOpenQuestionWorkspaceDelete, handleOpenQuestionWorkspaceRename } from "./openQuestionWorkspaceSync";
 import { SafeFileSystem } from "./safeFileSystem";
 import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlForSetup } from "./projectConfig";
-import { migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
+import { buildHarnessDraftQuery, buildHarnessFallbackHint } from "./harnessChatDraft";
+import { ensureLeanquillWorkflows, migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
 import { ResearchTreeProvider, type ResearchItem } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
 import { PlaceTreeProvider } from "./placeTree";
@@ -239,6 +240,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Ensure harness entry points exist for projects initialized before phase 12
     // (writeHarnessEntryPoints is idempotent — skips existing files)
     void writeHarnessEntryPoints(rootPath).catch(() => { /* non-critical */ });
+    // Backfill any bundled workflows missing from pre-upgrade workspaces (never overwrites)
+    void ensureLeanquillWorkflows(rootPath, safeFileSystem).catch(() => { /* non-critical */ });
   } else {
     safeFileSystem.allowPath(DEFAULT_THREADS_FOLDER, ".md");
     safeFileSystem.allowPath(DEFAULT_SETTINGS_FOLDER, ".md");
@@ -376,10 +379,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   issuesMarkdownWatcher.onDidChange(refreshIssuesAndGutter);
   issuesMarkdownWatcher.onDidDelete(refreshIssuesAndGutter);
 
-  const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
+  const openHarnessChat = async (kind: "research" | "import"): Promise<void> => {
     const appName = vscode.env.appName ?? "";
-    const isCursor = appName.toLowerCase().includes("cursor");
-    const hasCopilot = vscode.extensions.getExtension("github.copilot-chat") !== undefined;
+    const isCursorOrCopilot =
+      appName.toLowerCase().includes("cursor") || vscode.extensions.getExtension("github.copilot-chat") !== undefined;
 
     try {
       await vscode.commands.executeCommand("workbench.action.chat.newChat");
@@ -387,21 +390,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       // newChat not available on this version — fall through to open
     }
 
-    let query: string;
-    if (isCursor || hasCopilot) {
-      query = "@researcher ";
-    } else {
-      query = "Research: ";
-    }
+    const query = buildHarnessDraftQuery({ isCursorOrCopilot, kind });
 
     try {
       await vscode.commands.executeCommand("workbench.action.chat.open", { query, isPartialQuery: true });
     } catch {
-      await vscode.window.showInformationMessage(
-        "Open your AI chat and invoke the LeanQuill research workflow with your question. " +
-        "For Claude, use: /agent:researcher <your question>",
-      );
+      await vscode.window.showInformationMessage(buildHarnessFallbackHint(kind));
     }
+  };
+
+  const startResearchCommand = vscode.commands.registerCommand("leanquill.startResearch", async () => {
+    await openHarnessChat("research");
+  });
+
+  const startImportResearchCommand = vscode.commands.registerCommand("leanquill.startImportResearch", async () => {
+    await openHarnessChat("import");
   });
 
   const selectCharacterInPanelCommand = vscode.commands.registerCommand(
@@ -733,6 +736,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     settingsWatcher,
     issuesMarkdownWatcher,
     startResearchCommand,
+    startImportResearchCommand,
     newCharacterCommand,
     newPlaceCommand,
     newThreadCommand,

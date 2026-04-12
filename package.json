@@ -20,6 +20,7 @@
     "onView:leanquill.outlineTree",
     "onView:leanquill.chapterContext",
     "onView:leanquill.research",
+    "onCommand:leanquill.startImportResearch",
     "onView:leanquill.characters",
     "onView:leanquill.places",
     "onView:leanquill.openQuestionsPanel",
@@ -114,6 +115,12 @@
         "title": "New Research",
         "category": "LeanQuill",
         "icon": "$(add)"
+      },
+      {
+        "command": "leanquill.startImportResearch",
+        "title": "Import External Research",
+        "category": "LeanQuill",
+        "icon": "$(cloud-download)"
       },
       {
         "command": "leanquill.newCharacter",
@@ -318,6 +325,11 @@
           "group": "navigation"
         },
         {
+          "command": "leanquill.startImportResearch",
+          "when": "view == leanquill.research",
+          "group": "navigation@2"
+        },
+        {
           "command": "leanquill.newCharacter",
           "when": "view == leanquill.characters",
           "group": "navigation"
@@ -357,7 +369,7 @@
       },
       {
         "view": "leanquill.research",
-        "contents": "No research documents yet.\n\nUse the + button above to start your first research query, or ask your AI assistant to run the LeanQuill research workflow.",
+        "contents": "No research documents yet.\n\nUse the + (plus) button above for new research, or the Import title button / Import External Research command to import outside material. The extension does not send chat messages for you — it only opens chat with a starter prompt.",
         "when": "leanquill.workspaceLeanQuillReady"
       },
       {
