@@ -46,6 +46,8 @@ A tabbed editor panel with **Themes**, **Outline**, **Cards**, **Characters**, *
 
 ## Documentation
 
+[AGENTS.md](AGENTS.md) is the guide for AI coding agents (build commands, tests, style, and repo layout).
+
 | Doc | Contents |
 |-----|----------|
 | [Getting started](docs/getting-started.md) | Prerequisites, install, first-use steps |
