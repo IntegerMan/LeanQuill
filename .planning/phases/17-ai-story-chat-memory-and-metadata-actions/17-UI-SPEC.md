@@ -1,11 +1,11 @@
 ---
 phase: 17
 slug: ai-story-chat-memory-and-metadata-actions
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-04-25
-reviewed_at: null
+reviewed_at: "2026-04-25T20:16:00Z"
 ---
 
 # Phase 17 - UI Design Contract
