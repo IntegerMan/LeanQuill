@@ -239,6 +239,14 @@ Plans:
 **UI hint:** no
 **Depends on:** Phase 1, Phase 8
 **Requirements:** PER-01
+**Plans:** 4 plans
+
+Plans:
+
+- 09-01-PLAN.md — `ActivePersonaEntry` + `parseActivePersonas` in `projectConfig` with tests (D-04, PER-01b).
+- 09-02-PLAN.md — Packaged persona markdown (`personaDefaults.ts`), init + `renderProjectYaml` seeding, `ensureLeanquillDefaultPersonas` activation backfill (D-01–D-03, D-05, PER-01a).
+- 09-03-PLAN.md — `personaStore` load/validate/resolve + `getEnabledPersonasForProject` and tests (D-06, D-07, D-12–D-14, PER-01c).
+- 09-04-PLAN.md — Metadata apply `SafeFileSystem` hardening (D-09), contract tests, activation warnings + story chat read-only persona context + `project.yaml` empty-list backfill + docs (D-08, D-11, D-15, success criterion 3).
 
 **Success criteria:**
 
