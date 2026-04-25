@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import type { ProjectConfig } from "./projectConfig";
 import { readProjectConfigWithDefaults } from "./projectConfig";
-import type { SafeFileSystem } from "./safeFileSystem";
+import { SafeFileSystem } from "./safeFileSystem";
 import { validateMetadataAction } from "./metadataActionContract";
 import { appendMetadataActionLogEntry, type MetadataActionLogEntry } from "./metadataActionLog";
 import { createStoryMemory, supersedeStoryMemory, type StoryMemoryAssociation } from "./storyMemoryStore";
@@ -29,6 +29,42 @@ export function configuredMetadataWritableRoots(config: ProjectConfig): string[]
   ];
 }
 
+/** Mirrors extension activation allowPath rules for research/characters/threads/settings (manuscript guard + defaults). */
+export function configureProjectWritableRoots(safeFs: SafeFileSystem, rootPath: string, config: ProjectConfig): void {
+  void rootPath;
+  const DEFAULT_RESEARCH_FOLDER = "research/leanquill";
+  const DEFAULT_CHARACTERS_FOLDER = "notes/characters";
+  const DEFAULT_THREADS_FOLDER = "notes/threads";
+  const DEFAULT_SETTINGS_FOLDER = "notes/settings";
+
+  const researchFolderClean = config.folders.research.replace(/\/+$/, "");
+  const isResearchMs =
+    researchFolderClean === "manuscript" || researchFolderClean.startsWith("manuscript/");
+  const safeResearchFolder = isResearchMs ? DEFAULT_RESEARCH_FOLDER : researchFolderClean;
+  safeFs.allowPath(safeResearchFolder, ".md");
+
+  const charactersFolderRaw = config.folders.characters ?? DEFAULT_CHARACTERS_FOLDER;
+  const charactersFolderClean = charactersFolderRaw.replace(/\/+$/g, "");
+  const isCharsMs =
+    charactersFolderClean === "manuscript" || charactersFolderClean.startsWith("manuscript/");
+  const safeCharactersFolder = isCharsMs ? DEFAULT_CHARACTERS_FOLDER : charactersFolderClean;
+  safeFs.allowPath(safeCharactersFolder, ".md");
+
+  const threadsFolderRaw = config.folders.threads ?? DEFAULT_THREADS_FOLDER;
+  const threadsFolderClean = threadsFolderRaw.replace(/\/+$/g, "");
+  const isThreadsMs =
+    threadsFolderClean === "manuscript" || threadsFolderClean.startsWith("manuscript/");
+  const safeThreadsFolder = isThreadsMs ? DEFAULT_THREADS_FOLDER : threadsFolderClean;
+  safeFs.allowPath(safeThreadsFolder, ".md");
+
+  const settingsFolderRaw = config.folders.settings ?? DEFAULT_SETTINGS_FOLDER;
+  const settingsFolderClean = settingsFolderRaw.replace(/\/+$/g, "");
+  const isSettingsMs =
+    settingsFolderClean === "manuscript" || settingsFolderClean.startsWith("manuscript/");
+  const safeSettingsFolder = isSettingsMs ? DEFAULT_SETTINGS_FOLDER : settingsFolderClean;
+  safeFs.allowPath(safeSettingsFolder, ".md");
+}
+
 function absFromRoot(rootPath: string, rel: string): string {
   return path.join(rootPath, ...rel.split("/").filter(Boolean));
 }
@@ -46,14 +82,14 @@ function rawIds(raw: unknown): { actionId?: string; sourceChatId?: string } {
 
 async function logEntry(
   rootPath: string,
-  safeFs: SafeFileSystem,
+  fs: SafeFileSystem,
   partial: Pick<MetadataActionLogEntry, "actionId" | "sourceChatId" | "operation" | "targetPath" | "fieldPath" | "status" | "rationale" | "message">,
 ): Promise<void> {
   const entry: MetadataActionLogEntry = {
     timestamp: new Date().toISOString(),
     ...partial,
   };
-  await appendMetadataActionLogEntry(rootPath, safeFs, entry);
+  await appendMetadataActionLogEntry(rootPath, fs, entry);
 }
 
 function getCustomField(profile: { customFields: Record<string, string> }, key: string): string {
@@ -62,10 +98,13 @@ function getCustomField(profile: { customFields: Record<string, string> }, key: 
 
 export async function applyMetadataAction(
   rootPath: string,
-  safeFs: SafeFileSystem,
+  _safeFs: SafeFileSystem,
   rawAction: unknown,
 ): Promise<{ status: "applied" | "blocked" | "rejected"; message: string; actionId?: string }> {
+  void _safeFs;
   const config = await readProjectConfigWithDefaults(rootPath);
+  const opFs = new SafeFileSystem(rootPath, { denyManuscriptBookTxt: true });
+  configureProjectWritableRoots(opFs, rootPath, config);
   const configuredWritableRoots = configuredMetadataWritableRoots(config);
   const vr = validateMetadataAction(rawAction, { configuredWritableRoots });
 
@@ -74,7 +113,7 @@ export async function applyMetadataAction(
   if (!vr.ok) {
     const msg = vr.blockedReasons.length > 0 ? vr.blockedReasons.join("; ") : vr.errors.join("; ");
     if (ids.actionId && ids.sourceChatId) {
-      await logEntry(rootPath, safeFs, {
+      await logEntry(rootPath, opFs, {
         actionId: ids.actionId,
         sourceChatId: ids.sourceChatId,
         operation: String((rawAction as Record<string, unknown>).operation ?? ""),
@@ -93,7 +132,7 @@ export async function applyMetadataAction(
   const action = vr.action!;
 
   const reject = async (message: string): Promise<{ status: "rejected"; message: string; actionId?: string }> => {
-    await logEntry(rootPath, safeFs, {
+    await logEntry(rootPath, opFs, {
       actionId: action.actionId,
       sourceChatId: action.sourceChatId,
       operation: action.operation,
@@ -124,7 +163,7 @@ export async function applyMetadataAction(
         await createStoryMemory(
           { topic: nv.topic, body: nv.body, association: nv.association, sourceChatId: action.sourceChatId },
           rootPath,
-          safeFs,
+          opFs,
         );
         break;
       }
@@ -136,7 +175,7 @@ export async function applyMetadataAction(
         if (!nv || typeof nv.topic !== "string" || typeof nv.body !== "string") {
           return await reject("supersedeMemory newValue must include topic and body.");
         }
-        await supersedeStoryMemory(rootPath, safeFs, action.fieldPath[1], {
+        await supersedeStoryMemory(rootPath, opFs, action.fieldPath[1], {
           topic: nv.topic,
           body: nv.body,
           association: nv.association,
@@ -154,13 +193,13 @@ export async function applyMetadataAction(
         if (!nv || typeof nv.title !== "string" || !nv.association) {
           return await reject("createIssue newValue must include title and association.");
         }
-        const rec = await createOpenQuestion(safeFs, rootPath, {
+        const rec = await createOpenQuestion(opFs, rootPath, {
           title: nv.title,
           issueType: nv.issueType,
           association: nv.association as import("./types").OpenQuestionAssociation,
         });
         if (typeof nv.body === "string" && nv.body.length > 0) {
-          await saveOpenQuestion({ ...rec, body: nv.body }, rootPath, safeFs);
+          await saveOpenQuestion({ ...rec, body: nv.body }, rootPath, opFs);
         }
         break;
       }
@@ -179,7 +218,7 @@ export async function applyMetadataAction(
         if (!(await staleOk(async () => q.status))) {
           return await reject("This metadata action is out of date.");
         }
-        await saveOpenQuestion({ ...q, status: action.newValue as import("./types").OpenQuestionStatus }, rootPath, safeFs);
+        await saveOpenQuestion({ ...q, status: action.newValue as import("./types").OpenQuestionStatus }, rootPath, opFs);
         break;
       }
       case "set":
@@ -215,7 +254,7 @@ export async function applyMetadataAction(
               .join("\n");
           }
           profile.customFields[key] = nextVal;
-          await safeFs.writeFile(abs, serializeCharacterFile(profile));
+          await opFs.writeFile(abs, serializeCharacterFile(profile));
         } else if (rel.startsWith(placeRoot + "/") || rel === placeRoot) {
           const profile = parsePlaceFile(path.basename(action.targetPath), raw);
           const cur = getCustomField(profile as { customFields: Record<string, string> }, key);
@@ -236,7 +275,7 @@ export async function applyMetadataAction(
               .join("\n");
           }
           (profile as { customFields: Record<string, string> }).customFields[key] = nextVal;
-          await safeFs.writeFile(abs, serializePlaceFile(profile));
+          await opFs.writeFile(abs, serializePlaceFile(profile));
         } else if (rel.startsWith(threadRoot + "/") || rel === threadRoot) {
           const profile = parseThreadFile(path.basename(action.targetPath), raw);
           const cur = getCustomField(profile as { customFields: Record<string, string> }, key);
@@ -257,7 +296,7 @@ export async function applyMetadataAction(
               .join("\n");
           }
           (profile as { customFields: Record<string, string> }).customFields[key] = nextVal;
-          await safeFs.writeFile(abs, serializeThreadFile(profile));
+          await opFs.writeFile(abs, serializeThreadFile(profile));
         } else {
           return await reject("set/append/removeFromList supported only for character, place, or thread markdown roots.");
         }
@@ -276,7 +315,7 @@ export async function applyMetadataAction(
           ...(nv.bookCustomFields !== undefined ? { bookCustomFields: nv.bookCustomFields } : {}),
           ...(nv.centralThemes !== undefined ? { centralThemes: nv.centralThemes } : {}),
         };
-        await writeThemesDocument(rootPath, next, safeFs);
+        await writeThemesDocument(rootPath, next, opFs);
         break;
       }
       case "updateResearchAssociation": {
@@ -301,7 +340,7 @@ export async function applyMetadataAction(
           map[k] = v;
         }
         const fmOut = ["---", ...Object.entries(map).map(([k, v]) => `${k}: ${JSON.stringify(v)}`), "---"].join("\n");
-        await safeFs.writeFile(abs, `${fmOut}\n${body}`);
+        await opFs.writeFile(abs, `${fmOut}\n${body}`);
         break;
       }
       case "updateChatLogProvenance": {
@@ -330,14 +369,14 @@ export async function applyMetadataAction(
         ) {
           return await reject("This metadata action is out of date.");
         }
-        await saveStoryChatLogSummary(rootPath, safeFs, merged);
+        await saveStoryChatLogSummary(rootPath, opFs, merged);
         break;
       }
       default:
         return await reject("Unsupported operation.");
     }
 
-    await logEntry(rootPath, safeFs, {
+    await logEntry(rootPath, opFs, {
       actionId: action.actionId,
       sourceChatId: action.sourceChatId,
       operation: action.operation,
@@ -350,7 +389,7 @@ export async function applyMetadataAction(
     return { status: "applied", message: "Applied LeanQuill metadata action.", actionId: action.actionId };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
-    await logEntry(rootPath, safeFs, {
+    await logEntry(rootPath, opFs, {
       actionId: action.actionId,
       sourceChatId: action.sourceChatId,
       operation: action.operation,

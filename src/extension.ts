@@ -7,7 +7,15 @@ import { openNodeInEditor } from "./nodeEditor";
 import { generateBookTxt, writeBookTxt, detectExternalBookTxtEdit } from "./bookTxtSync";
 import { resolveChapterOrder } from "./chapterOrder";
 import { OutlineContextPaneProvider, buildNodeContext } from "./outlineContextPane";
-import { runInitializeFlow, shouldPromptInitialize } from "./initialize";
+import {
+  DEFAULT_ACTIVE_PERSONAS_YAML_BLOCK,
+  ensureLeanquillDefaultPersonas,
+  ensureLeanquillWorkflows,
+  migrateProjectYaml,
+  runInitializeFlow,
+  shouldPromptInitialize,
+  writeHarnessEntryPoints,
+} from "./initialize";
 import { readOutlineIndex, writeOutlineIndex, bootstrapOutline, findNodeById, removeNodeById } from "./outlineStore";
 import { OutlineTreeNode, OutlineOrphanNode, OutlineDataNode } from "./outlineTree";
 import { OutlineWebviewProvider } from "./outlineWebviewPanel";
@@ -19,7 +27,13 @@ import { createOpenQuestion, getOpenQuestion, listOpenQuestions } from "./openQu
 import { promptNewIssueTitleAndType } from "./promptNewIssue";
 import { handleOpenQuestionWorkspaceDelete, handleOpenQuestionWorkspaceRename } from "./openQuestionWorkspaceSync";
 import { SafeFileSystem } from "./safeFileSystem";
-import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlForSetup } from "./projectConfig";
+import {
+  parseActivePersonas,
+  readProjectConfig,
+  readProjectConfigWithDefaults,
+  readProjectYamlRaw,
+  validateProjectYamlForSetup,
+} from "./projectConfig";
 import { buildHarnessDraftQuery, buildHarnessFallbackHint, buildStoryChatDraftQuery } from "./harnessChatDraft";
 import {
   buildStoryChatContextBundle,
@@ -30,7 +44,8 @@ import {
 import { listStoryMemory, storyMemoryToContext, type StoryMemoryAssociation } from "./storyMemoryStore";
 import { saveStoryChatSessionSummary, type StoryChatLogSummary } from "./storyChatLogStore";
 import { applyMetadataAction } from "./metadataActionApplier";
-import { ensureLeanquillWorkflows, migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
+import { getEnabledPersonasForProject } from "./personaStore";
+import { shouldNotifyPersonaResolutionIssues } from "./personaResolutionNotify";
 import { ResearchTreeProvider, type ResearchItem } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
 import { PlaceTreeProvider } from "./placeTree";
@@ -257,6 +272,42 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     void writeHarnessEntryPoints(rootPath).catch(() => { /* non-critical */ });
     // Backfill any bundled workflows missing from pre-upgrade workspaces (never overwrites)
     void ensureLeanquillWorkflows(rootPath, safeFileSystem).catch(() => { /* non-critical */ });
+    void ensureLeanquillDefaultPersonas(rootPath, safeFileSystem)
+      .then(async () => {
+        try {
+          const raw = await readProjectYamlRaw(rootPath);
+          if (raw === null) {
+            return;
+          }
+          const entries = parseActivePersonas(raw);
+          if (entries.length === 0) {
+            let patched = raw;
+            if (/active_personas:\s*\[\s*\]/.test(patched)) {
+              patched = patched.replace(/active_personas:\s*\[\s*\]\s*\n?/m, `${DEFAULT_ACTIVE_PERSONAS_YAML_BLOCK}\n`);
+            } else if (!/^active_personas:/m.test(patched) && /^ai_policy:/m.test(patched)) {
+              patched = patched.replace(/^ai_policy:/m, `${DEFAULT_ACTIVE_PERSONAS_YAML_BLOCK}\nai_policy:`);
+            }
+            if (patched !== raw) {
+              await safeFileSystem.writeFile(path.join(rootPath, ".leanquill", "project.yaml"), patched);
+            }
+          }
+          const pr = await getEnabledPersonasForProject(rootPath);
+          if (shouldNotifyPersonaResolutionIssues(pr.warnings, pr.errors)) {
+            for (const w of pr.warnings) {
+              log.warn(`Persona: ${w}`);
+            }
+            for (const e of pr.errors) {
+              log.warn(`Persona error: ${e}`);
+            }
+            void vscode.window.showWarningMessage(
+              `LeanQuill: ${pr.warnings.length + pr.errors.length} persona issue(s) — see Output › LeanQuill`,
+            );
+          }
+        } catch {
+          // non-critical
+        }
+      })
+      .catch(() => { /* non-critical */ });
   } else {
     safeFileSystem.allowPath(DEFAULT_THREADS_FOLDER, ".md");
     safeFileSystem.allowPath(DEFAULT_SETTINGS_FOLDER, ".md");
@@ -448,12 +499,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const mergedIncluded = [...(input.excludeBaseContext ? [] : STORY_CHAT_BASE_CTX), ...(input.includedPaths ?? [])];
     const memoryRecords = await listStoryMemory(rootPath);
     const activeMemory = memoryRecords.map(storyMemoryToContext);
+    let activePersonas: { id: string; name: string; type: string }[] | undefined;
+    try {
+      const pr = await getEnabledPersonasForProject(rootPath);
+      activePersonas = pr.personas.map((p) => ({ id: p.id, name: p.name, type: p.type }));
+    } catch {
+      activePersonas = undefined;
+    }
     const bundle = buildStoryChatContextBundle({
       launchedFrom: input.launchedFrom,
       target: input.target,
       includedPaths: mergedIncluded,
       excludedPaths: input.excludedPaths,
       activeMemory,
+      activePersonas,
       manuscriptScope: input.manuscriptScope,
     });
     const query = buildStoryChatDraftQuery({ isCursorOrCopilot, contextSummary: bundle.summary });

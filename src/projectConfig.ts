@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import type { ActivePersonaEntry } from "./types";
 import { stripYamlQuotes } from "./yamlUtils";
 
 export interface ProjectConfig {
@@ -71,6 +72,71 @@ export function parseProjectConfig(content: string): ProjectConfig {
     schemaVersion,
     folders: { research, characters, threads, settings },
   };
+}
+
+/**
+ * Parse `active_personas` from raw `project.yaml` text (line-oriented; no YAML parser).
+ * Missing key → `[]`. Malformed list entries are skipped without throwing.
+ * If a list item has no `enabled:` line before the next item, `enabled` defaults to false.
+ */
+export function parseActivePersonas(content: string): ActivePersonaEntry[] {
+  const normalized = content.replace(/\r\n/g, "\n");
+  const lines = normalized.split("\n");
+
+  let start = -1;
+  for (let k = 0; k < lines.length; k++) {
+    const L = lines[k];
+    if (/^active_personas:\s*$/.test(L)) {
+      start = k;
+      break;
+    }
+    if (/^active_personas:\s*\[\s*\]\s*$/.test(L)) {
+      return [];
+    }
+  }
+  if (start === -1) {
+    return [];
+  }
+
+  const out: ActivePersonaEntry[] = [];
+  let i = start + 1;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.length > 0 && !/^\s/.test(line)) {
+      break;
+    }
+    const idM = /^\s*-\s+id:\s*(.+)$/.exec(line);
+    if (!idM) {
+      i++;
+      continue;
+    }
+    const id = stripYamlQuotes(idM[1].trim());
+    if (!id) {
+      i++;
+      continue;
+    }
+    // Default false when `enabled:` omitted for this block (D-07 / plan note).
+    let enabled = false;
+    i++;
+    while (i < lines.length) {
+      const L = lines[i];
+      if (L.length > 0 && !/^\s/.test(L)) {
+        break;
+      }
+      if (/^\s*-\s+id:/.test(L)) {
+        break;
+      }
+      const en = /^\s+enabled:\s*(true|false)\s*$/i.exec(L);
+      if (en) {
+        enabled = en[1].toLowerCase() === "true";
+        i++;
+        break;
+      }
+      i++;
+    }
+    out.push({ id, enabled });
+  }
+  return out;
 }
 
 export async function readProjectConfig(rootPath: string): Promise<ProjectConfig | null> {

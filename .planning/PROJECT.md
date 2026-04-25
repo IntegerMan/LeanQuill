@@ -19,6 +19,7 @@ An author working in a LeanPub markdown repo can see the status of every chapter
 - **ISSUE-01** — Validated in Phase 8: unified author issues under `.leanquill/issues/{type}/` with v3 migration from Phase 14 layout; full `issue-schema.md` fields; chapter, selection (`chapter_ref` + `span_hint`), book-wide, entity, and research associations (`lq_*`, `lq_research_file`).
 - **ISSUE-02** — Validated in Phase 8: full triage lifecycle including **dismissed** with optional rationale, D-06 filter semantics, dual-host master–detail UI (Planning + bottom panel).
 - **ISSUE-03** — Validated in Phase 8: `span_hint` resolution and in-editor gutter indicators plus **LeanQuill: Issues at cursor** command (D-12; hover/command primary navigation).
+- **AI-05** — Validated in Phase 9: persona library on disk (three packaged defaults), `active_personas` in `project.yaml`, `parseActivePersonas` + `personaStore` resolution, metadata apply path uses constrained `SafeFileSystem` (denies `manuscript/Book.txt`), activation-time persona health feedback.
 
 ### Active
 
@@ -38,7 +39,6 @@ An author working in a LeanPub markdown repo can see the status of every chapter
 - [ ] **AI-02**: Author can invoke a post-write story intelligence update — agent analyzes new chapter content and updates notes with backlinks (does not modify manuscript)
 - [ ] **AI-03**: Author can right-click any issue and open a focused "Chat about this" AI conversation (agent never writes to manuscript)
 - [ ] **AI-04**: All AI sessions are auto-saved as timestamped chat log files in `.leanquill/chats/`
-- [ ] **AI-05**: Project supports a persona library (per-project profiles) with three packaged defaults: casual-reader, avid-genre-fan, copy-editor
 
 ### Out of Scope
 
@@ -105,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-11 — Phase 8 complete: ISSUE-01/02/03/04 and PLAN-03 (issues storage, triage UI, filters, gutter, research-linked rows); next roadmap focus Phase 11 outline/card usability.*
+*Last updated: 2026-04-25 — Phase 9 complete: AI safety rails + persona baseline (PER-01 / packaged personas, metadata apply hardening, story chat persona context).*

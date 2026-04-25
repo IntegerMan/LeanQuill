@@ -12,6 +12,20 @@ test("createStoryChatSessionId uses local padded date/time", () => {
   assert.equal(id, "2026-04-25-090705-story-chat");
 });
 
+test("buildStoryChatContextSummary lists active personas when provided", () => {
+  const bundle = buildStoryChatContextBundle({
+    launchedFrom: "general",
+    activePersonas: [
+      { id: "casual-reader", name: "Jordan", type: "beta-reader" },
+      { id: "copy-editor", name: "Sam", type: "copy-editor" },
+    ],
+  });
+  const s = buildStoryChatContextSummary(bundle);
+  assert.match(s, /Active personas \(read-only advisory\):/);
+  assert.match(s, /casual-reader — Jordan \(beta-reader\)/);
+  assert.match(s, /copy-editor — Sam \(copy-editor\)/);
+});
+
 test("general chat defaults manuscriptScope none and strips manuscript paths", () => {
   const bundle = buildStoryChatContextBundle({
     launchedFrom: "general",
