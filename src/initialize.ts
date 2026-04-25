@@ -5,6 +5,9 @@ import { resolveChapterOrder } from "./chapterOrder";
 import { applyLeanpubManuscriptScaffold } from "./leanpubScaffold";
 import type { PlanningPanelProvider } from "./planningPanel";
 import { validateProjectYamlForSetup } from "./projectConfig";
+import { PACKAGED_PERSONA_IDS, packagedPersonaMarkdown } from "./personaDefaults";
+
+export { ensureLeanquillDefaultPersonas } from "./personaDefaults";
 import { SafeFileSystem } from "./safeFileSystem";
 import { bootstrapOutline, readOutlineIndex, writeOutlineIndex } from "./outlineStore";
 import { InitInput, ChapterOrderResult } from "./types";
@@ -42,7 +45,13 @@ function renderProjectYaml(input: InitInput): string {
     "  file_pattern: ch*.md",
     "  chapter_order_source: Book.txt",
     "  front_matter_field_for_title: title",
-    "active_personas: []",
+    "active_personas:",
+    "  - id: casual-reader",
+    "    enabled: true",
+    "  - id: avid-genre-fan",
+    "    enabled: true",
+    "  - id: copy-editor",
+    "    enabled: true",
     "ai_policy:",
     "  manuscript_write_blocked: true",
     "  git_operations_blocked: true",
@@ -674,6 +683,12 @@ async function initializeProject(rootPath: string, input: InitInput): Promise<{ 
   await safeFs.mkdir(path.join(rootPath, ".leanquill", "chats"));
   await safeFs.mkdir(path.join(rootPath, ".leanquill", "memory"));
   await safeFs.mkdir(path.join(rootPath, ".leanquill", "personas"));
+  for (const id of PACKAGED_PERSONA_IDS) {
+    await safeFs.writeFile(
+      path.join(rootPath, ".leanquill", "personas", `${id}.md`),
+      packagedPersonaMarkdown(id),
+    );
+  }
 
   const projectYaml = renderProjectYaml(input);
   const projectYamlPath = path.join(rootPath, ".leanquill", "project.yaml");
