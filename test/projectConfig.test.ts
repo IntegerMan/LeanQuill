@@ -4,6 +4,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
 import {
+  parseActivePersonas,
   parseProjectConfig,
   parseProjectIdentity,
   patchProjectIdentityInYaml,
@@ -19,6 +20,61 @@ async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
     await fs.rm(dir, { recursive: true, force: true });
   }
 }
+
+test("parseActivePersonas returns three entries with ids and enabled flags", () => {
+  const yaml = [
+    "schema_version: '1'",
+    "active_personas:",
+    "  - id: casual-reader",
+    "    enabled: true",
+    "  - id: avid-genre-fan",
+    "    enabled: false",
+    "  - id: copy-editor",
+    "    enabled: true",
+    "folders:",
+    "  research: research/leanquill/",
+  ].join("\n");
+  const r = parseActivePersonas(yaml);
+  assert.equal(r.length, 3);
+  assert.deepEqual(r[0], { id: "casual-reader", enabled: true });
+  assert.deepEqual(r[1], { id: "avid-genre-fan", enabled: false });
+  assert.deepEqual(r[2], { id: "copy-editor", enabled: true });
+});
+
+test("parseActivePersonas returns empty when key missing", () => {
+  const yaml = 'schema_version: "1"\nfolders:\n  research: r/\n';
+  assert.deepEqual(parseActivePersonas(yaml), []);
+});
+
+test("parseActivePersonas returns empty for flow-style active_personas: []", () => {
+  const yaml = ["schema_version: '1'", "active_personas: []", "folders:", "  research: r/"].join("\n");
+  assert.deepEqual(parseActivePersonas(yaml), []);
+});
+
+test("parseActivePersonas normalizes CRLF like parseProjectConfig", () => {
+  const yaml = [
+    "active_personas:",
+    "  - id: one",
+    "    enabled: true",
+    "",
+  ].join("\r\n");
+  const r = parseActivePersonas(yaml);
+  assert.deepEqual(r, [{ id: "one", enabled: true }]);
+});
+
+test("parseActivePersonas defaults enabled to false when omitted before next item", () => {
+  const yaml = [
+    "active_personas:",
+    "  - id: no-flag",
+    "  - id: with-flag",
+    "    enabled: true",
+  ].join("\n");
+  const r = parseActivePersonas(yaml);
+  assert.deepEqual(r, [
+    { id: "no-flag", enabled: false },
+    { id: "with-flag", enabled: true },
+  ]);
+});
 
 test("parseProjectConfig extracts schemaVersion v1", () => {
   const content = 'schema_version: "1"\nfolders:\n  research: notes/research/\n';
