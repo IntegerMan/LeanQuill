@@ -218,6 +218,71 @@ For PDF, DOCX, or other formats you cannot read as text, ask the user to paste e
 Produce one markdown research note per import, matching \`research.md\` unless you are only returning text for manual save (D-11).
 `;
 
+const STORY_CHAT_WORKFLOW_CONTENT = `---
+name: LeanQuill Story Chat Workflow
+version: 1
+---
+
+# LeanQuill Story Chat Workflow
+
+## Context rules
+
+LeanQuill advises but never authors manuscript prose.
+Full manuscript context is never automatic.
+Read active story memory from .leanquill/memory/ before answering, using only records supplied by the LeanQuill chat context or active memory index.
+
+## Conversation rules
+
+Do not write to manuscript chapter files.
+
+## Active story memory
+
+Use memory summaries to stay consistent with prior LeanQuill story chat sessions.
+
+## Memory output
+
+After the chat, produce a session summary suitable for LeanQuill to save under .leanquill/chats/ and .leanquill/memory/.
+
+## Metadata action proposals
+
+AI proposes metadata actions; LeanQuill extension code validates and applies accepted actions.
+Use LeanQuill: Apply Metadata Action only after the author approves the proposed action.
+
+## Safety
+
+Low-risk automatic memory/chat-log writes are limited to .leanquill/memory/ and .leanquill/chats/. Entity, theme, and research metadata actions require authorApproval.
+`;
+
+const METADATA_ACTION_WORKFLOW_CONTENT = `---
+name: LeanQuill Metadata Action Contract
+version: 1
+---
+
+# LeanQuill Metadata Action Contract
+
+Allowed operations: \`set\`, \`append\`, \`removeFromList\`, \`createMemory\`, \`supersedeMemory\`, \`createIssue\`, \`updateIssueStatus\`, \`updateThemeMetadata\`, \`updateResearchAssociation\`, \`updateChatLogProvenance\`.
+
+Blocked categories: manuscript prose writes, path traversal, unconfigured path roots, unknown operations, schema-invalid payloads, approval bypass, destructive deletes.
+
+## Example MetadataAction JSON
+
+\`\`\`json
+{
+  "schemaVersion": "1",
+  "actionId": "example-action",
+  "sourceChatId": "example-session",
+  "operation": "createMemory",
+  "targetPath": ".leanquill/memory/example.md",
+  "fieldPath": [],
+  "oldValue": null,
+  "newValue": { "topic": "Example", "body": "Body" },
+  "rationale": "Example rationale",
+  "risk": "low",
+  "authorApproval": { "approvedAt": "2026-01-01T00:00:00.000Z", "method": "extension-command" }
+}
+\`\`\`
+`;
+
 /**
  * Canonical `.leanquill/workflows/*.md` files shipped with the extension.
  * Add entries here when introducing new harness-backed workflows so activation backfill and fresh init stay in sync.
@@ -225,6 +290,8 @@ Produce one markdown research note per import, matching \`research.md\` unless y
 const LEANQUILL_WORKFLOW_SPECS: ReadonlyArray<{ fileName: string; content: string }> = [
   { fileName: "research.md", content: RESEARCH_WORKFLOW_CONTENT },
   { fileName: "import-external-research.md", content: RESEARCH_IMPORT_WORKFLOW_CONTENT },
+  { fileName: "story-chat.md", content: STORY_CHAT_WORKFLOW_CONTENT },
+  { fileName: "metadata-actions.md", content: METADATA_ACTION_WORKFLOW_CONTENT },
 ];
 
 /**
@@ -488,6 +555,64 @@ Name the file \`{topic-slug}-{YYYY-MM-DD}.md\` and save it inside \`folders.rese
 **Do not save files to the workspace root or any other location. Always save inside the research folder.**
 `;
 
+  const copilotLqStoryChatFile = path.join(copilotDir, "leanquill-story-chat.agent.md");
+  const copilotLqStoryChatContent = `---
+name: leanquill-story-chat
+description: "LeanQuill-Story-Chat — conversational story advisor using LeanQuill workflows and metadata actions"
+tools: ['read', 'write', 'search', 'web']
+---
+
+You are the LeanQuill story chat agent.
+
+Read \`.leanquill/workflows/story-chat.md\` and \`.leanquill/workflows/metadata-actions.md\` before answering. When the chat context lists relevant memory records, read active story memory from \`.leanquill/memory/\` for those ids.
+
+Do not directly edit manuscript files or LeanQuill metadata files; propose MetadataAction JSON for extension application.
+
+End story chats with a concise summary block the author can pass to \`LeanQuill: Save Story Chat Summary\`, including session summary, memory topic/body, and any approved metadata action ids.
+`;
+
+  const cursorLqStoryChatDir = path.join(rootPath, ".cursor", "skills", "leanquill-story-chat");
+  const cursorLqStoryChatFile = path.join(cursorLqStoryChatDir, "SKILL.md");
+  const cursorLqStoryChatContent = `---
+name: leanquill-story-chat
+description: "LeanQuill-Story-Chat — conversational story advisor using LeanQuill workflows and metadata actions"
+---
+
+<cursor_skill_adapter>
+## A. Skill Invocation
+- This skill is invoked when the user mentions \`leanquill-story-chat\` or asks for LeanQuill story chat.
+- Treat all user text after the skill mention as the story chat request.
+
+## B. Workflows
+Read \`.leanquill/workflows/story-chat.md\` and \`.leanquill/workflows/metadata-actions.md\` before answering.
+
+## C. Memory
+When the chat context lists relevant memory records, read active story memory from \`.leanquill/memory/\` for those ids.
+
+## D. Safety
+Do not directly edit manuscript files or LeanQuill metadata files; propose MetadataAction JSON for extension application.
+
+## E. Wrap-up
+End story chats with a concise summary block the author can pass to \`LeanQuill: Save Story Chat Summary\`, including session summary, memory topic/body, and any approved metadata action ids.
+</cursor_skill_adapter>
+`;
+
+  const claudeLqStoryChatFile = path.join(claudeDir, "leanquill-story-chat.md");
+  const claudeLqStoryChatContent = `---
+name: leanquill-story-chat
+description: "LeanQuill-Story-Chat — conversational story advisor using LeanQuill workflows and metadata actions"
+tools: Read, Write, Edit, Bash, Grep, Glob, WebSearch, WebFetch
+---
+
+You are the LeanQuill story chat agent.
+
+Read \`.leanquill/workflows/story-chat.md\` and \`.leanquill/workflows/metadata-actions.md\` before answering. When the chat context lists relevant memory records, read active story memory from \`.leanquill/memory/\` for those ids.
+
+Do not directly edit manuscript files or LeanQuill metadata files; propose MetadataAction JSON for extension application.
+
+End story chats with a concise summary block the author can pass to \`LeanQuill: Save Story Chat Summary\`, including session summary, memory topic/body, and any approved metadata action ids.
+`;
+
   const entries: Array<{ file: string; dir: string; content: string }> = [
     { file: copilotFile, dir: copilotDir, content: copilotContent },
     { file: cursorFile, dir: cursorDir, content: cursorContent },
@@ -498,6 +623,9 @@ Name the file \`{topic-slug}-{YYYY-MM-DD}.md\` and save it inside \`folders.rese
     { file: copilotLqResearcherFile, dir: copilotDir, content: copilotLqResearcherContent },
     { file: cursorLqResearcherFile, dir: cursorLqResearcherDir, content: cursorLqResearcherContent },
     { file: claudeLqResearcherFile, dir: claudeDir, content: claudeLqResearcherContent },
+    { file: copilotLqStoryChatFile, dir: copilotDir, content: copilotLqStoryChatContent },
+    { file: cursorLqStoryChatFile, dir: cursorLqStoryChatDir, content: cursorLqStoryChatContent },
+    { file: claudeLqStoryChatFile, dir: claudeDir, content: claudeLqStoryChatContent },
   ];
 
   for (const { file, dir, content } of entries) {
@@ -544,6 +672,7 @@ async function initializeProject(rootPath: string, input: InitInput): Promise<{ 
   await fs.mkdir(path.join(rootPath, "manuscript"), { recursive: true });
   await safeFs.mkdir(path.join(rootPath, ".leanquill"));
   await safeFs.mkdir(path.join(rootPath, ".leanquill", "chats"));
+  await safeFs.mkdir(path.join(rootPath, ".leanquill", "memory"));
   await safeFs.mkdir(path.join(rootPath, ".leanquill", "personas"));
 
   const projectYaml = renderProjectYaml(input);
