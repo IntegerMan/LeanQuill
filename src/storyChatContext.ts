@@ -30,6 +30,13 @@ export interface StoryChatMemoryContext {
   path: string;
 }
 
+/** Read-only persona ids enabled for this project (advisory context for story chat). */
+export interface StoryChatActivePersonaLine {
+  id: string;
+  name: string;
+  type: string;
+}
+
 export interface StoryChatContextBundle {
   sessionId: string;
   createdAt: string;
@@ -38,6 +45,8 @@ export interface StoryChatContextBundle {
   includedPaths: string[];
   excludedPaths: string[];
   activeMemory: StoryChatMemoryContext[];
+  /** When present, lists enabled personas from `project.yaml` / `.leanquill/personas/` (read-only). */
+  activePersonas?: StoryChatActivePersonaLine[];
   manuscriptScope: StoryChatManuscriptScope;
   summary: string;
 }
@@ -96,6 +105,12 @@ export function buildStoryChatContextSummary(bundle: StoryChatContextBundle): st
       lines.push(`  - ${m.topic} (${m.path}) — ${m.associationLabel}, updated ${m.updatedAt}`);
     }
   }
+  if (bundle.activePersonas && bundle.activePersonas.length > 0) {
+    lines.push("Active personas (read-only advisory):");
+    for (const p of bundle.activePersonas) {
+      lines.push(`  - ${p.id} — ${p.name} (${p.type})`);
+    }
+  }
   lines.push(`Manuscript scope: ${bundle.manuscriptScope}`);
   if (bundle.launchedFrom === "selection" && bundle.target) {
     if (bundle.target.spanHint) {
@@ -117,6 +132,7 @@ export function buildStoryChatContextBundle(input: {
   includedPaths?: string[];
   excludedPaths?: string[];
   activeMemory?: StoryChatMemoryContext[];
+  activePersonas?: StoryChatActivePersonaLine[];
   manuscriptScope?: StoryChatManuscriptScope;
   now?: Date;
 }): StoryChatContextBundle {
@@ -159,6 +175,7 @@ export function buildStoryChatContextBundle(input: {
     includedPaths,
     excludedPaths,
     activeMemory,
+    activePersonas: input.activePersonas,
     manuscriptScope,
     summary: "",
   };

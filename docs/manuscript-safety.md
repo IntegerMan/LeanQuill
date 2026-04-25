@@ -11,6 +11,7 @@ The `SafeFileSystem` layer intercepts all write operations and enforces a whitel
 | `.leanquill/**` | All tool state and planning files |
 | `manuscript/Book.txt` | Chapter ordering file only |
 | `notes/characters/**/*.md` | Character profiles |
+| `notes/settings/**/*.md` | Place / setting profiles (default `folders.settings`) |
 | `notes/threads/**/*.md` | Thread profiles |
 | `research/leanquill/**/*.md` | Research documents |
 

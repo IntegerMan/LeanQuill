@@ -38,6 +38,15 @@ test("allows writing manuscript/Book.txt", async () => {
   });
 });
 
+test("denyManuscriptBookTxt blocks manuscript/Book.txt writes (D-09)", async () => {
+  await withTempDir(async (dir) => {
+    const safeFs = new SafeFileSystem(dir, { denyManuscriptBookTxt: true });
+    const book = path.join(dir, "manuscript", "Book.txt");
+    assert.equal(safeFs.canWrite(book, true), false);
+    await assert.rejects(() => safeFs.writeFile(book, "x"), /Blocked write outside LeanQuill boundary/);
+  });
+});
+
 test("blocks writes to manuscript paths", async () => {
   await withTempDir(async (dir) => {
     const safeFs = new SafeFileSystem(dir);

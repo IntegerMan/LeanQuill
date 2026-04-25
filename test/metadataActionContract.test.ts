@@ -40,6 +40,15 @@ test("requiresApproval paths need authorApproval", () => {
   assert.equal(v.ok, true);
 });
 
+test("validateMetadataAction rejects createMemory targeting manuscript/Book.txt", () => {
+  const v = validateMetadataAction(
+    baseAction({ targetPath: "manuscript/Book.txt", operation: "createMemory" }),
+    { configuredWritableRoots: roots },
+  );
+  assert.equal(v.ok, false);
+  assert.ok((v.blockedReasons?.length ?? 0) > 0 || (v.errors?.length ?? 0) > 0);
+});
+
 test("blocks manuscript, traversal, unknown operation, low on entity path", () => {
   assert.ok(!validateMetadataAction(baseAction({ targetPath: "manuscript/ch01.md" }), { configuredWritableRoots: roots }).ok);
   assert.ok(!validateMetadataAction(baseAction({ targetPath: "../escape.md" }), { configuredWritableRoots: roots }).ok);
@@ -89,3 +98,11 @@ test("updateThemeMetadata and research require approval in happy path", () => {
   );
   assert.equal(res.ok, true);
 });
+
+/*
+ * Manual audit (09-VALIDATION): from repo root, periodically run:
+ *   rg "fs\\.writeFile\\(" src
+ *   rg "appendFile\\(" src
+ * Manuscript writes should be limited to intentional modules (e.g. initialize,
+ * leanpubScaffold, bookTxtSync). Adjust this comment if the grep list changes.
+ */

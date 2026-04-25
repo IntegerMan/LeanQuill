@@ -24,6 +24,19 @@ function quote(value: string): string {
   return `'${value.replaceAll("'", "''")}'`;
 }
 
+/** Default `active_personas` block for `project.yaml` (shared with activation backfill, 09-04). */
+export const DEFAULT_ACTIVE_PERSONAS_YAML_LINES = [
+  "active_personas:",
+  "  - id: casual-reader",
+  "    enabled: true",
+  "  - id: avid-genre-fan",
+  "    enabled: true",
+  "  - id: copy-editor",
+  "    enabled: true",
+] as const;
+
+export const DEFAULT_ACTIVE_PERSONAS_YAML_BLOCK = [...DEFAULT_ACTIVE_PERSONAS_YAML_LINES].join("\n");
+
 function renderProjectYaml(input: InitInput): string {
   const genres = input.genre.map((item) => `  - ${quote(item)}`).join("\n");
 
@@ -45,13 +58,7 @@ function renderProjectYaml(input: InitInput): string {
     "  file_pattern: ch*.md",
     "  chapter_order_source: Book.txt",
     "  front_matter_field_for_title: title",
-    "active_personas:",
-    "  - id: casual-reader",
-    "    enabled: true",
-    "  - id: avid-genre-fan",
-    "    enabled: true",
-    "  - id: copy-editor",
-    "    enabled: true",
+    ...DEFAULT_ACTIVE_PERSONAS_YAML_LINES,
     "ai_policy:",
     "  manuscript_write_blocked: true",
     "  git_operations_blocked: true",
