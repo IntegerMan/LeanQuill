@@ -46,7 +46,7 @@ A tabbed editor panel with **Themes**, **Outline**, **Cards**, **Characters**, *
 
 ## Documentation
 
-[AGENTS.md](AGENTS.md) is the guide for AI coding agents (build commands, tests, style, and repo layout).
+The following additional documentation sources may help answer additional questions on this repository:
 
 | Doc | Contents |
 |-----|----------|
@@ -58,6 +58,7 @@ A tabbed editor panel with **Themes**, **Outline**, **Cards**, **Characters**, *
 | [Manuscript safety](docs/manuscript-safety.md) | `SafeFileSystem` and write boundaries |
 | [AI integration](docs/ai-integration.md) | VS Code LM API, philosophy, planned features |
 | [Development](docs/development.md) | Build, project layout, tests |
+| [AGENTS.md](AGENTS.md) | Guide for AI coding agents |
 
 ## Design principles
 
