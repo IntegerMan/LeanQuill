@@ -12,6 +12,18 @@
   ],
   "activationEvents": [
     "onCommand:leanquill.initialize",
+    "onCommand:leanquill.startStoryChat",
+    "onCommand:leanquill.applyMetadataAction",
+    "onCommand:leanquill.saveStoryChatSummary",
+    "onCommand:leanquill.openStoryMemory",
+    "onCommand:leanquill.chatAboutIssue",
+    "onCommand:leanquill.chatAboutChapter",
+    "onCommand:leanquill.chatAboutSelection",
+    "onCommand:leanquill.chatAboutCharacter",
+    "onCommand:leanquill.chatAboutPlace",
+    "onCommand:leanquill.chatAboutThread",
+    "onCommand:leanquill.chatAboutTheme",
+    "onCommand:leanquill.chatAboutResearch",
     "onCommand:leanquill.newPlace",
     "onCommand:leanquill.openPlanningWorkspace",
     "onCommand:leanquill.newThread",
@@ -121,6 +133,70 @@
         "title": "Import External Research",
         "category": "LeanQuill",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "leanquill.startStoryChat",
+        "title": "LeanQuill: Start Story Chat",
+        "category": "LeanQuill",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "leanquill.applyMetadataAction",
+        "title": "LeanQuill: Apply Metadata Action",
+        "category": "LeanQuill",
+        "icon": "$(check)"
+      },
+      {
+        "command": "leanquill.saveStoryChatSummary",
+        "title": "LeanQuill: Save Story Chat Summary",
+        "category": "LeanQuill",
+        "icon": "$(save)"
+      },
+      {
+        "command": "leanquill.openStoryMemory",
+        "title": "Open Story Memory",
+        "category": "LeanQuill",
+        "icon": "$(lightbulb)"
+      },
+      {
+        "command": "leanquill.chatAboutIssue",
+        "title": "Chat about this issue",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.chatAboutChapter",
+        "title": "Chat about this chapter",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.chatAboutSelection",
+        "title": "Chat about selection",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.chatAboutCharacter",
+        "title": "Chat about this character",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.chatAboutPlace",
+        "title": "Chat about this place",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.chatAboutThread",
+        "title": "Chat about this thread",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.chatAboutTheme",
+        "title": "Chat about this theme",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.chatAboutResearch",
+        "title": "Chat about this research",
+        "category": "LeanQuill"
       },
       {
         "command": "leanquill.newCharacter",
@@ -256,6 +332,22 @@
     "menus": {
       "commandPalette": [
         {
+          "command": "leanquill.startStoryChat",
+          "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
+          "command": "leanquill.applyMetadataAction",
+          "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
+          "command": "leanquill.saveStoryChatSummary",
+          "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
+          "command": "leanquill.openStoryMemory",
+          "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
           "command": "leanquill.newOpenQuestion",
           "when": "leanquill.workspaceLeanQuillReady"
         },
@@ -274,12 +366,22 @@
       ],
       "webview/context": [
         {
+          "command": "leanquill.chatAboutChapter",
+          "when": "webviewId == 'leanquill.outlineTree' && leanquill.workspaceLeanQuillReady",
+          "group": "leanquill@20"
+        },
+        {
           "command": "leanquill.newOpenQuestionFromOutline",
           "when": "webviewId == 'leanquill.outlineTree' && leanquill.workspaceLeanQuillReady",
           "group": "leanquillIssues@1"
         }
       ],
       "editor/context": [
+        {
+          "command": "leanquill.chatAboutSelection",
+          "when": "editorTextFocus && leanquill.workspaceLeanQuillReady",
+          "group": "leanquill@20"
+        },
         {
           "command": "leanquill.newOpenQuestionFromSelection",
           "when": "editorTextFocus && leanquill.workspaceLeanQuillReady",
@@ -293,9 +395,19 @@
       ],
       "view/item/context": [
         {
+          "command": "leanquill.chatAboutIssue",
+          "when": "view == leanquill.openQuestionsPanel && leanquill.workspaceLeanQuillReady",
+          "group": "leanquill@20"
+        },
+        {
           "command": "leanquill.newOpenQuestionFromCharacter",
           "when": "view == leanquill.characters && viewItem == character && leanquill.workspaceLeanQuillReady",
           "group": "leanquillIssues@10"
+        },
+        {
+          "command": "leanquill.chatAboutCharacter",
+          "when": "view == leanquill.characters && viewItem == character && leanquill.workspaceLeanQuillReady",
+          "group": "leanquill@20"
         },
         {
           "command": "leanquill.newOpenQuestionFromPlace",
@@ -303,9 +415,19 @@
           "group": "leanquillIssues@10"
         },
         {
+          "command": "leanquill.chatAboutPlace",
+          "when": "view == leanquill.places && viewItem == place && leanquill.workspaceLeanQuillReady",
+          "group": "leanquill@20"
+        },
+        {
           "command": "leanquill.newOpenQuestionFromResearch",
           "when": "view == leanquill.research && viewItem == research && leanquill.workspaceLeanQuillReady",
           "group": "leanquillIssues@10"
+        },
+        {
+          "command": "leanquill.chatAboutResearch",
+          "when": "view == leanquill.research && viewItem == research && leanquill.workspaceLeanQuillReady",
+          "group": "leanquill@20"
         }
       ],
       "view/title": [
@@ -318,6 +440,11 @@
           "command": "leanquill.addChildNode",
           "when": "view == leanquill.outlineTree && leanquill.workspaceLeanQuillReady",
           "group": "navigation@2"
+        },
+        {
+          "command": "leanquill.startStoryChat",
+          "when": "view == leanquill.outlineTree && leanquill.workspaceLeanQuillReady",
+          "group": "navigation@3"
         },
         {
           "command": "leanquill.startResearch",

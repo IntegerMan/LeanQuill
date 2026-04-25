@@ -15,17 +15,32 @@ import { PlanningPanelProvider } from "./planningPanel";
 import { OpenQuestionsPanelViewProvider } from "./openQuestionsPanel";
 import { IssueGutterController } from "./issueGutterController";
 import { migrateIssuesLayoutV3IfNeeded } from "./issueMigration";
-import { createOpenQuestion, getOpenQuestion } from "./openQuestionStore";
+import { createOpenQuestion, getOpenQuestion, listOpenQuestions } from "./openQuestionStore";
 import { promptNewIssueTitleAndType } from "./promptNewIssue";
 import { handleOpenQuestionWorkspaceDelete, handleOpenQuestionWorkspaceRename } from "./openQuestionWorkspaceSync";
 import { SafeFileSystem } from "./safeFileSystem";
 import { readProjectConfig, readProjectConfigWithDefaults, validateProjectYamlForSetup } from "./projectConfig";
-import { buildHarnessDraftQuery, buildHarnessFallbackHint } from "./harnessChatDraft";
+import { buildHarnessDraftQuery, buildHarnessFallbackHint, buildStoryChatDraftQuery } from "./harnessChatDraft";
+import {
+  buildStoryChatContextBundle,
+  type StoryChatLaunchSource,
+  type StoryChatManuscriptScope,
+  type StoryChatTarget,
+} from "./storyChatContext";
+import { listStoryMemory, storyMemoryToContext, type StoryMemoryAssociation } from "./storyMemoryStore";
+import { saveStoryChatSessionSummary, type StoryChatLogSummary } from "./storyChatLogStore";
+import { applyMetadataAction } from "./metadataActionApplier";
 import { ensureLeanquillWorkflows, migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
 import { ResearchTreeProvider, type ResearchItem } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
 import { PlaceTreeProvider } from "./placeTree";
-import { ChapterOrderResult, ChapterStatus, OutlineNode, OutlineIndex } from "./types";
+import {
+  ChapterOrderResult,
+  ChapterStatus,
+  OutlineNode,
+  OutlineIndex,
+  type OpenQuestionRecord,
+} from "./types";
 import { createCharacter, scanManuscriptFileForCharacters } from "./characterStore";
 import { createPlace, scanManuscriptFileForPlaces } from "./placeStore";
 import { createThread } from "./threadStore";
@@ -407,6 +422,406 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     await openHarnessChat("import");
   });
 
+  const STORY_CHAT_BASE_CTX = [".leanquill/project.yaml", ".leanquill/outline-index.json", ".leanquill/chapter-status-index.json"];
+
+  function manuscriptScopeForIssueAssociation(association: OpenQuestionRecord["association"]): StoryChatManuscriptScope {
+    if (association.kind === "chapter" || association.kind === "selection") {
+      return "chapter";
+    }
+    return "none";
+  }
+
+  interface OpenStoryChatBundleInput {
+    launchedFrom: StoryChatLaunchSource;
+    target?: StoryChatTarget;
+    includedPaths?: string[];
+    excludedPaths?: string[];
+    manuscriptScope?: StoryChatManuscriptScope;
+    excludeBaseContext?: boolean;
+  }
+
+  const openStoryChatWithContext = async (input: OpenStoryChatBundleInput): Promise<void> => {
+    const appName = vscode.env.appName ?? "";
+    const isCursorOrCopilot =
+      appName.toLowerCase().includes("cursor") || vscode.extensions.getExtension("github.copilot-chat") !== undefined;
+
+    const mergedIncluded = [...(input.excludeBaseContext ? [] : STORY_CHAT_BASE_CTX), ...(input.includedPaths ?? [])];
+    const memoryRecords = await listStoryMemory(rootPath);
+    const activeMemory = memoryRecords.map(storyMemoryToContext);
+    const bundle = buildStoryChatContextBundle({
+      launchedFrom: input.launchedFrom,
+      target: input.target,
+      includedPaths: mergedIncluded,
+      excludedPaths: input.excludedPaths,
+      activeMemory,
+      manuscriptScope: input.manuscriptScope,
+    });
+    const query = buildStoryChatDraftQuery({ isCursorOrCopilot, contextSummary: bundle.summary });
+    try {
+      await vscode.commands.executeCommand("workbench.action.chat.newChat");
+    } catch {
+      // ignore
+    }
+    try {
+      await vscode.commands.executeCommand("workbench.action.chat.open", { query, isPartialQuery: true });
+    } catch {
+      await vscode.window.showInformationMessage(buildHarnessFallbackHint("storyChat"));
+    }
+  };
+
+  const startStoryChatCommand = vscode.commands.registerCommand("leanquill.startStoryChat", async () => {
+    await openStoryChatWithContext({
+      launchedFrom: "general",
+      manuscriptScope: "none",
+      includedPaths: [...STORY_CHAT_BASE_CTX],
+      excludedPaths: ["manuscript/**"],
+    });
+  });
+
+  const chatAboutIssueCommand = vscode.commands.registerCommand(
+    "leanquill.chatAboutIssue",
+    async (arg?: string | { id?: string }) => {
+      let issueId = typeof arg === "string" ? arg : arg?.id;
+      if (!issueId) {
+        const issues = await listOpenQuestions(rootPath);
+        const pick = await vscode.window.showQuickPick(
+          issues.map((q) => ({ label: q.title, description: q.id, q })),
+          { placeHolder: "Select an issue to discuss" },
+        );
+        if (!pick || !("q" in pick)) {
+          return;
+        }
+        issueId = (pick as { q: OpenQuestionRecord }).q.id;
+      }
+      const issue = await getOpenQuestion(rootPath, issueId);
+      if (!issue) {
+        await vscode.window.showWarningMessage("LeanQuill: Issue not found.");
+        return;
+      }
+      const included = [`.leanquill/issues/${issue.fileName}`];
+      const scope = manuscriptScopeForIssueAssociation(issue.association);
+      const target: StoryChatTarget = {
+        kind: "issue",
+        id: issue.id,
+        label: issue.title,
+        path: issue.fileName,
+      };
+      await openStoryChatWithContext({
+        launchedFrom: "issue",
+        target,
+        includedPaths: included,
+        manuscriptScope: scope,
+      });
+    },
+  );
+
+  const chatAboutChapterCommand = vscode.commands.registerCommand(
+    "leanquill.chatAboutChapter",
+    async (arg?: { chapterPath?: string }) => {
+      let chapterPath = arg?.chapterPath;
+      if (!chapterPath) {
+        const ed = vscode.window.activeTextEditor;
+        if (ed?.document.uri.fsPath.startsWith(rootPath)) {
+          const rel = path.relative(rootPath, ed.document.uri.fsPath).split(path.sep).join("/");
+          if (rel.startsWith("manuscript/")) {
+            chapterPath = normalizePath(rel);
+          }
+        }
+      }
+      if (!chapterPath?.trim()) {
+        chapterPath = await vscode.window.showInputBox({
+          prompt: "Chapter path (e.g. manuscript/ch01.md)",
+        });
+      }
+      if (!chapterPath?.trim()) {
+        return;
+      }
+      const norm = normalizePath(chapterPath.trim());
+      const target: StoryChatTarget = {
+        kind: "chapter",
+        label: norm,
+        path: norm,
+      };
+      await openStoryChatWithContext({
+        launchedFrom: "chapter",
+        target,
+        includedPaths: [norm],
+        manuscriptScope: "chapter",
+      });
+    },
+  );
+
+  const chatAboutSelectionCommand = vscode.commands.registerCommand("leanquill.chatAboutSelection", async () => {
+    const ed = vscode.window.activeTextEditor;
+    if (!ed || ed.selection.isEmpty) {
+      await vscode.window.showWarningMessage("LeanQuill: Select text in a manuscript chapter first.");
+      return;
+    }
+    const rel = path.relative(rootPath, ed.document.uri.fsPath).split(path.sep).join("/");
+    if (!rel.startsWith("manuscript/")) {
+      await vscode.window.showWarningMessage("LeanQuill: Selection chat is only available for manuscript files.");
+      return;
+    }
+    const chapterRef = normalizePath(rel);
+    const start = ed.selection.start;
+    const end = ed.selection.end;
+    const spanHint = `L${Math.min(start.line, end.line) + 1}–L${Math.max(start.line, end.line) + 1}`;
+    const selectedTextExcerpt = ed.document.getText(ed.selection);
+    const target: StoryChatTarget = {
+      kind: "selection",
+      label: `Selection in ${chapterRef}`,
+      chapterRef,
+      spanHint,
+      selectedTextExcerpt,
+      path: chapterRef,
+    };
+    await openStoryChatWithContext({
+      launchedFrom: "selection",
+      target,
+      includedPaths: [chapterRef],
+      manuscriptScope: "selection",
+    });
+  });
+
+  const chatAboutCharacterCommand = vscode.commands.registerCommand(
+    "leanquill.chatAboutCharacter",
+    async (arg?: { fileName?: string; label?: string }) => {
+      let fileName = arg?.fileName;
+      let label = arg?.label;
+      if (!fileName?.trim()) {
+        const typed = await vscode.window.showInputBox({ prompt: "Character file name (e.g. hero.md)" });
+        if (!typed?.trim()) {
+          return;
+        }
+        fileName = typed.trim();
+      }
+      label = label?.trim() || fileName;
+      const cfg = await readProjectConfigWithDefaults(rootPath);
+      const charFolder = cfg.folders.characters.replace(/\/+$/, "");
+      const rel = `${charFolder}/${fileName}`.split(path.sep).join("/");
+      const target: StoryChatTarget = { kind: "character", label: label!, fileName: fileName!, path: rel };
+      await openStoryChatWithContext({
+        launchedFrom: "character",
+        target,
+        includedPaths: [normalizePath(rel)],
+        manuscriptScope: "none",
+      });
+    },
+  );
+
+  const chatAboutPlaceCommand = vscode.commands.registerCommand(
+    "leanquill.chatAboutPlace",
+    async (arg?: { fileName?: string; label?: string }) => {
+      let fileName = arg?.fileName;
+      let label = arg?.label;
+      if (!fileName?.trim()) {
+        const typed = await vscode.window.showInputBox({ prompt: "Place file name (e.g. old-mill.md)" });
+        if (!typed?.trim()) {
+          return;
+        }
+        fileName = typed.trim();
+      }
+      label = label?.trim() || fileName;
+      const cfg = await readProjectConfigWithDefaults(rootPath);
+      const folder = cfg.folders.settings.replace(/\/+$/, "");
+      const rel = `${folder}/${fileName}`.split(path.sep).join("/");
+      const target: StoryChatTarget = { kind: "place", label: label!, fileName: fileName!, path: rel };
+      await openStoryChatWithContext({
+        launchedFrom: "place",
+        target,
+        includedPaths: [normalizePath(rel)],
+        manuscriptScope: "none",
+      });
+    },
+  );
+
+  const chatAboutThreadCommand = vscode.commands.registerCommand(
+    "leanquill.chatAboutThread",
+    async (arg?: { fileName?: string; label?: string }) => {
+      let fileName = arg?.fileName;
+      let label = arg?.label;
+      if (!fileName?.trim()) {
+        const typed = await vscode.window.showInputBox({ prompt: "Thread file name (e.g. main-arc.md)" });
+        if (!typed?.trim()) {
+          return;
+        }
+        fileName = typed.trim();
+      }
+      label = label?.trim() || fileName;
+      const cfg = await readProjectConfigWithDefaults(rootPath);
+      const folder = cfg.folders.threads.replace(/\/+$/, "");
+      const rel = `${folder}/${fileName}`.split(path.sep).join("/");
+      const target: StoryChatTarget = { kind: "thread", label: label!, fileName: fileName!, path: rel };
+      await openStoryChatWithContext({
+        launchedFrom: "thread",
+        target,
+        includedPaths: [normalizePath(rel)],
+        manuscriptScope: "none",
+      });
+    },
+  );
+
+  const chatAboutThemeCommand = vscode.commands.registerCommand(
+    "leanquill.chatAboutTheme",
+    async (arg?: { id?: string; label?: string }) => {
+      let id = arg?.id;
+      let label = arg?.label;
+      if (!id?.trim()) {
+        const typed = await vscode.window.showInputBox({ prompt: "Theme id (from themes.yaml)" });
+        if (!typed?.trim()) {
+          return;
+        }
+        id = typed.trim();
+      }
+      label = label?.trim() || id;
+      const target: StoryChatTarget = { kind: "theme", label: label!, id: id! };
+      await openStoryChatWithContext({
+        launchedFrom: "theme",
+        target,
+        includedPaths: [".leanquill/themes.yaml"],
+        manuscriptScope: "none",
+      });
+    },
+  );
+
+  const chatAboutResearchCommand = vscode.commands.registerCommand(
+    "leanquill.chatAboutResearch",
+    async (arg?: { fileName?: string; label?: string }) => {
+      let fileName = arg?.fileName;
+      let label = arg?.label;
+      if (!fileName?.trim()) {
+        const typed = await vscode.window.showInputBox({ prompt: "Research note file name" });
+        if (!typed?.trim()) {
+          return;
+        }
+        fileName = typed.trim();
+      }
+      label = label?.trim() || fileName;
+      const cfg = await readProjectConfigWithDefaults(rootPath);
+      const folder = cfg.folders.research.replace(/\/+$/, "");
+      const rel = `${folder}/${fileName}`.split(path.sep).join("/");
+      const target: StoryChatTarget = { kind: "research", label: label!, fileName: fileName!, path: rel };
+      await openStoryChatWithContext({
+        launchedFrom: "research",
+        target,
+        includedPaths: [normalizePath(rel)],
+        manuscriptScope: "none",
+      });
+    },
+  );
+
+  const applyMetadataActionCommand = vscode.commands.registerCommand("leanquill.applyMetadataAction", async () => {
+    const ed = vscode.window.activeTextEditor;
+    let rawText = ed && !ed.selection.isEmpty ? ed.document.getText(ed.selection) : undefined;
+    if (!rawText?.trim()) {
+      rawText = await vscode.window.showInputBox({ prompt: "Paste accepted LeanQuill MetadataAction JSON" });
+    }
+    if (!rawText?.trim()) {
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawText.trim());
+    } catch {
+      await vscode.window.showErrorMessage("Metadata action was not applied. Invalid JSON.");
+      return;
+    }
+    const result = await applyMetadataAction(rootPath, safeFileSystem, parsed);
+    if (result.status === "applied") {
+      await vscode.window.showInformationMessage("Applied LeanQuill metadata action.");
+    } else if (result.status === "blocked") {
+      await vscode.window.showErrorMessage(
+        "LeanQuill blocked this metadata action because it would write outside approved project state.",
+      );
+    } else {
+      await vscode.window.showWarningMessage("Metadata action was not applied.");
+    }
+  });
+
+  const saveStoryChatSummaryCommand = vscode.commands.registerCommand("leanquill.saveStoryChatSummary", async () => {
+    const ed = vscode.window.activeTextEditor;
+    let rawText = ed && !ed.selection.isEmpty ? ed.document.getText(ed.selection) : undefined;
+    if (!rawText?.trim()) {
+      rawText = await vscode.window.showInputBox({ prompt: "Paste LeanQuill story chat summary JSON" });
+    }
+    if (!rawText?.trim()) {
+      return;
+    }
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(rawText.trim()) as Record<string, unknown>;
+    } catch {
+      await vscode.window.showWarningMessage("Story chat summary was not saved.");
+      return;
+    }
+    const sessionId = typeof parsed.sessionId === "string" ? parsed.sessionId : "";
+    const startedAt = typeof parsed.startedAt === "string" ? parsed.startedAt : "";
+    const endedAt = typeof parsed.endedAt === "string" ? parsed.endedAt : "";
+    const launchedFrom = typeof parsed.launchedFrom === "string" ? parsed.launchedFrom : "general";
+    const chapterRef = typeof parsed.chapterRef === "string" ? parsed.chapterRef : "";
+    const chaptersInContext = Array.isArray(parsed.chaptersInContext)
+      ? (parsed.chaptersInContext as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
+    const summary = typeof parsed.summary === "string" ? parsed.summary : "";
+    const memoryTopic = typeof parsed.memoryTopic === "string" ? parsed.memoryTopic : "Story chat session";
+    const memoryBody = typeof parsed.memoryBody === "string" ? parsed.memoryBody : summary;
+    const memoryAssociation = (parsed.memoryAssociation ?? { kind: "book" }) as StoryMemoryAssociation;
+    const metadataActionIds = Array.isArray(parsed.metadataActionIds)
+      ? (parsed.metadataActionIds as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
+    if (!sessionId || !startedAt || !endedAt) {
+      await vscode.window.showWarningMessage("Story chat summary was not saved.");
+      return;
+    }
+    const chatLog: StoryChatLogSummary = {
+      sessionId,
+      startedAt,
+      endedAt,
+      launchedFrom,
+      chapterRef,
+      chaptersInContext,
+      summary,
+      memoryEntryIds: [],
+      metadataActionIds,
+    };
+    try {
+      const { chatLogPath } = await saveStoryChatSessionSummary(rootPath, safeFileSystem, {
+        chatLog,
+        memoryTopic,
+        memoryBody,
+        memoryAssociation,
+      });
+      await vscode.window.showInformationMessage(`Saved to story memory. (${chatLogPath})`);
+    } catch {
+      await vscode.window.showWarningMessage("Story chat summary was not saved.");
+    }
+  });
+
+  const openStoryMemoryCommand = vscode.commands.registerCommand("leanquill.openStoryMemory", async () => {
+    const records = await listStoryMemory(rootPath);
+    if (records.length === 0) {
+      await vscode.window.showInformationMessage(
+        "No story memory yet. Start a story chat to preserve session summaries and decisions as LeanQuill memory.",
+      );
+      return;
+    }
+    const pick = await vscode.window.showQuickPick(
+      records.map((r) => ({
+        label: r.topic,
+        description: `${storyMemoryToContext(r).associationLabel} — ${r.status === "active" ? "Current" : r.status}`,
+        detail: `${r.sourceChatId} — ${r.updatedAt}`,
+        r,
+      })),
+      { placeHolder: "Open a story memory record" },
+    );
+    if (!pick || !("r" in pick)) {
+      return;
+    }
+    const abs = path.join(rootPath, ".leanquill", "memory", (pick as { r: (typeof records)[0] }).r.fileName);
+    const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(abs));
+    await vscode.window.showTextDocument(doc);
+  });
+
   const selectCharacterInPanelCommand = vscode.commands.registerCommand(
     "leanquill.selectCharacterInPanel",
     async (fileName: string) => {
@@ -737,6 +1152,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     issuesMarkdownWatcher,
     startResearchCommand,
     startImportResearchCommand,
+    startStoryChatCommand,
+    chatAboutIssueCommand,
+    chatAboutChapterCommand,
+    chatAboutSelectionCommand,
+    chatAboutCharacterCommand,
+    chatAboutPlaceCommand,
+    chatAboutThreadCommand,
+    chatAboutThemeCommand,
+    chatAboutResearchCommand,
+    applyMetadataActionCommand,
+    saveStoryChatSummaryCommand,
+    openStoryMemoryCommand,
     newCharacterCommand,
     newPlaceCommand,
     newThreadCommand,
