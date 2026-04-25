@@ -25,7 +25,7 @@
 | 14  | Open Questions                                        | Author can create open-question notes associated with the book, characters, threads, places, manuscript files, or text selections — with list, navigation, and status updates.                                                                            | ISSUE-01 (partial), ISSUE-02 (partial)          | 4 criteria       |
 | 15  | Import Claude Desktop research                        | Author can import Claude Desktop research into the planning workflow for later review and use                                                                                                                                                             | TBD                                             | TBD              |
 | 16  | Marketplace preview and publish pipeline              | Author can install a VS Code Marketplace **preview** with documentation, getting-started guidance, and supporting listing artifacts; CI/CD or documented automation makes preview and future releases repeatable                                          | TBD                                             | TBD              |
-| 17  | AI Story Chat, Memory, and Metadata Actions           | Author can chat with an AI agent about story questions and recommendations, preserve conversation-scoped notes over time, and allow standardized AI updates to LeanQuill metadata files across supported development environments                         | TBD                                             | TBD              |
+| 17  | AI Story Chat, Memory, and Metadata Actions           | 5/6 | In Progress|  |
 
 
 ## Phases
@@ -391,7 +391,7 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 9, Phase 10
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 5/6 plans executed
 
 Plans:
 
