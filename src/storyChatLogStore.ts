@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { escapeYamlString } from "./yamlUtils";
+import { escapeYamlString, stripYamlQuotes } from "./yamlUtils";
 import type { SafeFileSystem } from "./safeFileSystem";
 import { createStoryMemory, type StoryMemoryAssociation, type StoryMemoryRecord } from "./storyMemoryStore";
 
@@ -25,6 +25,7 @@ export function serializeStoryChatLogSummary(summary: StoryChatLogSummary): stri
   const lines: string[] = ["---"];
   lines.push(`session_id: ${escapeYamlString(summary.sessionId)}`);
   lines.push("session_type: story-chat");
+  lines.push(`launched_from: ${escapeYamlString(summary.launchedFrom)}`);
   lines.push(`started_at: ${escapeYamlString(summary.startedAt)}`);
   lines.push(`ended_at: ${escapeYamlString(summary.endedAt)}`);
   lines.push(`chapter_ref: ${escapeYamlString(summary.chapterRef)}`);
@@ -58,6 +59,64 @@ export interface SaveStoryChatSessionSummaryInput {
   memoryTopic: string;
   memoryBody: string;
   memoryAssociation: StoryMemoryAssociation;
+}
+
+function parseScalarBlock(frontmatter: string): Record<string, string> {
+  const scalars: Record<string, string> = {};
+  for (const line of frontmatter.split("\n")) {
+    const m = /^([a-zA-Z0-9_]+):\s*(.*)$/.exec(line);
+    if (!m) {
+      continue;
+    }
+    scalars[m[1]] = stripYamlQuotes(m[2].trim());
+  }
+  return scalars;
+}
+
+/** Best-effort parse for provenance updates (metadata action applier). */
+export async function readStoryChatLogSummaryFromDisk(
+  rootPath: string,
+  sessionFileName: string,
+): Promise<StoryChatLogSummary | undefined> {
+  const rel = sessionFileName.replace(/\\/g, "/");
+  const abs = path.join(rootPath, ...rel.split("/"));
+  let raw: string;
+  try {
+    raw = await fs.readFile(abs, "utf8");
+  } catch {
+    return undefined;
+  }
+  const normalized = raw.replace(/\r\n/g, "\n");
+  const fmMatch = /^---\n([\s\S]*?)\n---/.exec(normalized);
+  if (!fmMatch) {
+    return undefined;
+  }
+  const s = parseScalarBlock(fmMatch[1]);
+  const body = normalized.slice(fmMatch[0].length).replace(/^\n/, "").replace(/\n$/, "");
+  const parseJsonArr = (key: string): string[] => {
+    const rawVal = s[key];
+    if (!rawVal) {
+      return [];
+    }
+    try {
+      const v = JSON.parse(rawVal) as unknown;
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+    } catch {
+      return [];
+    }
+  };
+  return {
+    sessionId: s.session_id || path.basename(sessionFileName, ".md"),
+    startedAt: s.started_at || "",
+    endedAt: s.ended_at || "",
+    launchedFrom: s.launched_from || "general",
+    chapterRef: s.chapter_ref || "",
+    chaptersInContext: parseJsonArr("chapters_in_context"),
+    summary: s.summary || "",
+    memoryEntryIds: parseJsonArr("memory_entry_ids"),
+    metadataActionIds: parseJsonArr("metadata_action_ids"),
+    transcript: body.length > 0 ? body : undefined,
+  };
 }
 
 export async function saveStoryChatSessionSummary(
