@@ -25,7 +25,7 @@
 | 14  | Open Questions                                        | Author can create open-question notes associated with the book, characters, threads, places, manuscript files, or text selections — with list, navigation, and status updates.                                                                            | ISSUE-01 (partial), ISSUE-02 (partial)          | 4 criteria       |
 | 15  | Import Claude Desktop research                        | Author can import Claude Desktop research into the planning workflow for later review and use                                                                                                                                                             | TBD                                             | TBD              |
 | 16  | Marketplace preview and publish pipeline              | Author can install a VS Code Marketplace **preview** with documentation, getting-started guidance, and supporting listing artifacts; CI/CD or documented automation makes preview and future releases repeatable                                          | TBD                                             | TBD              |
-| 17  | AI Story Chat, Memory, and Metadata Actions           | 5/6 | In Progress|  |
+| 17  | AI Story Chat, Memory, and Metadata Actions           | Author can hold story-focused AI conversations with durable memory and apply metadata changes through standardized, auditable contracts                                                                                                                      | TBD                                             | 3 criteria       |
 
 
 ## Phases
@@ -424,7 +424,7 @@ Plans:
 | 14. Open Questions                                        | 6/6            | Completed   | 2026-04-09 |
 | 15. Import Claude Desktop research                        | 4/4            | Completed   | 2026-04-25 |
 | 16. Marketplace preview and publish pipeline              | 0/0            | Not started | -          |
-| 17. AI Story Chat, Memory, and Metadata Actions           | 0/0            | Not started | -          |
+| 17. AI Story Chat, Memory, and Metadata Actions           | 5/6            | In Progress | -          |
 
 
 ## Backlog
