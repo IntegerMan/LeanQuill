@@ -4,6 +4,14 @@ export interface InitInput {
   genre: string[];
 }
 
+// --- Active personas (Phase 9, PER-01 / D-04) ---
+
+/** One entry in `project.yaml` `active_personas`; id matches `.leanquill/personas/{id}.md`. */
+export interface ActivePersonaEntry {
+  id: string;
+  enabled: boolean;
+}
+
 export interface ChapterOrderResult {
   chapterPaths: string[];
   warnings: string[];
