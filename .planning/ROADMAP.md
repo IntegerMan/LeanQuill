@@ -416,7 +416,7 @@ Plans:
 | 5. Place and Setting Reference                            | 4/4            | Completed   | 2026-04-09 |
 | 6. Threads and Themes                                     | 3/3            | Completed   | 2026-04-09 |
 | 7. Global Knowledge Reference                             | 0/0            | Not started | -          |
-| 8. Issue Capture, Triage, and Editor Signals              | 0/0            | Not started | -          |
+| 8. Issue Capture, Triage, and Editor Signals              | 5/5            | Completed   | 2026-04-11 |
 | 9. AI Safety Rails and Persona Baseline                   | 0/0            | Not started | -          |
 | 10. AI Review and Advisory Workflows                      | 0/0            | Not started | -          |
 | 11. Outline and Card Usability Improvements               | 0/0            | Not started | -          |
