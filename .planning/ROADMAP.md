@@ -38,7 +38,7 @@
 - **Phase 6: Threads and Themes** - Populate planning workspace with Themes + Threads tabs, `themes.yaml`, and thread markdown under `folders.threads`. (completed 2026-04-09)
 - **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
 - **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators. (completed 2026-04-11)
-- **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
+- **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration. (completed 2026-04-25)
 - **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
 - **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
 - **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
@@ -425,7 +425,7 @@ Plans:
 | 6. Threads and Themes                                     | 3/3            | Completed   | 2026-04-09 |
 | 7. Global Knowledge Reference                             | 0/0            | Not started | -          |
 | 8. Issue Capture, Triage, and Editor Signals              | 5/5            | Completed   | 2026-04-11 |
-| 9. AI Safety Rails and Persona Baseline                   | 0/0            | Not started | -          |
+| 9. AI Safety Rails and Persona Baseline                   | 4/4            | Completed   | 2026-04-25 |
 | 10. AI Review and Advisory Workflows                      | 0/0            | Not started | -          |
 | 11. Outline and Card Usability Improvements               | 0/0            | Not started | -          |
 | 12. Standardized Research Workflow and Results Repository | 2/2            | Completed   | 2026-04-05 |
