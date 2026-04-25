@@ -30,7 +30,12 @@ import {
 import { listStoryMemory, storyMemoryToContext, type StoryMemoryAssociation } from "./storyMemoryStore";
 import { saveStoryChatSessionSummary, type StoryChatLogSummary } from "./storyChatLogStore";
 import { applyMetadataAction } from "./metadataActionApplier";
-import { ensureLeanquillWorkflows, migrateProjectYaml, writeHarnessEntryPoints } from "./initialize";
+import {
+  ensureLeanquillDefaultPersonas,
+  ensureLeanquillWorkflows,
+  migrateProjectYaml,
+  writeHarnessEntryPoints,
+} from "./initialize";
 import { ResearchTreeProvider, type ResearchItem } from "./researchTree";
 import { CharacterTreeProvider } from "./characterTree";
 import { PlaceTreeProvider } from "./placeTree";
@@ -257,6 +262,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     void writeHarnessEntryPoints(rootPath).catch(() => { /* non-critical */ });
     // Backfill any bundled workflows missing from pre-upgrade workspaces (never overwrites)
     void ensureLeanquillWorkflows(rootPath, safeFileSystem).catch(() => { /* non-critical */ });
+    void ensureLeanquillDefaultPersonas(rootPath, safeFileSystem).catch(() => { /* non-critical */ });
   } else {
     safeFileSystem.allowPath(DEFAULT_THREADS_FOLDER, ".md");
     safeFileSystem.allowPath(DEFAULT_SETTINGS_FOLDER, ".md");
