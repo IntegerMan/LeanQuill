@@ -25,6 +25,7 @@
 | 14  | Open Questions                                        | Author can create open-question notes associated with the book, characters, threads, places, manuscript files, or text selections — with list, navigation, and status updates.                                                                            | ISSUE-01 (partial), ISSUE-02 (partial)          | 4 criteria       |
 | 15  | Import Claude Desktop research                        | Author can import Claude Desktop research into the planning workflow for later review and use                                                                                                                                                             | TBD                                             | TBD              |
 | 16  | Marketplace preview and publish pipeline              | Author can install a VS Code Marketplace **preview** with documentation, getting-started guidance, and supporting listing artifacts; CI/CD or documented automation makes preview and future releases repeatable                                          | TBD                                             | TBD              |
+| 17  | AI Story Chat, Memory, and Metadata Actions           | Author can chat with an AI agent about story questions and recommendations, preserve conversation-scoped notes over time, and allow standardized AI updates to LeanQuill metadata files across supported development environments                         | TBD                                             | TBD              |
 
 
 ## Phases
@@ -45,6 +46,7 @@
 - **Phase 14: Open Questions** - Author-created open-question notes linked to book, characters, threads, places, or manuscript selections with list view, navigation, and status management. (completed 2026-04-10)
 - **Phase 15: Import Claude Desktop research** - Research sidebar import plus chat skill or agent across protocols into standardized research notes.
 - **Phase 16: Marketplace preview and publish pipeline** - Marketplace preview listing, docs, getting started, artifacts, and repeatable CI/CD.
+- **Phase 17: AI Story Chat, Memory, and Metadata Actions** - Conversational story advisor with durable notes/memory and standardized cross-environment metadata write contracts.
 
 ## Phase Details
 
@@ -383,6 +385,26 @@ Plans:
 
 **Notes:** Promoted from backlog (999.4).
 
+### Phase 17: AI Story Chat, Memory, and Metadata Actions
+
+**Goal:** Author can chat with an AI agent about the story, ask questions, receive recommendations grounded in prior conversations, and allow the agent to update LeanQuill metadata files through standardized, auditable contracts that work across supported development environments such as Cursor and Copilot.
+**UI hint:** yes
+**Depends on:** Phase 9, Phase 10
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+
+- TBD (run /gsd-plan-phase 17 to break down)
+
+**Success criteria:**
+
+1. Author can hold story-focused AI conversations that answer questions and make recommendations without authoring or modifying manuscript prose.
+2. Conversation notes or memory can be preserved and revisited across different story aspects over time.
+3. AI-driven metadata changes use a standardized LeanQuill contract that is auditable and portable across supported development environments.
+
+**Notes:** Added from user request for a conversational story agent with persistent memory and cross-environment metadata manipulation. This remains downstream of AI safety rails and existing AI advisory workflows so manuscript immutability and artifact auditability are already established.
+
 ## Progress Table
 
 
@@ -400,9 +422,9 @@ Plans:
 | 11. Outline and Card Usability Improvements               | 0/0            | Not started | -          |
 | 12. Standardized Research Workflow and Results Repository | 2/2            | Completed   | 2026-04-05 |
 | 14. Open Questions                                        | 6/6            | Completed   | 2026-04-09 |
-| 14. Open Questions                                        | 0/6            | Not started | -          |
-| 15. Import Claude Desktop research                        | 0/4            | Not started | -          |
+| 15. Import Claude Desktop research                        | 4/4            | Completed   | 2026-04-25 |
 | 16. Marketplace preview and publish pipeline              | 0/0            | Not started | -          |
+| 17. AI Story Chat, Memory, and Metadata Actions           | 0/0            | Not started | -          |
 
 
 ## Backlog

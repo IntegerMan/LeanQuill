@@ -110,6 +110,7 @@ Plan: Not started
 - Phase 11 added: Make the outline and card views more usable with the ability to insert, remove, and reorder cards. The outline should also support changing hierarchy structures like we can in the sidebar.
 - Phase 12 added: add the ability to run research in standardized ways and collect research results in a dedicated research folder next to the manuscript.
 - Phase 14 added: Open Questions — author-created open-question notes linked to book, characters, threads, places, or manuscript selections with issues list, navigation, and status management. Stepping stone toward full Issue Capture (Phase 8).
+- Phase 17 added: AI Story Chat, Memory, and Metadata Actions — story-focused AI conversations with recommendations, durable notes/memory, and standardized cross-environment LeanQuill metadata write contracts.
 
 ## Session Continuity
 
