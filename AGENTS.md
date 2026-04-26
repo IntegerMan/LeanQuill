@@ -46,6 +46,8 @@ LeanQuill workflow docs under `.leanquill/workflows/` are versioned and can auto
 
 After changing workflow bundle/version logic, run `npm run build:test && npm test`.
 
+**Story chat:** The shipped `story-chat.md` / `story-state-scout.md` pair uses an **orchestrator + aggregate scout** pattern (sub-scout prompts and local read/Grep fallbacks in `leanquillWorkflows.ts`). Harnesses under `.cursor/`, `.github/agents/`, and `.claude/agents/` are generated on init from `src/initialize.ts` — keep orchestration wording in sync when editing workflows.
+
 ---
 
 ## Code style and tooling

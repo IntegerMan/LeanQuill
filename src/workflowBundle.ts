@@ -6,24 +6,26 @@
  * frontmatter to opt out, or set `leanquill_workflow_bundle` higher than the extension’s
  * value to “win” over downgrades.
  */
-export const LEANQUILL_WORKFLOW_BUNDLE_VERSION = 1;
+export const LEANQUILL_WORKFLOW_BUNDLE_VERSION = 5;
 
 const FRONTMATTER = /^\s*---\r?\n([\s\S]*?)\r?\n---/;
+const WORKFLOW_BUNDLE = /^\s*leanquill_workflow_bundle:\s*(\d+)\s*$/m;
+const WORKFLOW_PINNED = /^\s*leanquill_workflow_pinned:\s*(true|yes|1)\s*$/im;
 
 /**
  * Returns the `leanquill_workflow_bundle` integer from the first YAML front matter block, or
  * 0 if missing (treated as older than any shipped bundle).
  */
 export function readWorkflowBundleFromContent(fileContent: string): number {
-  const m = fileContent.match(FRONTMATTER);
+  const m = FRONTMATTER.exec(fileContent);
   if (!m) {
     return 0;
   }
-  const line = m[1].match(/^\s*leanquill_workflow_bundle:\s*(\d+)\s*$/m);
+  const line = WORKFLOW_BUNDLE.exec(m[1]);
   if (!line) {
     return 0;
   }
-  const n = parseInt(line[1], 10);
+  const n = Number.parseInt(line[1], 10);
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
@@ -31,9 +33,9 @@ export function readWorkflowBundleFromContent(fileContent: string): number {
  * When true, `ensureLeanquillWorkflows` will not replace this file.
  */
 export function isLeanquillWorkflowPinned(fileContent: string): boolean {
-  const m = fileContent.match(FRONTMATTER);
+  const m = FRONTMATTER.exec(fileContent);
   if (!m) {
     return false;
   }
-  return /^\s*leanquill_workflow_pinned:\s*(true|yes|1)\s*$/im.test(m[1]);
+  return WORKFLOW_PINNED.test(m[1]);
 }

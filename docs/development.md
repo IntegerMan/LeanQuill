@@ -82,6 +82,10 @@ LeanQuill auto-refreshes stale workflow files under `.leanquill/workflows/` base
 
 When touching this system, run `npm run build:test && npm test` and check `test/workflowBundle.test.ts`.
 
+### Story chat orchestrator pattern
+
+Canonical text for `story-chat.md` and `story-state-scout.md` lives in `src/leanquillWorkflows.ts`. **Story chat is an orchestrator:** it should delegate read-only discovery (sub-tasks / `leanquill-story-state-scout` when needed), synthesize briefly, ask **one** focused author question (2–4 options + **Other**), then route to the smallest skill or command (capability router in the workflow). The aggregate scout workflow defines **four** sub-scouts (project, entity, theme/thread, memory & context) with copy-paste prompts and Grep/list fallbacks. When you change this behavior, bump the workflow bundle and refresh harness copy in `src/initialize.ts` (`writeHarnessEntryPoints`).
+
 ## Running in development
 
 1. Open the `LeanQuill` folder in VS Code

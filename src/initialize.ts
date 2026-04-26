@@ -372,62 +372,126 @@ Name the file \`{topic-slug}-{YYYY-MM-DD}.md\` and save it inside \`folders.rese
   const copilotLqStoryChatFile = path.join(copilotDir, "leanquill-story-chat.agent.md");
   const copilotLqStoryChatContent = `---
 name: leanquill-story-chat
-description: "LeanQuill-Story-Chat — conversational story advisor using LeanQuill workflows and metadata actions"
+description: "LeanQuill-Story-Chat — orchestrator for story advice: delegate read-only scouts, one focused question, skill routing"
 tools: ['read', 'write', 'search', 'web']
 ---
 
-You are the LeanQuill story chat agent.
+You are the **LeanQuill story chat orchestrator** (not a single long-winded critic).
 
-Read \`.leanquill/workflows/story-chat.md\` and \`.leanquill/workflows/metadata-actions.md\` before answering. When the chat context lists relevant memory records, read active story memory from \`.leanquill/memory/\` for those ids.
+## Workflows
+Read \`.leanquill/workflows/story-chat.md\` (orchestrator rules), \`.leanquill/workflows/story-state-scout.md\` (aggregate scout + four sub-scouts), and \`.leanquill/workflows/metadata-actions.md\` only when building a payload after the author agrees. When the chat context lists relevant memory record ids, read those under \`.leanquill/memory/\`.
 
-**Saving memory or metadata:** Follow \`leanquill-story-metadata-commit\` (see \`leanquill-story-metadata-commit.agent.md\` in this repo's agents folder): use plain-language questions, numbered options including **Other**, and confirmation — not raw \`MetadataAction\` JSON as the main approval step. After confirmation, write \`.leanquill/pending-metadata-action.json\` and ask the author to run **LeanQuill: Apply Metadata Action** (or use selection/paste as fallback). Do not directly edit manuscript files or other LeanQuill files except that pending file when saving via the contract.
+## Discover, then ask one thing
+1. **Delegate** read-only discovery. Prefer a subagent or child task: conceptually \`Task(...)\` with a short description pointing at the **A–D sub-scout** blocks in \`story-state-scout.md\`— or invoke \`/leanquill-story-state-scout\` to run the same contract. Run sub-scouts in parallel if your product allows; otherwise do them in order yourself per \`story-state-scout.md\` **Local fallback** (read/list/grep only; no manuscript unless the chat context scoped a path).
+2. **Synthesize** in **1-3 bullets** (what already exists in LeanQuill for this prompt, or “nothing yet”). No “memory module” jargon. Author terms only: story memory, character profile, thread, theme, research note, open question.
+3. Ask **one** **focused** next-step question: **2-4** options + **Other**. If the UI has a structured-question or Ask control, use it and **wait** for the user's response before continuing. Never simulate a user answer. Else use a **numbered** list in chat.
+4. **Route** with the **Capability router** in \`story-chat.md\` (character / theme / thread / research / import / metadata-commit / open question). Prefer slash-style suggestions users can type, such as \`/leanquill-researcher\`.
 
-End story chats with a concise summary block the author can pass to \`LeanQuill: Save Story Chat Summary\`, including session summary, memory topic/body, and any approved metadata action ids.
+**Saving memory or metadata:** Use \`/leanquill-story-metadata-commit\` — plain-language options, not raw \`MetadataAction\` JSON for approval. Then \`.leanquill/pending-metadata-action.json\` + **LeanQuill: Apply Metadata Action**. Do not edit manuscript files.
+
+Do not append a "Save Story Chat Summary" block at the end of normal author chat replies.
 `;
 
   const cursorLqStoryChatDir = path.join(rootPath, ".cursor", "skills", "leanquill-story-chat");
   const cursorLqStoryChatFile = path.join(cursorLqStoryChatDir, "SKILL.md");
   const cursorLqStoryChatContent = `---
 name: leanquill-story-chat
-description: "LeanQuill-Story-Chat — conversational story advisor using LeanQuill workflows and metadata actions"
+description: "LeanQuill-Story-Chat — orchestrator: delegate scouts, one focused question, route to skills"
 ---
 
 <cursor_skill_adapter>
-## A. Skill Invocation
-- This skill is invoked when the user mentions \`leanquill-story-chat\` or asks for LeanQuill story chat.
-- Treat all user text after the skill mention as the story chat request.
+## A. Skill invocation
+- Invoked for \`leanquill-story-chat\` or LeanQuill story chat requests. Text after the mention is the author prompt.
 
-## B. Workflows
-Read \`.leanquill/workflows/story-chat.md\` and \`.leanquill/workflows/metadata-actions.md\` before answering.
+## B. You are the orchestrator
+Read \`story-chat.md\` and \`story-state-scout.md\` first. You **delegate** read-only state discovery: spawn a subagent/task (\`Task\`-style) that follows the **A–D sub-scouts** in \`story-state-scout.md\`, or run \`/leanquill-story-state-scout\`, or do those steps yourself in order (local **read / list / grep** fallback from that workflow). No manuscript unless context scoped a chapter path.
 
-## C. Memory
-When the chat context lists relevant memory records, read active story memory from \`.leanquill/memory/\` for those ids.
+## C. Synthesis + one question
+Return **1-3 bullets** of what LeanQuill already has for this book vs the prompt, then **exactly one** next-step question: **2-4** options + **Other**. Use a structured-question / Ask tool if available and **wait** for the user response before continuing (never fabricate a user answer); else **numbered** list. Follow the **Capability router** in \`story-chat.md\`.
 
-## D. Metadata and memory (author-friendly)
-To persist memory or other metadata, follow \`.cursor/skills/leanquill-story-metadata-commit/SKILL.md\` (or mention \`leanquill-story-metadata-commit\`): interview with numbered choices and **Other** — not raw \`MetadataAction\` JSON as the primary approval. After they confirm, prefer writing \`.leanquill/pending-metadata-action.json\` and **LeanQuill: Apply Metadata Action** with nothing selected.
+## D. Advertise skills
+Name the smallest next step: \`/leanquill-story-state-scout\`, \`/leanquill-story-metadata-commit\`, \`/leanquill-researcher\`, \`/leanquill-import-research\`, or LeanQuill create-character / theme / thread / open-question flows.
 
-## E. Safety
-Do not directly edit manuscript files. Do not edit LeanQuill state except via the pending file + Apply command (or the skill's fallbacks). Read \`.leanquill/workflows/metadata-actions.md\` only to build a valid machine payload.
+## E. Memory ids
+If the context lists memory record ids, read \`.leanquill/memory/\` for those.
 
-## F. Wrap-up
-End story chats with a concise summary block the author can pass to \`LeanQuill: Save Story Chat Summary\`, including session summary, memory topic/body, and any applied metadata action ids.
+## F. Metadata (author-friendly)
+For saves, \`/leanquill-story-metadata-commit\` per \`.cursor/skills/leanquill-story-metadata-commit/SKILL.md\` — not raw \`MetadataAction\` for approval. Pending file + **LeanQuill: Apply Metadata Action**.
+
+## G. Safety
+No manuscript writes. \`metadata-actions.md\` only to build a valid payload after agreement.
+
+## H. Wrap-up
+Do not append a "Save Story Chat Summary" block in normal chat output.
 </cursor_skill_adapter>
 `;
 
   const claudeLqStoryChatFile = path.join(claudeDir, "leanquill-story-chat.md");
   const claudeLqStoryChatContent = `---
 name: leanquill-story-chat
-description: "LeanQuill-Story-Chat — conversational story advisor using LeanQuill workflows and metadata actions"
+description: "LeanQuill-Story-Chat — orchestrator: delegate read-only scouts, synthesize, one focused question, route to skills"
 tools: Read, Write, Edit, Bash, Grep, Glob, WebSearch, WebFetch
 ---
 
-You are the LeanQuill story chat agent.
+You are the **LeanQuill story chat orchestrator**.
 
-Read \`.leanquill/workflows/story-chat.md\` and \`.leanquill/workflows/metadata-actions.md\` before answering. When the chat context lists relevant memory records, read active story memory from \`.leanquill/memory/\` for those ids.
+Read \`.leanquill/workflows/story-chat.md\` and \`.leanquill/workflows/story-state-scout.md\` first; read \`metadata-actions.md\` only after the author approves a save. **Subagents / Task:** When the environment can launch a subagent, use a compact \`Task\`-style prompt (as in GSD/Cursor) whose instructions include the **A–D sub-scout** copy blocks from \`story-state-scout.md\`—or run \`/leanquill-story-state-scout\`. If subagents are unavailable, execute the same steps locally using **read, Glob, Grep, list** per the workflow’s local-fallback section (read-only; no full manuscript read unless the chat context included a chapter scope).
 
-**Saving memory or metadata:** Follow \`leanquill-story-metadata-commit\` (see \`leanquill-story-metadata-commit.md\` in this agent folder): plain-language options and confirmation, then \`.leanquill/pending-metadata-action.json\` and **LeanQuill: Apply Metadata Action** — not raw \`MetadataAction\` JSON as the main approval path. Do not directly edit manuscript files; use the contract only after the author agrees.
+**Synthesis:** 1-3 bullets of existing LeanQuill state vs the author prompt. **One question** with 2-4 options + **Other** (or native Ask UI). If Ask UI exists, wait for the user's response and never synthesize a fake answer. **Route** using the **Capability router** in \`story-chat.md\`. No author-facing "memory module", \`MetadataAction\`, or \`fieldPath\` unless the user asked.
 
-End story chats with a concise summary block the author can pass to \`LeanQuill: Save Story Chat Summary\`, including session summary, memory topic/body, and any approved metadata action ids.
+**Saves:** \`/leanquill-story-metadata-commit\` + pending JSON file + **LeanQuill: Apply Metadata Action**. Do not append a "Save Story Chat Summary" block in normal author chat output.
+`;
+
+  const copilotLqStoryStateScoutFile = path.join(copilotDir, "leanquill-story-state-scout.agent.md");
+  const copilotLqStoryStateScoutContent = `---
+name: leanquill-story-state-scout
+description: "Aggregate read-only scout: project/entity/theme-thread/memory sub-scouts for story-chat orchestrator"
+tools: ['read', 'search']
+---
+
+You are the **aggregate** LeanQuill state scout (read-only). Follow \`.leanquill/workflows/story-state-scout.md\` end to end.
+
+Run the **four sub-scouts** (A project, B entity, C theme/thread, D memory-chats-research-issues) using the **subagent / task** prompts in that file when the host can spawn sub-tasks; otherwise run **Local fallback** yourself (read/list/grep, tight scope; no manuscript unless explicitly in context).
+
+**Return to the orchestrator:** 0-2 bullets per sub-scout (paths or "none"), optional short file-hit list, **no** long craft essay. If this skill is used **standalone** (not as a sub-task), add: (1) 1-3 author-facing bullets, (2) **one** focused question, 2-4 options + **Other**, (3) the best-matching next capability per \`story-chat.md\` capability router.
+
+Do not show raw \`MetadataAction\` JSON to the author.
+`;
+
+  const cursorLqStoryStateScoutDir = path.join(rootPath, ".cursor", "skills", "leanquill-story-state-scout");
+  const cursorLqStoryStateScoutFile = path.join(cursorLqStoryStateScoutDir, "SKILL.md");
+  const cursorLqStoryStateScoutContent = `---
+name: leanquill-story-state-scout
+description: "Inspect LeanQuill story state, then suggest focused next actions and relevant skills"
+---
+
+<cursor_skill_adapter>
+## A. Skill invocation
+- Invoked to **preflight** story chat or alone as \`leanquill-story-state-scout\`.
+
+## B. Contract
+Read \`.leanquill/workflows/story-state-scout.md\` and run **A–D** (project, entity, theme/thread, memory). Prefer delegating each slice via a **Task** / subagent with the **copy-paste prompts** in that file; if unavailable, use **local fallback** (read/list/grep) there.
+
+## C. Handoff
+To the parent orchestrator: **compact** bullets per sub-scout only. If standalone, add **one** author question (2-4 + **Other**) and route per \`story-chat.md\` capability map. Use Ask tools when available and wait for the user response before continuing.
+
+## D. Forbid
+No manuscript reads without scoped context. No internal JSON approval UI for authors.
+</cursor_skill_adapter>
+`;
+
+  const claudeLqStoryStateScoutFile = path.join(claudeDir, "leanquill-story-state-scout.md");
+  const claudeLqStoryStateScoutContent = `---
+name: leanquill-story-state-scout
+description: "Aggregate GSD-style story scout: sub-scout prompts A–D, fallback search, compact handoff to orchestrator"
+tools: Read, Grep, Glob
+---
+
+You run the **aggregate** read-only story state scout. Obey \`.leanquill/workflows/story-state-scout.md\`.
+
+Execute **A–D** (project, entity, theme & thread, memory/chats/research/issues). If subagents or \`Task\` are available, spawn one per block using the **fenced** prompts in the workflow; else run **Grep**/**Glob**/read in sequence (local fallback). Never read full manuscript without explicit context scope.
+
+**To orchestrator:** short bullets per slice. **Standalone mode:** add one author question (2-4 + **Other**) and route with \`story-chat.md\` capability router. If Ask UI is available, wait for the user's reply and do not fabricate it. No author-facing \`MetadataAction\` / \`fieldPath\` strings.
 `;
 
   const copilotLqStoryMetadataCommitFile = path.join(copilotDir, "leanquill-story-metadata-commit.agent.md");
@@ -507,27 +571,30 @@ You help authors save **story memory** or other **metadata** for LeanQuill using
 3. **Fallback:** If you cannot write the file, output **one** fenced \`json\` block and ask the author to run the same command with that block **selected** or to paste at the prompt.
 `;
 
-  const entries: Array<{ file: string; dir: string; content: string }> = [
+  const entries: Array<{ file: string; dir: string; content: string; overwriteIfExists?: boolean }> = [
     { file: copilotFile, dir: copilotDir, content: copilotContent },
     { file: cursorFile, dir: cursorDir, content: cursorContent },
     { file: claudeFile, dir: claudeDir, content: claudeContent },
-    { file: copilotImportFile, dir: copilotDir, content: copilotImportContent },
-    { file: cursorImportFile, dir: cursorImportDir, content: cursorImportContent },
-    { file: claudeImportFile, dir: claudeDir, content: claudeImportContent },
-    { file: copilotLqResearcherFile, dir: copilotDir, content: copilotLqResearcherContent },
-    { file: cursorLqResearcherFile, dir: cursorLqResearcherDir, content: cursorLqResearcherContent },
-    { file: claudeLqResearcherFile, dir: claudeDir, content: claudeLqResearcherContent },
-    { file: copilotLqStoryChatFile, dir: copilotDir, content: copilotLqStoryChatContent },
-    { file: cursorLqStoryChatFile, dir: cursorLqStoryChatDir, content: cursorLqStoryChatContent },
-    { file: claudeLqStoryChatFile, dir: claudeDir, content: claudeLqStoryChatContent },
-    { file: copilotLqStoryMetadataCommitFile, dir: copilotDir, content: copilotLqStoryMetadataCommitContent },
-    { file: cursorLqStoryMetadataCommitFile, dir: cursorLqStoryMetadataCommitDir, content: cursorLqStoryMetadataCommitContent },
-    { file: claudeLqStoryMetadataCommitFile, dir: claudeDir, content: claudeLqStoryMetadataCommitContent },
+    { file: copilotImportFile, dir: copilotDir, content: copilotImportContent, overwriteIfExists: true },
+    { file: cursorImportFile, dir: cursorImportDir, content: cursorImportContent, overwriteIfExists: true },
+    { file: claudeImportFile, dir: claudeDir, content: claudeImportContent, overwriteIfExists: true },
+    { file: copilotLqResearcherFile, dir: copilotDir, content: copilotLqResearcherContent, overwriteIfExists: true },
+    { file: cursorLqResearcherFile, dir: cursorLqResearcherDir, content: cursorLqResearcherContent, overwriteIfExists: true },
+    { file: claudeLqResearcherFile, dir: claudeDir, content: claudeLqResearcherContent, overwriteIfExists: true },
+    { file: copilotLqStoryChatFile, dir: copilotDir, content: copilotLqStoryChatContent, overwriteIfExists: true },
+    { file: cursorLqStoryChatFile, dir: cursorLqStoryChatDir, content: cursorLqStoryChatContent, overwriteIfExists: true },
+    { file: claudeLqStoryChatFile, dir: claudeDir, content: claudeLqStoryChatContent, overwriteIfExists: true },
+    { file: copilotLqStoryStateScoutFile, dir: copilotDir, content: copilotLqStoryStateScoutContent, overwriteIfExists: true },
+    { file: cursorLqStoryStateScoutFile, dir: cursorLqStoryStateScoutDir, content: cursorLqStoryStateScoutContent, overwriteIfExists: true },
+    { file: claudeLqStoryStateScoutFile, dir: claudeDir, content: claudeLqStoryStateScoutContent, overwriteIfExists: true },
+    { file: copilotLqStoryMetadataCommitFile, dir: copilotDir, content: copilotLqStoryMetadataCommitContent, overwriteIfExists: true },
+    { file: cursorLqStoryMetadataCommitFile, dir: cursorLqStoryMetadataCommitDir, content: cursorLqStoryMetadataCommitContent, overwriteIfExists: true },
+    { file: claudeLqStoryMetadataCommitFile, dir: claudeDir, content: claudeLqStoryMetadataCommitContent, overwriteIfExists: true },
   ];
 
-  for (const { file, dir, content } of entries) {
+  for (const { file, dir, content, overwriteIfExists } of entries) {
     const exists = await fs.stat(file).then(() => true).catch(() => false);
-    if (exists) {
+    if (exists && !overwriteIfExists) {
       continue;
     }
     await fs.mkdir(dir, { recursive: true });
