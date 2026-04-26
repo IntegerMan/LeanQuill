@@ -36,6 +36,10 @@ export function parseCharacterFile(fileName: string, content: string): Character
 
   const fmMatch = /^---\n([\s\S]*?)\n---/.exec(normalized);
   if (!fmMatch) {
+    const parsedMarkdown = parseMarkdownCharacterProfile(fileName, normalized);
+    if (parsedMarkdown !== undefined) {
+      return parsedMarkdown;
+    }
     return {
       fileName,
       name: "",
@@ -138,6 +142,74 @@ export function parseCharacterFile(fileName: string, content: string): Character
   flushBlock();
 
   return { fileName, name, aliases, role, description, referencedByNameIn, customFields, body };
+}
+
+function parseMarkdownCharacterProfile(fileName: string, normalized: string): CharacterProfile | undefined {
+  const headingMatch = /^#\s+Character Profile:\s*(.+?)\s*$/im.exec(normalized) ?? /^#\s+(.+?)\s*$/im.exec(normalized);
+  if (!headingMatch) {
+    return undefined;
+  }
+
+  const name = headingMatch[1].trim();
+  const sections = new Map<string, string>();
+  let currentSection: string | undefined;
+  let currentLines: string[] = [];
+
+  const flushSection = () => {
+    if (!currentSection) {
+      return;
+    }
+    sections.set(currentSection, currentLines.join("\n").trim());
+    currentSection = undefined;
+    currentLines = [];
+  };
+
+  for (const line of normalized.split("\n")) {
+    const sectionHeader = /^##\s+(.+?)\s*$/.exec(line);
+    if (sectionHeader) {
+      flushSection();
+      currentSection = sectionHeader[1].trim().toLowerCase();
+      continue;
+    }
+    if (currentSection) {
+      currentLines.push(line);
+    }
+  }
+  flushSection();
+
+  const role = sections.get("role") ?? "";
+  const description =
+    sections.get("snapshot")
+    ?? sections.get("overview")
+    ?? sections.get("summary")
+    ?? "";
+
+  const customFields: Record<string, string> = {};
+  const customMap: Array<[source: string, target: string]> = [
+    ["core motivations", "coreMotivations"],
+    ["motivations", "coreMotivations"],
+    ["strengths", "strengths"],
+    ["vulnerabilities", "vulnerabilities"],
+    ["arc direction", "arcDirection"],
+    ["arc", "arcDirection"],
+  ];
+  for (const [source, target] of customMap) {
+    const value = sections.get(source);
+    if (value && value.trim().length > 0) {
+      customFields[target] = value.trim();
+    }
+  }
+
+  return {
+    fileName,
+    name,
+    aliases: [],
+    role: role.trim(),
+    description: description.trim(),
+    referencedByNameIn: [],
+    customFields,
+    body: "",
+  };
 }
 
 export function serializeCharacterFile(profile: CharacterProfile): string {

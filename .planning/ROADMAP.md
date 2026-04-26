@@ -388,15 +388,25 @@ Plans:
 
 **Notes:** Promoted from backlog (999.2).
 
-### Phase 1000: Improve the user experience of the chat commands to be less cumbersome for a writer by studing frameworks like Get Shit Done, bMad, and Spec Kit.
+### Phase 18: Improve the user experience of the chat commands to be less cumbersome for a writer by studing frameworks like Get Shit Done, bMad, and Spec Kit.
 
 **Goal:** [To be planned]
 **Requirements**: TBD
-**Depends on:** Phase 999
+**Depends on:** TBD
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 1000 to break down)
+- [ ] TBD (run /gsd-plan-phase 18 to break down)
+
+### Phase 19: Character Coach: dedicated skills and popular methodologies so users can choose structured ways to detail and refine characters.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 19 to break down)
 
 ---
 

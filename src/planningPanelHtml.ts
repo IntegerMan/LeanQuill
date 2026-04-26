@@ -360,6 +360,15 @@ function renderThreadsTab(
 // Characters tab rendering
 // ---------------------------------------------------------------------------
 
+function formatCustomFieldLabel(key: string): string {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replaceAll(/[_-]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
 function renderCharacterDetail(profile: CharacterProfile): string {
   const standardFields = `
     <div class="char-field-row">
@@ -396,7 +405,7 @@ function renderCharacterDetail(profile: CharacterProfile): string {
 
   const customFieldRows = Object.entries(profile.customFields).map(([key, val]) =>
     `<div class="char-field-row char-field-custom">
-      <label class="char-field-label char-field-label--custom">${escapeHtml(key)}</label>
+      <label class="char-field-label char-field-label--custom">${escapeHtml(formatCustomFieldLabel(key))}</label>
       <input class="char-field-input" data-action="character:updateField"
         data-file="${escapeHtml(profile.fileName)}" data-field="custom:${escapeHtml(key)}"
         value="${escapeHtml(val)}" />
@@ -439,42 +448,17 @@ function renderCharactersTab(
   selectedFileName: string | undefined,
 ): string {
   const effectiveSelected = selectedFileName ?? profiles[0]?.fileName;
-
-  const roleOrder = ["protagonist", "antagonist", "supporting", "minor"];
-  const roleGroups = new Map<string, CharacterProfile[]>();
-  for (const p of profiles) {
-    const role = p.role.trim() || "uncategorized";
-    if (!roleGroups.has(role)) { roleGroups.set(role, []); }
-    roleGroups.get(role)!.push(p);
-  }
-
-  const sortedRoles = [...roleGroups.keys()].sort((a, b) => {
-    const ai = roleOrder.indexOf(a);
-    const bi = roleOrder.indexOf(b);
-    if (ai !== -1 && bi !== -1) { return ai - bi; }
-    if (ai !== -1) { return -1; }
-    if (bi !== -1) { return 1; }
-    if (a === "uncategorized") { return 1; }
-    if (b === "uncategorized") { return -1; }
-    return a.localeCompare(b);
-  });
-
-  let listItems = "";
-  for (const role of sortedRoles) {
-    const roleProfiles = roleGroups.get(role)!;
-    const groupItems = roleProfiles.map((p) =>
-      `<div class="char-list-item${p.fileName === effectiveSelected ? " char-list-item--selected" : ""}"
-           data-action="character:select"
-           data-open-question-row-context="character"
-           data-file="${escapeHtml(p.fileName)}">
-        ${escapeHtml(p.name || "(untitled)")}
-      </div>`
-    ).join("");
-    listItems += `<div class="char-role-group">
-      <div class="char-role-label">${escapeHtml(role)}</div>
-      ${groupItems}
-    </div>`;
-  }
+  const sortedProfiles = [...profiles].sort((a, b) =>
+    (a.name || a.fileName).localeCompare(b.name || b.fileName),
+  );
+  const listItems = sortedProfiles.map((p) =>
+    `<div class="char-list-item${p.fileName === effectiveSelected ? " char-list-item--selected" : ""}"
+         data-action="character:select"
+         data-open-question-row-context="character"
+         data-file="${escapeHtml(p.fileName)}">
+      ${escapeHtml(p.name || "(untitled)")}
+    </div>`
+  ).join("");
 
   const listPane = `<div class="char-list">
     <div class="char-list-header">
@@ -522,7 +506,7 @@ function renderPlaceDetail(profile: PlaceProfile): string {
 
   const customFieldRows = Object.entries(profile.customFields).map(([key, val]) =>
     `<div class="char-field-row char-field-custom">
-      <label class="char-field-label char-field-label--custom">${escapeHtml(key)}</label>
+      <label class="char-field-label char-field-label--custom">${escapeHtml(formatCustomFieldLabel(key))}</label>
       <input class="char-field-input" data-action="place:updateField"
         data-file="${escapeHtml(profile.fileName)}" data-field="custom:${escapeHtml(key)}"
         value="${escapeHtml(val)}" />
@@ -1611,7 +1595,7 @@ export function renderPlanningHtml(
       if (charContainer) {
         const charDebounceTimers = {};
         charContainer.addEventListener('click', (e) => {
-          const target = e.target;
+          const target = e.target instanceof Element ? e.target : null;
           if (!target) return;
           const el = target.closest('[data-action]');
           if (!el) return;
@@ -1662,7 +1646,7 @@ export function renderPlanningHtml(
       if (placeContainer) {
         const placeDebounceTimers = {};
         placeContainer.addEventListener('click', (e) => {
-          const target = e.target;
+          const target = e.target instanceof Element ? e.target : null;
           if (!target) return;
           const el = target.closest('[data-action]');
           if (!el) return;

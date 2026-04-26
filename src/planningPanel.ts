@@ -1,4 +1,5 @@
 import * as crypto from "node:crypto";
+import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type * as VSCode from "vscode";
 import { resolveChapterOrder } from "./chapterOrder";
@@ -1149,6 +1150,13 @@ export class PlanningPanelProvider {
     const config = await readProjectConfigWithDefaults(this.rootPath);
     const charsDir = config.folders.characters.replace(/\/+$/, "");
     const filePath = path.join(this.rootPath, ...charsDir.split("/"), fileName);
+    const exists = await fs.stat(filePath).then(() => true).catch(() => false);
+    if (!exists) {
+      await this.vscodeApi.window.showWarningMessage(
+        `LeanQuill: Character file not found: ${fileName}`,
+      );
+      return;
+    }
     await this.vscodeApi.commands.executeCommand("vscode.open", this.vscodeApi.Uri.file(filePath));
   }
 
