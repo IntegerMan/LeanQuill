@@ -52,6 +52,7 @@ import {
 } from "./storyChatContext";
 import { listStoryMemory, storyMemoryToContext, type StoryMemoryAssociation } from "./storyMemoryStore";
 import { saveStoryChatSessionSummary, type StoryChatLogSummary } from "./storyChatLogStore";
+import { PENDING_METADATA_ACTION_RELPATH } from "./metadataActionContract";
 import { applyMetadataAction } from "./metadataActionApplier";
 import { getEnabledPersonasForProject } from "./personaStore";
 import { shouldNotifyPersonaResolutionIssues } from "./personaResolutionNotify";
@@ -985,9 +986,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const applyMetadataActionCommand = vscode.commands.registerCommand("leanquill.applyMetadataAction", async () => {
     const ed = vscode.window.activeTextEditor;
+    const pendingPath = path.join(rootPath, ...PENDING_METADATA_ACTION_RELPATH.split("/"));
     let rawText = ed && !ed.selection.isEmpty ? ed.document.getText(ed.selection) : undefined;
+    let appliedFromPendingFile = false;
     if (!rawText?.trim()) {
-      rawText = await vscode.window.showInputBox({ prompt: "Paste accepted LeanQuill MetadataAction JSON" });
+      try {
+        const fromDisk = await fs.readFile(pendingPath, "utf8");
+        if (fromDisk.trim()) {
+          rawText = fromDisk;
+          appliedFromPendingFile = true;
+        }
+      } catch {
+        // no pending file
+      }
+    }
+    if (!rawText?.trim()) {
+      rawText = await vscode.window.showInputBox({
+        prompt:
+          "Paste MetadataAction JSON, or ask the story chat agent to write .leanquill/pending-metadata-action.json and run this command again with nothing selected.",
+      });
     }
     if (!rawText?.trim()) {
       return;
@@ -1001,6 +1018,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
     const result = await applyMetadataAction(rootPath, safeFileSystem, parsed);
     if (result.status === "applied") {
+      if (appliedFromPendingFile) {
+        await fs.unlink(pendingPath).catch(() => {
+          // best-effort remove queue file
+        });
+      }
       await vscode.window.showInformationMessage("Applied LeanQuill metadata action.");
     } else if (result.status === "blocked") {
       await vscode.window.showErrorMessage(

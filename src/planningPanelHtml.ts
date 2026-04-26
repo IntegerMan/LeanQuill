@@ -682,6 +682,9 @@ export function renderPlanningHtml(
       border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-editorGroup-border));
       background: var(--vscode-editorGroupHeader-tabsBackground);
       padding: 0 8px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
     }
     .tab {
       padding: 8px 16px; border: none; background: none; cursor: pointer;
@@ -1381,7 +1384,12 @@ export function renderPlanningHtml(
   <script nonce="${nonce}">
     (function() {
       const vscode = acquireVsCodeApi();
-      const state = vscode.getState() || { collapsedIds: [], activeTab: null, viewMode: null, collapsedGroups: [] };
+      const rawState = vscode.getState();
+      const state = (rawState && typeof rawState === 'object')
+        ? rawState
+        : { collapsedIds: [], activeTab: null, viewMode: null, collapsedGroups: [] };
+      if (!Array.isArray(state.collapsedIds)) state.collapsedIds = [];
+      if (!Array.isArray(state.collapsedGroups)) state.collapsedGroups = [];
       const debounceTimers = {};
 
       // Restore collapsed state

@@ -34,6 +34,20 @@ After you change `src/` or `test/`, run **`npm run build:test`** then **`npm tes
 
 ---
 
+## Workflow Bundle Maintenance
+
+LeanQuill workflow docs under `.leanquill/workflows/` are versioned and can auto-refresh in existing projects.
+
+- Source of truth for workflow content: `src/leanquillWorkflows.ts`
+- Bundle id constant: `LEANQUILL_WORKFLOW_BUNDLE_VERSION` in `src/workflowBundle.ts`
+- Rule: **bump the bundle id whenever workflow content changes**
+- Runtime behavior (`ensureLeanquillWorkflows`): write missing files; replace only when on-disk `leanquill_workflow_bundle` is older
+- Opt out: add `leanquill_workflow_pinned: true` to workflow frontmatter
+
+After changing workflow bundle/version logic, run `npm run build:test && npm test`.
+
+---
+
 ## Code style and tooling
 
 | Choice | Notes |

@@ -30,6 +30,7 @@ test("extension wires story chat, memory, and metadata commands", async () => {
   assert.match(ext, /finalizeChapterReviewRun|leanquill\.saveChapterReviewResult|leanquill\.promoteSessionFindingToIssue/);
   assert.match(ext, /pathsForIssueChat/);
   assert.match(ext, /applyMetadataAction/);
+  assert.match(ext, /PENDING_METADATA_ACTION_RELPATH/);
   assert.match(ext, /Applied LeanQuill metadata action|LeanQuill blocked this metadata action/);
   assert.match(pkg, /leanquill\.startStoryChat/);
   assert.match(pkg, /leanquill\.saveStoryChatSummary/);

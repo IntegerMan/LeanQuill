@@ -32,6 +32,13 @@ export interface MetadataAction {
   };
 }
 
+/**
+ * Queued `MetadataAction` JSON for `leanquill.applyMetadataAction` when the author runs the command
+ * with no selection (read from disk, then removed after a successful apply). Agents write this file
+ * after a plain-language interview and confirmation — readers should not hand-edit the schema in chat.
+ */
+export const PENDING_METADATA_ACTION_RELPATH = ".leanquill/pending-metadata-action.json" as const;
+
 export interface MetadataActionValidationResult {
   ok: boolean;
   action?: MetadataAction;

@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateMetadataAction } from "../src/metadataActionContract";
+import { PENDING_METADATA_ACTION_RELPATH, validateMetadataAction } from "../src/metadataActionContract";
+
+test("PENDING_METADATA_ACTION_RELPATH is under .leanquill", () => {
+  assert.equal(PENDING_METADATA_ACTION_RELPATH, ".leanquill/pending-metadata-action.json");
+});
 
 const roots = ["notes/characters/", "notes/settings/", "notes/threads/", "research/leanquill/"];
 

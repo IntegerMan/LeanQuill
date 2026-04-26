@@ -9,6 +9,9 @@ import { PACKAGED_PERSONA_IDS, packagedPersonaMarkdown } from "./personaDefaults
 
 export { ensureLeanquillDefaultPersonas } from "./personaDefaults";
 import { SafeFileSystem } from "./safeFileSystem";
+import { LEANQUILL_WORKFLOW_SPECS } from "./leanquillWorkflows";
+
+export { ensureLeanquillWorkflows } from "./leanquillWorkflows";
 import { bootstrapOutline, readOutlineIndex, writeOutlineIndex } from "./outlineStore";
 import { InitInput, ChapterOrderResult } from "./types";
 
@@ -134,211 +137,6 @@ async function ensureOverwriteIfNeeded(rootPath: string): Promise<boolean> {
   );
 
   return choice === "Overwrite";
-}
-
-const RESEARCH_WORKFLOW_CONTENT = `---
-name: LeanQuill Research Workflow
-version: 1
----
-
-# LeanQuill Research Workflow
-
-This workflow defines how the LeanQuill research agent investigates topics and produces structured research documents for your book project.
-
-## Process
-
-1. **Read project context** — Load \`.leanquill/project.yaml\`, \`.leanquill/outline-index.json\`, and any relevant manuscript chapters to understand the author's book project.
-2. **Understand the query** — Interpret the research question in the context of the author's genre, themes, and current manuscript progress.
-3. **Ask clarifying questions** — If the query is ambiguous or could mean different things for this project, ask before proceeding.
-4. **Break into sub-topics** — Divide the research into 1–5 core sub-topics that together answer the original question.
-5. **Research each sub-topic** — Use web search for each sub-topic. If web search is unavailable, warn the user and proceed with knowledge-based answers, clearly noting the limitation.
-6. **Produce one result file** — Write a single structured markdown file with the results.
-
-## Result File Format
-
-Each research result file must include:
-
-**Frontmatter:**
-\`\`\`yaml
----
-name: <short descriptive title>
-query: <the original research question>
-created: <ISO 8601 date>
-tags: [<comma-separated relevance tags>]
-sources: [<list of URLs or references used>]
----
-\`\`\`
-
-**Body sections:**
-- **Summary** — 2–4 sentence overview of findings
-- **Sub-topics** — One section per sub-topic (1–5 total), each with key facts and sources
-- **Sources** — Full list of references
-- **Open Questions** — What remains uncertain or worth further investigation
-- **Project Relevancy** — How this research specifically applies to the author's current manuscript
-
-**Length guidance:** Target 50–150 lines for a typical research result. Prioritize actionable information the author can use while writing. Avoid exhaustive academic-style breakdowns, lengthy comparison matrices, or operational planning details unless the author specifically asks for depth. Use concise prose over tables. If a query is genuinely complex, scale up — but default to concise.
-
-**File naming:** \`{topic-slug}-{YYYY-MM-DD}.md\`
-
-**Save location:** Read \`folders.research\` from \`.leanquill/project.yaml\`. Default: \`research/leanquill/\`
-
-## Harness Setup
-
-This workflow is invoked via harness-specific entry points. Prefer the **leanquill-researcher** entry points for new setups; older \`researcher\` files may still exist from earlier LeanQuill versions and are left untouched.
-
-- **Copilot (legacy):** \`.github/agents/researcher.agent.md\`
-- **Cursor (legacy):** \`.cursor/skills/researcher/SKILL.md\`
-- **Claude (legacy):** \`.claude/agents/researcher.md\`
-- **Copilot (recommended):** \`.github/agents/leanquill-researcher.agent.md\`
-- **Cursor (recommended):** \`.cursor/skills/leanquill-researcher/SKILL.md\`
-- **Claude (recommended):** \`.claude/agents/leanquill-researcher.md\`
-
-All entry points read this file (\`research.md\`) and execute the process above.
-`;
-
-const RESEARCH_IMPORT_WORKFLOW_CONTENT = `---
-name: LeanQuill Import External Research Workflow
-version: 1
----
-
-# LeanQuill Import External Research Workflow
-
-Import external research (another AI session, PDF, document, or pasted notes) and normalize it into LeanQuill's structured research note format.
-
-## Canonical format
-
-1. Read \`.leanquill/workflows/research.md\` for the **Result File Format** — frontmatter keys \`name\`, \`query\`, \`created\`, \`tags\`, \`sources\` and body sections (**Summary**, **Sub-topics**, **Sources**, **Open Questions**, **Project Relevancy**). Your deliverable must follow that shape.
-
-2. Read \`.leanquill/project.yaml\` and resolve \`folders.research\` (relative to the workspace root). That directory is the save location for research \`.md\` files.
-
-## Normalization rules (D-07–D-12)
-
-- **D-07 — Map without dropping content:** Map external material into the Result File Format. Content that does not map cleanly still belongs in the file: park it under **Summary** and/or a \`### Imported content\` subsection so nothing is silently discarded.
-
-- **D-08 — \`created\`:** Use an ISO 8601 timestamp at import time unless the source provides an explicit, reliable date you can trust.
-
-- **D-09 — \`sources\`:** Include URLs or references when obvious; otherwise use an empty YAML list \`[]\`.
-
-- **D-10 — \`query\`:** Prefer the user's stated topic; otherwise infer from headings or opening lines. If still unclear, use a visible placeholder such as \`(import — topic to be confirmed)\`.
-
-- **D-11 — Save location:** Prefer writing the final \`.md\` under \`folders.research\`. If this environment cannot write files, output the complete markdown only and instruct the user to save it under that folder manually.
-
-- **D-12 — Collisions:** Before writing, list existing \`*.md\` files in \`folders.research\`. Name files \`{topic-slug}-{YYYY-MM-DD}.md\`. If that name exists, pick a new distinct slug (e.g. append \`-2\`, \`-alt\`) — **never overwrite** an existing file.
-
-## Binary or unreadable sources
-
-For PDF, DOCX, or other formats you cannot read as text, ask the user to paste excerpts or provide plain text so you can still apply the rules above.
-
-## Output
-
-Produce one markdown research note per import, matching \`research.md\` unless you are only returning text for manual save (D-11).
-`;
-
-const STORY_CHAT_WORKFLOW_CONTENT = `---
-name: LeanQuill Story Chat Workflow
-version: 1
----
-
-# LeanQuill Story Chat Workflow
-
-## Context rules
-
-LeanQuill advises but never authors manuscript prose.
-Full manuscript context is never automatic.
-Read active story memory from .leanquill/memory/ before answering, using only records supplied by the LeanQuill chat context or active memory index.
-
-## Conversation rules
-
-Do not write to manuscript chapter files.
-
-## Active story memory
-
-Use memory summaries to stay consistent with prior LeanQuill story chat sessions.
-
-## Memory output
-
-After the chat, produce a session summary suitable for LeanQuill to save under .leanquill/chats/ and .leanquill/memory/.
-
-## Metadata action proposals
-
-AI proposes metadata actions; LeanQuill extension code validates and applies accepted actions.
-Use LeanQuill: Apply Metadata Action only after the author approves the proposed action.
-
-## Safety
-
-Low-risk automatic memory/chat-log writes are limited to .leanquill/memory/ and .leanquill/chats/. Entity, theme, and research metadata actions require authorApproval.
-`;
-
-const METADATA_ACTION_WORKFLOW_CONTENT = `---
-name: LeanQuill Metadata Action Contract
-version: 1
----
-
-# LeanQuill Metadata Action Contract
-
-Allowed operations: \`set\`, \`append\`, \`removeFromList\`, \`createMemory\`, \`supersedeMemory\`, \`createIssue\`, \`updateIssueStatus\`, \`updateThemeMetadata\`, \`updateResearchAssociation\`, \`updateChatLogProvenance\`.
-
-Blocked categories: manuscript prose writes, path traversal, unconfigured path roots, unknown operations, schema-invalid payloads, approval bypass, destructive deletes.
-
-## Example MetadataAction JSON
-
-\`\`\`json
-{
-  "schemaVersion": "1",
-  "actionId": "example-action",
-  "sourceChatId": "example-session",
-  "operation": "createMemory",
-  "targetPath": ".leanquill/memory/example.md",
-  "fieldPath": [],
-  "oldValue": null,
-  "newValue": { "topic": "Example", "body": "Body" },
-  "rationale": "Example rationale",
-  "risk": "low",
-  "authorApproval": { "approvedAt": "2026-01-01T00:00:00.000Z", "method": "extension-command" }
-}
-\`\`\`
-`;
-
-/**
- * Canonical `.leanquill/workflows/*.md` files shipped with the extension.
- * Add entries here when introducing new harness-backed workflows so activation backfill and fresh init stay in sync.
- */
-const LEANQUILL_WORKFLOW_SPECS: ReadonlyArray<{ fileName: string; content: string }> = [
-  { fileName: "research.md", content: RESEARCH_WORKFLOW_CONTENT },
-  { fileName: "import-external-research.md", content: RESEARCH_IMPORT_WORKFLOW_CONTENT },
-  { fileName: "story-chat.md", content: STORY_CHAT_WORKFLOW_CONTENT },
-  { fileName: "metadata-actions.md", content: METADATA_ACTION_WORKFLOW_CONTENT },
-];
-
-/**
- * Creates any missing bundled workflow files under `.leanquill/workflows/`.
- * Does not overwrite existing files (safe for customized or newer-on-disk copies).
- * Uses an atomic exclusive-create write ('wx' flag) to avoid race conditions.
- */
-export async function ensureLeanquillWorkflows(
-  rootPath: string,
-  safeFs: SafeFileSystem = new SafeFileSystem(rootPath),
-): Promise<void> {
-  const workflowsDir = path.join(rootPath, ".leanquill", "workflows");
-  let ensuredDir = false;
-  for (const { fileName, content } of LEANQUILL_WORKFLOW_SPECS) {
-    const target = path.join(workflowsDir, fileName);
-    if (!ensuredDir) {
-      await safeFs.mkdir(workflowsDir);
-      ensuredDir = true;
-    }
-    // Atomic no-clobber write: 'wx' flag fails with EEXIST if the file already
-    // exists, guaranteeing we never overwrite even under a concurrent write.
-    // All workflow specs are always under .leanquill/ (boundary already checked
-    // by the safeFs.mkdir call above), so no additional canWrite guard is needed.
-    try {
-      await fs.writeFile(target, content, { encoding: "utf8", flag: "wx" });
-    } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
-        throw err;
-      }
-    }
-  }
 }
 
 export async function writeHarnessEntryPoints(rootPath: string): Promise<void> {
@@ -582,7 +380,7 @@ You are the LeanQuill story chat agent.
 
 Read \`.leanquill/workflows/story-chat.md\` and \`.leanquill/workflows/metadata-actions.md\` before answering. When the chat context lists relevant memory records, read active story memory from \`.leanquill/memory/\` for those ids.
 
-Do not directly edit manuscript files or LeanQuill metadata files; propose MetadataAction JSON for extension application.
+**Saving memory or metadata:** Follow \`leanquill-story-metadata-commit\` (see \`leanquill-story-metadata-commit.agent.md\` in this repo's agents folder): use plain-language questions, numbered options including **Other**, and confirmation — not raw \`MetadataAction\` JSON as the main approval step. After confirmation, write \`.leanquill/pending-metadata-action.json\` and ask the author to run **LeanQuill: Apply Metadata Action** (or use selection/paste as fallback). Do not directly edit manuscript files or other LeanQuill files except that pending file when saving via the contract.
 
 End story chats with a concise summary block the author can pass to \`LeanQuill: Save Story Chat Summary\`, including session summary, memory topic/body, and any approved metadata action ids.
 `;
@@ -605,11 +403,14 @@ Read \`.leanquill/workflows/story-chat.md\` and \`.leanquill/workflows/metadata-
 ## C. Memory
 When the chat context lists relevant memory records, read active story memory from \`.leanquill/memory/\` for those ids.
 
-## D. Safety
-Do not directly edit manuscript files or LeanQuill metadata files; propose MetadataAction JSON for extension application.
+## D. Metadata and memory (author-friendly)
+To persist memory or other metadata, follow \`.cursor/skills/leanquill-story-metadata-commit/SKILL.md\` (or mention \`leanquill-story-metadata-commit\`): interview with numbered choices and **Other** — not raw \`MetadataAction\` JSON as the primary approval. After they confirm, prefer writing \`.leanquill/pending-metadata-action.json\` and **LeanQuill: Apply Metadata Action** with nothing selected.
 
-## E. Wrap-up
-End story chats with a concise summary block the author can pass to \`LeanQuill: Save Story Chat Summary\`, including session summary, memory topic/body, and any approved metadata action ids.
+## E. Safety
+Do not directly edit manuscript files. Do not edit LeanQuill state except via the pending file + Apply command (or the skill's fallbacks). Read \`.leanquill/workflows/metadata-actions.md\` only to build a valid machine payload.
+
+## F. Wrap-up
+End story chats with a concise summary block the author can pass to \`LeanQuill: Save Story Chat Summary\`, including session summary, memory topic/body, and any applied metadata action ids.
 </cursor_skill_adapter>
 `;
 
@@ -624,9 +425,86 @@ You are the LeanQuill story chat agent.
 
 Read \`.leanquill/workflows/story-chat.md\` and \`.leanquill/workflows/metadata-actions.md\` before answering. When the chat context lists relevant memory records, read active story memory from \`.leanquill/memory/\` for those ids.
 
-Do not directly edit manuscript files or LeanQuill metadata files; propose MetadataAction JSON for extension application.
+**Saving memory or metadata:** Follow \`leanquill-story-metadata-commit\` (see \`leanquill-story-metadata-commit.md\` in this agent folder): plain-language options and confirmation, then \`.leanquill/pending-metadata-action.json\` and **LeanQuill: Apply Metadata Action** — not raw \`MetadataAction\` JSON as the main approval path. Do not directly edit manuscript files; use the contract only after the author agrees.
 
 End story chats with a concise summary block the author can pass to \`LeanQuill: Save Story Chat Summary\`, including session summary, memory topic/body, and any approved metadata action ids.
+`;
+
+  const copilotLqStoryMetadataCommitFile = path.join(copilotDir, "leanquill-story-metadata-commit.agent.md");
+  const copilotLqStoryMetadataCommitContent = `---
+name: leanquill-story-metadata-commit
+description: "Interview the author and commit LeanQuill story memory or metadata (pending file + Apply), without raw JSON approval"
+tools: ['read', 'write', 'search', 'web']
+---
+
+You help authors save **story memory** or other **metadata** for LeanQuill using **questions and choices**, not by showing \`MetadataAction\` JSON for them to read.
+
+## When to use
+- The author agreed something should be written to \`.leanquill/memory/\` or another allowed path, or you are closing a story chat with a storable idea.
+
+## Never as the first move
+- Do **not** paste a full \`MetadataAction\` JSON object as the main way to ask "approve this?" The author is not expected to know \`actionId\`, \`fieldPath\`, or \`schemaVersion\`.
+
+## Interview (do this in chat)
+1. In plain language, restate what will be stored (1–2 sentences).
+2. If multiple sensible filenames or topics exist, offer **2–4 numbered options** plus **Other**; accept a short free-text for Other.
+3. After they pick or confirm, restate in bullets: **What** · **Where** (everyday path, e.g. "a new memory file under .leanquill/memory/").
+
+## Apply path
+1. Build one valid JSON object per \`.leanquill/workflows/metadata-actions.md\` (read when you need the contract).
+2. **Preferred:** Write it to \`.leanquill/pending-metadata-action.json\` in the workspace (single object, minified or pretty). Tell the author: run **LeanQuill: Apply Metadata Action** in VS Code with **no text selected** — the extension reads that file, applies it, and deletes it on success.
+3. **Fallback:** If you cannot write the file, output **one** fenced \`json\` block and ask the author to run the same command with that block **selected** or to paste at the prompt.
+`;
+
+  const cursorLqStoryMetadataCommitDir = path.join(rootPath, ".cursor", "skills", "leanquill-story-metadata-commit");
+  const cursorLqStoryMetadataCommitFile = path.join(cursorLqStoryMetadataCommitDir, "SKILL.md");
+  const cursorLqStoryMetadataCommitContent = `---
+name: leanquill-story-metadata-commit
+description: "Interview the author and commit LeanQuill story memory or metadata (pending file + Apply), without raw JSON approval"
+---
+
+<cursor_skill_adapter>
+## A. Skill invocation
+- Invoked when the user mentions \`leanquill-story-metadata-commit\` or asks to **save** / **remember** / **write** something from story chat to LeanQuill memory or metadata in an author-friendly way.
+
+## B. Forbid
+- Do **not** use a raw \`MetadataAction\` JSON block as the **main** approval UI. The author is not required to read schema fields.
+
+## C. Do instead (interview)
+1. Summarize in plain language what will be stored. Offer **2–4 numbered options** (e.g. file slug / focus) and **Other**; accept free text for Other.
+2. Confirm with a short bullet list (**What** · **Where** in everyday terms).
+3. Read \`.leanquill/workflows/metadata-actions.md\` only to build a **valid** payload after they agree.
+
+## D. Hand off
+- **Preferred:** Write one JSON object to \`.leanquill/pending-metadata-action.json\`, then: *"Run **LeanQuill: Apply Metadata Action** with nothing selected."*
+- **Fallback:** One fenced \`json\` block + same command with selection or paste.
+</cursor_skill_adapter>
+`;
+
+  const claudeLqStoryMetadataCommitFile = path.join(claudeDir, "leanquill-story-metadata-commit.md");
+  const claudeLqStoryMetadataCommitContent = `---
+name: leanquill-story-metadata-commit
+description: "Interview the author and commit LeanQuill story memory or metadata (pending file + Apply), without raw JSON approval"
+tools: Read, Write, Edit, Bash, Grep, Glob, WebSearch, WebFetch
+---
+
+You help authors save **story memory** or other **metadata** for LeanQuill using **questions and choices**, not by showing \`MetadataAction\` JSON for them to read.
+
+## When to use
+- The author agreed something should be written to \`.leanquill/memory/\` or another allowed path, or you are closing a story chat with a storable idea.
+
+## Never as the first move
+- Do **not** paste a full \`MetadataAction\` JSON object as the main way to ask "approve this?" The author is not expected to know \`actionId\`, \`fieldPath\`, or \`schemaVersion\`.
+
+## Interview (do this in chat)
+1. In plain language, restate what will be stored (1–2 sentences).
+2. If multiple sensible filenames or topics exist, offer **2–4 numbered options** plus **Other**; accept a short free-text for Other.
+3. After they pick or confirm, restate in bullets: **What** · **Where** (everyday path, e.g. "a new memory file under .leanquill/memory/").
+
+## Apply path
+1. Build one valid JSON object per \`.leanquill/workflows/metadata-actions.md\` (read when you need the contract).
+2. **Preferred:** Write it to \`.leanquill/pending-metadata-action.json\` in the workspace (single object). Tell the author: run **LeanQuill: Apply Metadata Action** in VS Code with **no text selected** — the extension reads that file, applies it, and deletes it on success.
+3. **Fallback:** If you cannot write the file, output **one** fenced \`json\` block and ask the author to run the same command with that block **selected** or to paste at the prompt.
 `;
 
   const entries: Array<{ file: string; dir: string; content: string }> = [
@@ -642,6 +520,9 @@ End story chats with a concise summary block the author can pass to \`LeanQuill:
     { file: copilotLqStoryChatFile, dir: copilotDir, content: copilotLqStoryChatContent },
     { file: cursorLqStoryChatFile, dir: cursorLqStoryChatDir, content: cursorLqStoryChatContent },
     { file: claudeLqStoryChatFile, dir: claudeDir, content: claudeLqStoryChatContent },
+    { file: copilotLqStoryMetadataCommitFile, dir: copilotDir, content: copilotLqStoryMetadataCommitContent },
+    { file: cursorLqStoryMetadataCommitFile, dir: cursorLqStoryMetadataCommitDir, content: cursorLqStoryMetadataCommitContent },
+    { file: claudeLqStoryMetadataCommitFile, dir: claudeDir, content: claudeLqStoryMetadataCommitContent },
   ];
 
   for (const { file, dir, content } of entries) {
