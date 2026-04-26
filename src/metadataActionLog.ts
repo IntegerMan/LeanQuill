@@ -4,7 +4,7 @@ import type { SafeFileSystem } from "./safeFileSystem";
 
 export const LEANQUILL_METADATA_ACTION_LOG = ".leanquill/metadata-actions.jsonl";
 
-export type MetadataActionLogStatus = "proposed" | "applied" | "rejected" | "blocked";
+export type MetadataActionLogStatus = "applied" | "rejected" | "blocked";
 
 export interface MetadataActionLogEntry {
   timestamp: string;

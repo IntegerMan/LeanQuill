@@ -17,25 +17,39 @@ export interface StoryChatLogSummary {
   memoryEntryIds: string[];
   metadataActionIds: string[];
   transcript?: string;
+  sessionType?: "story-chat" | "chapter-review" | "story-intelligence-update" | "issue-planning" | string;
+  personaIds?: string[];
+  issuesGenerated?: number;
+  issuesResolved?: number;
+  sessionIssueFile?: string;
+  storyUpdatesMade?: boolean;
+  storyUpdateNotes?: string;
 }
 
 export function serializeStoryChatLogSummary(summary: StoryChatLogSummary): string {
-  const storyUpdatesMade =
+  const sessionType = summary.sessionType ?? "story-chat";
+  const derivedUpdates =
     summary.memoryEntryIds.length > 0 || summary.metadataActionIds.length > 0 ? "true" : "false";
+  const storyUpdatesMade =
+    summary.storyUpdatesMade !== undefined ? (summary.storyUpdatesMade ? "true" : "false") : derivedUpdates;
   const lines: string[] = ["---"];
   lines.push(`session_id: ${escapeYamlString(summary.sessionId)}`);
-  lines.push("session_type: story-chat");
+  lines.push(`session_type: ${escapeYamlString(sessionType)}`);
   lines.push(`launched_from: ${escapeYamlString(summary.launchedFrom)}`);
   lines.push(`started_at: ${escapeYamlString(summary.startedAt)}`);
   lines.push(`ended_at: ${escapeYamlString(summary.endedAt)}`);
   lines.push(`chapter_ref: ${escapeYamlString(summary.chapterRef)}`);
   lines.push(`chapters_in_context: ${escapeYamlString(JSON.stringify(summary.chaptersInContext))}`);
-  lines.push("agent_mode: story-chat");
+  lines.push(`agent_mode: ${escapeYamlString(sessionType === "story-chat" ? "story-chat" : sessionType)}`);
   lines.push(`summary: ${escapeYamlString(summary.summary)}`);
   lines.push(`memory_entry_ids: ${escapeYamlString(JSON.stringify(summary.memoryEntryIds))}`);
   lines.push(`metadata_action_ids: ${escapeYamlString(JSON.stringify(summary.metadataActionIds))}`);
+  lines.push(`persona_ids: ${escapeYamlString(JSON.stringify(summary.personaIds ?? []))}`);
+  lines.push(`issues_generated: ${summary.issuesGenerated ?? 0}`);
+  lines.push(`issues_resolved: ${summary.issuesResolved ?? 0}`);
+  lines.push(`session_issue_file: ${escapeYamlString(summary.sessionIssueFile ?? "")}`);
   lines.push(`story_updates_made: ${storyUpdatesMade}`);
-  lines.push(`story_update_notes: ${escapeYamlString("")}`);
+  lines.push(`story_update_notes: ${escapeYamlString(summary.storyUpdateNotes ?? "")}`);
   lines.push("---");
   if (summary.transcript?.length) {
     lines.push(summary.transcript);
@@ -105,6 +119,9 @@ export async function readStoryChatLogSummaryFromDisk(
       return [];
     }
   };
+  const sessionTypeRaw = (s.session_type || "story-chat").trim();
+  const issuesGenerated = Number.parseInt(String(s.issues_generated ?? "0"), 10);
+  const issuesResolved = Number.parseInt(String(s.issues_resolved ?? "0"), 10);
   return {
     sessionId: s.session_id || path.basename(sessionFileName, ".md"),
     startedAt: s.started_at || "",
@@ -116,6 +133,13 @@ export async function readStoryChatLogSummaryFromDisk(
     memoryEntryIds: parseJsonArr("memory_entry_ids"),
     metadataActionIds: parseJsonArr("metadata_action_ids"),
     transcript: body.length > 0 ? body : undefined,
+    sessionType: sessionTypeRaw || "story-chat",
+    personaIds: parseJsonArr("persona_ids"),
+    issuesGenerated: Number.isFinite(issuesGenerated) ? issuesGenerated : 0,
+    issuesResolved: Number.isFinite(issuesResolved) ? issuesResolved : 0,
+    sessionIssueFile: s.session_issue_file?.trim() || undefined,
+    storyUpdatesMade: s.story_updates_made === "true" ? true : s.story_updates_made === "false" ? false : undefined,
+    storyUpdateNotes: s.story_update_notes?.trim() || undefined,
   };
 }
 

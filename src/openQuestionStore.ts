@@ -227,6 +227,14 @@ export function parseOpenQuestionFile(fileName: string, content: string): OpenQu
   const dismissedReason =
     dismissedReasonRaw && dismissedReasonRaw.length > 0 ? dismissedReasonRaw : undefined;
 
+  const sourceRaw = (scalars.source || "author").trim();
+  const issueSource = sourceRaw !== "author" && sourceRaw.length > 0 ? sourceRaw : undefined;
+  const ap = scalars.agent_profile?.trim();
+  const agentProfile = ap && ap !== "author" ? ap : undefined;
+  const conf = scalars.confidence?.trim();
+  const confidence = conf && conf !== "unrated" ? conf : undefined;
+  const verifyManually = scalars.verify_manually === "true" ? true : undefined;
+
   return {
     fileName,
     id,
@@ -238,6 +246,10 @@ export function parseOpenQuestionFile(fileName: string, content: string): OpenQu
     updatedAt,
     association,
     dismissedReason,
+    issueSource,
+    agentProfile,
+    confidence,
+    verifyManually,
   };
 }
 
@@ -255,17 +267,21 @@ export function serializeOpenQuestionFile(record: OpenQuestionRecord): string {
   lines.push(`title: ${escapeYamlString(record.title)}`);
   lines.push(`created_at: ${escapeYamlString(record.createdAt)}`);
   lines.push(`updated_at: ${escapeYamlString(record.updatedAt)}`);
-  lines.push("source: author");
+  if (record.issueSource && record.issueSource.trim().length > 0) {
+    lines.push(`source: ${escapeYamlString(record.issueSource.trim())}`);
+  } else {
+    lines.push("source: author");
+  }
   lines.push(`chapter_ref: ${escapeYamlString(normalizePathSeparators(assocFm.chapter_ref || ""))}`);
   if (assocFm.span_hint && assocFm.span_hint.length > 0) {
     lines.push(`span_hint: ${escapeYamlString(assocFm.span_hint)}`);
   } else {
     lines.push('span_hint: ""');
   }
-  lines.push("agent_profile: author");
+  lines.push(`agent_profile: ${escapeYamlString(record.agentProfile?.trim() || "author")}`);
   lines.push("evidence_links: []");
-  lines.push("confidence: unrated");
-  lines.push("verify_manually: false");
+  lines.push(`confidence: ${escapeYamlString(record.confidence?.trim() || "unrated")}`);
+  lines.push(`verify_manually: ${record.verifyManually === true ? "true" : "false"}`);
   lines.push("intentional: false");
   lines.push('intentional_note: ""');
   if (record.dismissedReason && record.dismissedReason.trim().length > 0) {

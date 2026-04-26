@@ -177,6 +177,14 @@ export interface OpenQuestionRecord {
   association: OpenQuestionAssociation;
   /** Persisted when status is dismissed (issue-schema `dismissed_reason`). */
   dismissedReason?: string;
+  /** When set, `source` frontmatter points at e.g. `.leanquill/issues/sessions/…` (AI session promotion). */
+  issueSource?: string;
+  /** Overrides default `author` in frontmatter when promoting from AI session findings. */
+  agentProfile?: string;
+  /** Optional confidence label from AI provenance. */
+  confidence?: string;
+  /** Optional verify flag from AI provenance. */
+  verifyManually?: boolean;
   /** Computed for webview navigation UX; not persisted. */
   staleHint?: string;
 }

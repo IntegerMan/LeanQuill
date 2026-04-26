@@ -36,7 +36,16 @@ import {
 } from "./projectConfig";
 import { buildHarnessDraftQuery, buildHarnessFallbackHint, buildStoryChatDraftQuery } from "./harnessChatDraft";
 import {
+  buildAiWorkflowFallbackQuery,
+  finalizeChapterReviewRun,
+  prepareChapterReviewRun,
+  prepareStoryIntelligenceRun,
+  type PersonaScopeChoice,
+} from "./aiReviewWorkflow";
+import { promoteAiReviewFindingToIssue, type AiReviewSessionFinding } from "./aiReviewSessionStore";
+import {
   buildStoryChatContextBundle,
+  pathsForIssueChat,
   type StoryChatLaunchSource,
   type StoryChatManuscriptScope,
   type StoryChatTarget,
@@ -482,6 +491,50 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return "none";
   }
 
+  async function pickPersonaScopeForAiReview(
+    personas: Array<{ id: string; name: string; type: string }>,
+  ): Promise<PersonaScopeChoice | undefined> {
+    const scopePick = await vscode.window.showQuickPick(
+      [
+        { label: "One enabled persona…", value: "one" as const },
+        { label: "All enabled personas", value: "all" as const },
+      ],
+      { title: "Choose how to run this review" },
+    );
+    if (!scopePick) {
+      return undefined;
+    }
+    if (scopePick.value === "all") {
+      return { kind: "all" };
+    }
+    const personPick = await vscode.window.showQuickPick(
+      personas.map((p) => ({
+        label: p.name,
+        description: p.id,
+        detail: p.type,
+        personaId: p.id,
+      })),
+      { title: "Select a persona" },
+    );
+    if (!personPick || typeof (personPick as { personaId?: string }).personaId !== "string") {
+      return undefined;
+    }
+    return { kind: "one", personaId: (personPick as { personaId: string }).personaId };
+  }
+
+  async function openAdvisoryChatWithQuery(query: string): Promise<void> {
+    try {
+      await vscode.commands.executeCommand("workbench.action.chat.newChat");
+    } catch {
+      // ignore
+    }
+    try {
+      await vscode.commands.executeCommand("workbench.action.chat.open", { query, isPartialQuery: true });
+    } catch {
+      await vscode.window.showInformationMessage("No chat model available");
+    }
+  }
+
   interface OpenStoryChatBundleInput {
     launchedFrom: StoryChatLaunchSource;
     target?: StoryChatTarget;
@@ -557,7 +610,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await vscode.window.showWarningMessage("LeanQuill: Issue not found.");
         return;
       }
-      const included = [`.leanquill/issues/${issue.fileName}`];
+      const cfg = await readProjectConfigWithDefaults(rootPath);
+      const included = pathsForIssueChat(issue, cfg);
       const scope = manuscriptScopeForIssueAssociation(issue.association);
       const target: StoryChatTarget = {
         kind: "issue",
@@ -565,12 +619,172 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         label: issue.title,
         path: issue.fileName,
       };
+      if (issue.association.kind === "selection") {
+        target.chapterRef = issue.association.chapterRef;
+        target.spanHint = issue.association.spanHint;
+      } else if (issue.association.kind === "chapter") {
+        target.chapterRef = issue.association.chapterRef;
+      }
       await openStoryChatWithContext({
         launchedFrom: "issue",
         target,
         includedPaths: included,
         manuscriptScope: scope,
       });
+    },
+  );
+
+  const reviewChapterCommand = vscode.commands.registerCommand(
+    "leanquill.reviewChapter",
+    async (arg?: { chapterPath?: string }) => {
+      let chapterRef = arg?.chapterPath?.trim();
+      if (!chapterRef) {
+        const ed = vscode.window.activeTextEditor;
+        if (ed?.document.uri.fsPath.startsWith(rootPath)) {
+          const rel = path.relative(rootPath, ed.document.uri.fsPath).split(path.sep).join("/");
+          if (rel.startsWith("manuscript/")) {
+            chapterRef = normalizePath(rel);
+          }
+        }
+      }
+      if (!chapterRef?.trim()) {
+        chapterRef = (await vscode.window.showInputBox({
+          prompt: "Chapter path (e.g. manuscript/ch01.md)",
+        }))?.trim();
+      }
+      if (!chapterRef?.trim()) {
+        await vscode.window.showWarningMessage(
+          "LeanQuill: select a chapter in the tree or open a chapter file, then run Run chapter review again.",
+        );
+        return;
+      }
+      chapterRef = normalizePath(chapterRef.trim());
+      const pr = await getEnabledPersonasForProject(rootPath);
+      if (pr.personas.length === 0) {
+        await vscode.window.showWarningMessage(
+          "No enabled personas in this project. Enable personas in project.yaml or add persona files under .leanquill/personas/, then try again.",
+        );
+        return;
+      }
+      const choice = await pickPersonaScopeForAiReview(pr.personas);
+      if (!choice) {
+        return;
+      }
+      const run = await prepareChapterReviewRun(rootPath, safeFileSystem, {
+        chapterRef,
+        personas: pr.personas,
+        choice,
+      });
+      await vscode.window.showInformationMessage("Session file and chat log started for this review.");
+      const query = buildAiWorkflowFallbackQuery(run);
+      await openAdvisoryChatWithQuery(query);
+    },
+  );
+
+  const runStoryIntelligenceUpdateCommand = vscode.commands.registerCommand(
+    "leanquill.runStoryIntelligenceUpdate",
+    async (arg?: { chapterPath?: string }) => {
+      let chapterRef = arg?.chapterPath?.trim();
+      if (!chapterRef) {
+        const ed = vscode.window.activeTextEditor;
+        if (ed?.document.uri.fsPath.startsWith(rootPath)) {
+          const rel = path.relative(rootPath, ed.document.uri.fsPath).split(path.sep).join("/");
+          if (rel.startsWith("manuscript/")) {
+            chapterRef = normalizePath(rel);
+          }
+        }
+      }
+      if (!chapterRef?.trim() || !chapterRef.startsWith("manuscript/") || !chapterRef.endsWith(".md")) {
+        await vscode.window.showWarningMessage(
+          "LeanQuill: open a saved manuscript chapter, then run Run story intelligence update again.",
+        );
+        return;
+      }
+      chapterRef = normalizePath(chapterRef.trim());
+      const pr = await getEnabledPersonasForProject(rootPath);
+      if (pr.personas.length === 0) {
+        await vscode.window.showWarningMessage(
+          "No enabled personas in this project. Enable personas in project.yaml or add persona files under .leanquill/personas/, then try again.",
+        );
+        return;
+      }
+      const choice = await pickPersonaScopeForAiReview(pr.personas);
+      if (!choice) {
+        return;
+      }
+      const run = await prepareStoryIntelligenceRun(rootPath, safeFileSystem, {
+        chapterRef,
+        personas: pr.personas,
+        choice,
+      });
+      const query = buildAiWorkflowFallbackQuery(run);
+      await openAdvisoryChatWithQuery(query);
+    },
+  );
+
+  const saveChapterReviewResultCommand = vscode.commands.registerCommand("leanquill.saveChapterReviewResult", async () => {
+    const rawText = await vscode.window.showInputBox({
+      prompt: "Paste chapter review result JSON (sessionId, chapterRef, personaIds, sessionIssueFile, summary, findings)",
+    });
+    if (!rawText?.trim()) {
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawText.trim());
+    } catch {
+      await vscode.window.showWarningMessage("LeanQuill: invalid JSON for chapter review result.");
+      return;
+    }
+    const o = parsed as Record<string, unknown>;
+    const sessionId = String(o.sessionId ?? "");
+    const chapterRef = String(o.chapterRef ?? "");
+    const sessionIssueFile = String(o.sessionIssueFile ?? "");
+    const summary = String(o.summary ?? "");
+    const personaIds = Array.isArray(o.personaIds) ? o.personaIds.filter((x): x is string => typeof x === "string") : [];
+    const findings = Array.isArray(o.findings) ? (o.findings as AiReviewSessionFinding[]) : [];
+    if (!sessionId || !chapterRef || !sessionIssueFile) {
+      await vscode.window.showWarningMessage("LeanQuill: chapter review JSON missing required fields.");
+      return;
+    }
+    await finalizeChapterReviewRun(rootPath, safeFileSystem, {
+      sessionId,
+      chapterRef,
+      personaIds,
+      sessionIssueFile,
+      summary,
+      findings,
+    });
+    await vscode.window.showInformationMessage("LeanQuill: chapter review session saved.");
+  });
+
+  const promoteSessionFindingToIssueCommand = vscode.commands.registerCommand(
+    "leanquill.promoteSessionFindingToIssue",
+    async () => {
+      const sessionIssueFile = await vscode.window.showInputBox({
+        prompt: "Session issue file (e.g. .leanquill/issues/sessions/2026-04-25-090705-chapter-review.md)",
+      });
+      if (!sessionIssueFile?.trim()) {
+        return;
+      }
+      const findingId = await vscode.window.showInputBox({ prompt: "Finding id" });
+      if (!findingId?.trim()) {
+        return;
+      }
+      const issueType = (await vscode.window.showInputBox({ prompt: "Issue type slug (e.g. question)" })) || "question";
+      try {
+        const created = await promoteAiReviewFindingToIssue(rootPath, safeFileSystem, {
+          sessionIssueFile: sessionIssueFile.trim(),
+          findingId: findingId.trim(),
+          issueType: issueType.trim(),
+        });
+        const abs = path.join(rootPath, ".leanquill", "issues", ...created.fileName.split("/"));
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(abs));
+        await vscode.window.showTextDocument(doc);
+        await refreshOpenQuestionSurfaces();
+      } catch (e) {
+        await vscode.window.showWarningMessage(`LeanQuill: could not promote finding (${String(e)})`);
+      }
     },
   );
 
@@ -1238,6 +1452,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     newOpenQuestionFromThreadCommand,
     newOpenQuestionFromResearchCommand,
     openQuestionTargetCommand,
+    reviewChapterCommand,
+    runStoryIntelligenceUpdateCommand,
+    saveChapterReviewResultCommand,
+    promoteSessionFindingToIssueCommand,
   );
 
   const updateNodeStatus = async (nodeId: string): Promise<void> => {
@@ -1654,6 +1872,38 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       // Never surface errors from background scanning
     }
   };
+  let storyIntelligenceSaveTimer: ReturnType<typeof setTimeout> | undefined;
+  const storyIntelligenceSavePrompt = vscode.workspace.onDidSaveTextDocument((doc) => {
+    try {
+      if (!doc.uri.fsPath.startsWith(rootPath)) {
+        return;
+      }
+      const rel = normalizePath(path.relative(rootPath, doc.uri.fsPath));
+      if (!rel.startsWith("manuscript/") || !rel.endsWith(".md")) {
+        return;
+      }
+      if (storyIntelligenceSaveTimer) {
+        clearTimeout(storyIntelligenceSaveTimer);
+      }
+      storyIntelligenceSaveTimer = setTimeout(() => {
+        storyIntelligenceSaveTimer = undefined;
+        void vscode.window
+          .showInformationMessage(
+            "You saved a chapter. Run a story intelligence pass on the full chapter? Proposed story-note updates require your approval. Manuscript files are never modified.",
+            "Run",
+            "Dismiss",
+          )
+          .then((choice) => {
+            if (choice === "Run") {
+              void vscode.commands.executeCommand("leanquill.runStoryIntelligenceUpdate", { chapterPath: rel });
+            }
+          });
+      }, 1500);
+    } catch {
+      // ignore
+    }
+  });
+
   const onManuscriptSave = vscode.workspace.onDidSaveTextDocument((doc) =>
     void scanManuscriptFile(doc.uri.fsPath),
   );
@@ -1681,6 +1931,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     manuscriptFileWatcher,
     bookTxtWatcher,
     projectYamlSetupWatcher,
+    storyIntelligenceSavePrompt,
     onManuscriptSave,
     onManuscriptOpen,
   );

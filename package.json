@@ -24,6 +24,10 @@
     "onCommand:leanquill.chatAboutThread",
     "onCommand:leanquill.chatAboutTheme",
     "onCommand:leanquill.chatAboutResearch",
+    "onCommand:leanquill.reviewChapter",
+    "onCommand:leanquill.runStoryIntelligenceUpdate",
+    "onCommand:leanquill.saveChapterReviewResult",
+    "onCommand:leanquill.promoteSessionFindingToIssue",
     "onCommand:leanquill.newPlace",
     "onCommand:leanquill.openPlanningWorkspace",
     "onCommand:leanquill.newThread",
@@ -160,7 +164,28 @@
       },
       {
         "command": "leanquill.chatAboutIssue",
-        "title": "Chat about this issue",
+        "title": "Chat about this",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.reviewChapter",
+        "title": "LeanQuill: Run chapter review",
+        "category": "LeanQuill",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "leanquill.runStoryIntelligenceUpdate",
+        "title": "LeanQuill: Run story intelligence update for active chapter",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.saveChapterReviewResult",
+        "title": "LeanQuill: Save chapter review result",
+        "category": "LeanQuill"
+      },
+      {
+        "command": "leanquill.promoteSessionFindingToIssue",
+        "title": "LeanQuill: Promote session finding to issue",
         "category": "LeanQuill"
       },
       {
@@ -362,9 +387,31 @@
         {
           "command": "leanquill.newOpenQuestionFromOutline",
           "when": "false"
+        },
+        {
+          "command": "leanquill.reviewChapter",
+          "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
+          "command": "leanquill.runStoryIntelligenceUpdate",
+          "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
+          "command": "leanquill.saveChapterReviewResult",
+          "when": "leanquill.workspaceLeanQuillReady"
+        },
+        {
+          "command": "leanquill.promoteSessionFindingToIssue",
+          "when": "leanquill.workspaceLeanQuillReady"
         }
       ],
       "webview/context": [
+        {
+          "command": "leanquill.reviewChapter",
+          "when": "webviewId == 'leanquill.outlineTree' && leanquill.workspaceLeanQuillReady",
+          "group": "leanquill@10",
+          "title": "Run chapter review"
+        },
         {
           "command": "leanquill.chatAboutChapter",
           "when": "webviewId == 'leanquill.outlineTree' && leanquill.workspaceLeanQuillReady",

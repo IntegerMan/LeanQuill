@@ -666,6 +666,10 @@ export class PlanningPanelProvider {
         await executeOpenIssueTargetCommand(this.vscodeApi, String(msg.id ?? ""));
         break;
 
+      case "openQuestion:chatAboutThis":
+        await this.vscodeApi.commands.executeCommand("leanquill.chatAboutIssue", { id: String(msg.id ?? "") });
+        break;
+
       case "openQuestion:delete": {
         const deleted = await confirmAndDeleteIssueById(
           this.vscodeApi,

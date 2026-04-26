@@ -7,6 +7,7 @@
  * - openQuestion:new-question — `{ type, host }` (host runs type → title prompt)
  * - openQuestion:setFilter — `{ type, host, filter }` (`active` | `open` | `deferred` | `dismissed` | `all`)
  * - openQuestion:openTarget — `{ type, host, id }` (navigate to association: chapter, character file, planning for book, etc.)
+ * - openQuestion:chatAboutThis — `{ type, host, id }` (host runs `leanquill.chatAboutIssue` for the row id)
  * - openQuestion:delete — `{ type, host, id }` (host confirms, deletes issue markdown)
  * - openQuestion:editStatus — `{ type, host, id }` (host QuickPick + optional dismiss note, saves)
  *
@@ -127,6 +128,7 @@ ${emptyFullState}
   <td class="oq-col-desc">
     <div class="oq-title">${escapeHtml(q.title || "(untitled)")}</div>
     <div class="oq-preview-line">${prev}</div>
+    <button type="button" class="oq-inline-action" data-action="chat-about-this" data-question-id="${escapeHtml(q.id)}">Chat about this</button>
   </td>
   <td class="oq-col-assoc"><span class="oq-assoc-kind">${escapeHtml(q.associationTypeLabel)}</span></td>
   <td class="oq-col-source">
@@ -333,6 +335,20 @@ function buildOpenQuestionsStyles(): string {
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .oq-inline-action {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 0;
+      font-size: 12px;
+      color: var(--vscode-textLink-foreground);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .oq-inline-action:hover {
+      color: var(--vscode-textLink-activeForeground);
+    }
     .oq-empty-state-full {
       flex: 1;
       min-height: 120px;
@@ -397,6 +413,7 @@ function buildClientScript(nonce: string, host: "planning" | "panel"): string {
     menu.innerHTML =
       '<button type="button" class="oq-ctx-item" data-ctx="open-issue" role="menuitem">Open issue</button>' +
       '<button type="button" class="oq-ctx-item" data-ctx="open-source" role="menuitem">Open source</button>' +
+      '<button type="button" class="oq-ctx-item" data-ctx="chat-about-this" role="menuitem">Chat about this</button>' +
       '<button type="button" class="oq-ctx-item" data-ctx="edit-status" role="menuitem">Edit status…</button>' +
       '<button type="button" class="oq-ctx-item oq-ctx-item--danger" data-ctx="delete" role="menuitem">Delete…</button>';
     menu.style.position = 'fixed';
@@ -412,6 +429,7 @@ function buildClientScript(nonce: string, host: "planning" | "panel"): string {
       closeCtxMenu();
       if (act === 'open-issue') post('openQuestion:openEditor', { id: id });
       else if (act === 'open-source') post('openQuestion:openTarget', { id: id });
+      else if (act === 'chat-about-this') post('openQuestion:chatAboutThis', { id: id });
       else if (act === 'edit-status') post('openQuestion:editStatus', { id: id });
       else if (act === 'delete') post('openQuestion:delete', { id: id });
     });
@@ -457,6 +475,13 @@ function buildClientScript(nonce: string, host: "planning" | "panel"): string {
         if (qid) {
           e.stopPropagation();
           post('openQuestion:editStatus', { id: qid });
+        }
+      }
+      if (action === 'chat-about-this') {
+        const qid = btn.getAttribute('data-question-id');
+        if (qid) {
+          e.stopPropagation();
+          post('openQuestion:chatAboutThis', { id: qid });
         }
       }
       return;

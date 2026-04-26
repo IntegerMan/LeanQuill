@@ -1,3 +1,6 @@
+import type { OpenQuestionRecord } from "./types";
+import type { ProjectConfig } from "./projectConfig";
+
 export type StoryChatLaunchSource =
   | "general"
   | "issue"
@@ -120,10 +123,53 @@ export function buildStoryChatContextSummary(bundle: StoryChatContextBundle): st
       lines.push(`Selected excerpt: ${bundle.target.selectedTextExcerpt}`);
     }
   }
+  if (bundle.launchedFrom === "issue" && bundle.target?.spanHint) {
+    lines.push(`Selection span: ${bundle.target.spanHint}`);
+  }
   lines.push(
     "Safety: LeanQuill advises but never authors manuscript prose. Full manuscript context is never automatic.",
   );
   return lines.join("\n");
+}
+
+/**
+ * Repo-relative paths included when opening advisory chat for an issue (ISSUE-05 / AIR-03).
+ * First path is always the issue markdown; further paths depend on association.
+ */
+export function pathsForIssueChat(issue: OpenQuestionRecord, config: ProjectConfig): string[] {
+  const first = `.leanquill/issues/${issue.fileName}`.replace(/\\/g, "/");
+  const out: string[] = [first];
+  const pushUnique = (rel: string) => {
+    const n = rel.replace(/\\/g, "/").replace(/\/+$/, "");
+    if (!n || out.includes(n)) {
+      return;
+    }
+    out.push(n);
+  };
+  switch (issue.association.kind) {
+    case "chapter":
+      pushUnique(issue.association.chapterRef);
+      break;
+    case "selection":
+      pushUnique(issue.association.chapterRef);
+      break;
+    case "character":
+      pushUnique(`${config.folders.characters.replace(/\/+$/, "")}/${issue.association.fileName}`);
+      break;
+    case "place":
+      pushUnique(`${config.folders.settings.replace(/\/+$/, "")}/${issue.association.fileName}`);
+      break;
+    case "thread":
+      pushUnique(`${config.folders.threads.replace(/\/+$/, "")}/${issue.association.fileName}`);
+      break;
+    case "research":
+      pushUnique(`${config.folders.research.replace(/\/+$/, "")}/${issue.association.fileName}`);
+      break;
+    case "book":
+    default:
+      break;
+  }
+  return out;
 }
 
 export function buildStoryChatContextBundle(input: {

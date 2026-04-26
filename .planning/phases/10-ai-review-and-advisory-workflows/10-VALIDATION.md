@@ -2,8 +2,8 @@
 phase: 10
 slug: ai-review-and-advisory-workflows
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-25
 ---
 
@@ -61,6 +61,7 @@ created: 2026-04-25
 
 ## Wave 0 Requirements
 
+- Wave 0 plan must add automated coverage before implementation waves treat Nyquist gates as satisfied.
 - [ ] Wave 0 plan must add automated coverage targets for AI review artifact contracts, advisory-only chat prompts, issue chat context assembly, session finding promotion, review finalization, and metadata action generation/application.
 - [ ] Wave 0 plan must preserve existing test infrastructure and avoid watch-mode commands.
 - [ ] Keep `nyquist_compliant: false` and `wave_0_complete: false` until implementation tasks replace any Wave 0 TODO scaffolds with active assertions and the full automated gate is green.

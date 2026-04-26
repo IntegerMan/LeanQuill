@@ -240,6 +240,85 @@ test("applyMetadataAction theme and research and chat provenance", async () => {
   assert.equal(prov.status, "applied");
 });
 
+test("story intelligence append adds chapter_backlinks on character", async () => {
+  const { root, safe } = await setupWorkspace();
+  const r = await applyMetadataAction(root, safe, {
+    schemaVersion: "1",
+    actionId: "siu-char-backlink-1",
+    sourceChatId: "2026-04-25-120000-story-intelligence-update",
+    operation: "append",
+    targetPath: "notes/characters/hero.md",
+    fieldPath: ["customFields", "chapter_backlinks"],
+    oldValue: "",
+    newValue: "- manuscript/ch03.md: appeared in the dock scene",
+    rationale: "Adds a source chapter backlink from story intelligence.",
+    risk: "requiresApproval",
+    authorApproval: { approvedAt: "2026-04-25T12:10:00.000Z", method: "extension-command" },
+  });
+  assert.equal(r.status, "applied");
+  const raw = await fs.readFile(path.join(root, "notes", "characters", "hero.md"), "utf8");
+  assert.match(raw, /manuscript\/ch03\.md/);
+});
+
+test("story intelligence createMemory from story-intelligence-update session", async () => {
+  const { root, safe } = await setupWorkspace();
+  const r = await applyMetadataAction(root, safe, {
+    schemaVersion: "1",
+    actionId: "siu-mem-1",
+    sourceChatId: "2026-04-25-120000-story-intelligence-update",
+    operation: "createMemory",
+    targetPath: ".leanquill/memory/siu-mem.md",
+    fieldPath: [],
+    rationale: "m",
+    risk: "requiresApproval",
+    authorApproval: { approvedAt: "2026-04-25T12:10:00.000Z", method: "extension-command" },
+    newValue: {
+      topic: "Chapter 3 entity updates",
+      body: "- manuscript/ch03.md: dock scene introduced the witness.",
+      association: { kind: "chapter", chapterRef: "manuscript/ch03.md" },
+    },
+  });
+  assert.equal(r.status, "applied");
+  const rows = await readMetadataActionLog(root);
+  assert.ok(rows.some((x) => x.sourceChatId.includes("story-intelligence-update") && x.status === "applied"));
+});
+
+test("approved action targeting manuscript chapter is blocked", async () => {
+  const { root, safe } = await setupWorkspace();
+  await fs.mkdir(path.join(root, "manuscript"), { recursive: true });
+  await fs.writeFile(path.join(root, "manuscript", "ch03.md"), "# x\n", "utf8");
+  const r = await applyMetadataAction(root, safe, {
+    schemaVersion: "1",
+    actionId: "siu-ms",
+    sourceChatId: "2026-04-25-120000-story-intelligence-update",
+    operation: "set",
+    targetPath: "manuscript/ch03.md",
+    fieldPath: ["customFields", "x"],
+    rationale: "bad",
+    risk: "requiresApproval",
+    authorApproval: { approvedAt: "2026-04-25T12:10:00.000Z", method: "extension-command" },
+    newValue: "y",
+  });
+  assert.equal(r.status, "blocked");
+});
+
+test("low risk append to character without approval is rejected", async () => {
+  const { root, safe } = await setupWorkspace();
+  const r = await applyMetadataAction(root, safe, {
+    schemaVersion: "1",
+    actionId: "low-bad",
+    sourceChatId: "c",
+    operation: "append",
+    targetPath: "notes/characters/hero.md",
+    fieldPath: ["customFields", "chapter_backlinks"],
+    oldValue: "",
+    newValue: "- manuscript/ch03.md",
+    rationale: "r",
+    risk: "low",
+  });
+  assert.equal(r.status, "blocked");
+});
+
 test("applyMetadataAction logs applied and blocked", async () => {
   const { root, safe } = await setupWorkspace();
   await applyMetadataAction(root, safe, {
