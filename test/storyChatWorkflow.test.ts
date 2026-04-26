@@ -13,10 +13,7 @@ test("leanquillWorkflows.ts ships story-chat and metadata-actions workflow contr
   assert.match(src, /story-chat\.md/);
   assert.match(src, /story-state-scout\.md/);
   assert.match(src, /metadata-actions\.md/);
-  assert.match(
-    src,
-    /AI proposes metadata actions; LeanQuill extension code validates and applies accepted actions/,
-  );
+  assert.match(src, /Save behavior after approval/);
   assert.match(src, /Full manuscript context is never automatic/);
   assert.match(src, /LeanQuill advises but never authors manuscript prose/);
   assert.match(
@@ -37,6 +34,10 @@ test("leanquillWorkflows.ts ships story-chat and metadata-actions workflow contr
   assert.match(src, /\/leanquill-story-metadata-commit/);
   assert.match(src, /\/leanquill-researcher/);
   assert.match(src, /wait for the user response/);
+  assert.match(src, /Yes \/ No \/ Other/);
+  assert.match(src, /If \*\*No\*\* without details, stop/);
+  assert.match(src, /write files directly/);
+  assert.match(src, /AskQuestion-style UI/);
   assert.match(
     src,
     /Do not append a "Save Story Chat Summary" block/,
@@ -76,4 +77,9 @@ test("initialize.ts generates leanquill-story-chat harness trio", async () => {
   assert.match(src, /Never simulate a user answer/);
   assert.match(src, /overwriteIfExists: true/);
   assert.match(src, /Do not append a "Save Story Chat Summary" block/);
+  assert.match(src, /concise approval loop/);
+  assert.match(src, /Yes, proceed; if Other, revise then re-confirm/);
+  assert.match(src, /Preferred \(story memory\).*write the approved memory content directly/s);
+  assert.match(src, /AskQuestion/);
+  assert.match(src, /\*\*AskQuestion\*\* UI\/tool/);
 });

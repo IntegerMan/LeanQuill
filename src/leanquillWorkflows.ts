@@ -143,13 +143,13 @@ Read active story memory from .leanquill/memory/ before answering, using only re
 - **Recurring motif, moral question, or thematic axis** — theme (e.g. \`.leanquill/themes.yaml\` or project “theme” / planning flows).
 - **Ongoing causal or plot strand** — thread (notes under configured \`folders.threads\`).
 - **Unclear craft or domain facts** — \`/leanquill-researcher\`; for pasted external material use \`/leanquill-import-research\`.
-- **Durable takeaway from this chat** — \`/leanquill-story-metadata-commit\` (interview, then pending file + **LeanQuill: Apply Metadata Action**).
+- **Durable takeaway from this chat** — \`/leanquill-story-metadata-commit\` (proposed memory list, quick approval, then direct save to story memory files).
 - **Ambiguous concern to revisit** — open question / issue under \`.leanquill/issues/\` when the project uses that.
 
 ## Helpful skills (advertise, don’t hide)
 
 - \`/leanquill-story-state-scout\` — read-only; runs the sub-scout contract in \`story-state-scout.md\`.
-- \`/leanquill-story-metadata-commit\` — save story memory or metadata through plain-language choices.
+- \`/leanquill-story-metadata-commit\` — save story memory or metadata with one concise approval loop.
 - \`/leanquill-researcher\` / \`/leanquill-import-research\` — research notes.
 
 ## Conversation rules
@@ -165,12 +165,21 @@ Use memory summaries to stay consistent with prior LeanQuill story chat sessions
 
 Do not append a "Save Story Chat Summary" block to normal author replies. Keep chat output conversational and focused. If a summary or durable memory should be persisted, route through \`/leanquill-story-metadata-commit\` and let LeanQuill store it as metadata.
 
-## Metadata action proposals
+## Save behavior after approval
 
-AI proposes metadata actions; LeanQuill extension code validates and applies accepted actions.
-Use **LeanQuill: Apply Metadata Action** only after the author has confirmed what to save.
+**Author experience (required):** Do **not** use raw \`MetadataAction\` JSON in chat as the main way to ask for approval — authors should not have to read schema fields. Use a concise approval loop:
+1. Propose what you plan to store as a short bulleted list.
+2. Ask: "Is this okay?" with **Yes / No / Other (adjustments)**.
+   - If the host provides an AskQuestion-style UI, you must use it for this confirmation step.
+   - Use plain text numbered confirmation only when AskQuestion is unavailable.
+3. If **Yes**, execute the approved saves immediately.
+4. If **Other**, apply requested edits, show the revised bullet list, and ask the same confirmation again.
+5. If **No** without details, stop and ask what the author wants to do next.
 
-**Author experience (required):** Do **not** use raw \`MetadataAction\` JSON in chat as the main way to ask for approval — authors should not have to read schema fields. Follow the **\`leanquill-story-metadata-commit\`** interview (plain-language choices, including **Other**), then write the final JSON to \`.leanquill/pending-metadata-action.json\` when you have file access and ask the author to run **LeanQuill: Apply Metadata Action** with nothing selected, or use selection/paste as a fallback. See the harness skill files for that flow and read \`.leanquill/workflows/metadata-actions.md\` only to build a valid payload.
+After approval:
+- For story memories/chat summaries, **write files directly** to allowed LeanQuill memory paths (for example \`.leanquill/memory/\`, \`.leanquill/chats/\`) in the current host.
+- For non-memory metadata that requires the machine contract, use **LeanQuill: Apply Metadata Action** as a secondary path.
+- Use \`.leanquill/pending-metadata-action.json\` only as last-resort fallback when direct apply is unavailable.
 
 ## Safety
 
@@ -277,7 +286,7 @@ leanquill_workflow_bundle: ${LEANQUILL_WORKFLOW_BUNDLE_VERSION}
 
 # LeanQuill Metadata Action Contract
 
-**Audience:** This document is a **machine contract** for the extension and for agents when constructing payloads. In story chat, the author is guided with questions and options via **\`leanquill-story-metadata-commit\`**; the JSON form below is not something authors should be asked to judge in the chat. Apply via **LeanQuill: Apply Metadata Action** (reads \`.leanquill/pending-metadata-action.json\` when no text is selected, then clears it on success), selection, or paste.
+**Audience:** This document is a **machine contract** for the extension and for agents when constructing payloads. In story chat, the author is guided with questions and options via **\`leanquill-story-metadata-commit\`**; the JSON form below is not something authors should be asked to judge in the chat. For pure story memory saves, prefer direct file writes after approval. Use this contract for structured non-memory updates, with \`.leanquill/pending-metadata-action.json\` as fallback only.
 
 Allowed operations: \`set\`, \`append\`, \`removeFromList\`, \`createMemory\`, \`supersedeMemory\`, \`createIssue\`, \`updateIssueStatus\`, \`updateThemeMetadata\`, \`updateResearchAssociation\`, \`updateChatLogProvenance\`.
 

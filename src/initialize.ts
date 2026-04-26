@@ -387,7 +387,7 @@ Read \`.leanquill/workflows/story-chat.md\` (orchestrator rules), \`.leanquill/w
 3. Ask **one** **focused** next-step question: **2-4** options + **Other**. If the UI has a structured-question or Ask control, use it and **wait** for the user's response before continuing. Never simulate a user answer. Else use a **numbered** list in chat.
 4. **Route** with the **Capability router** in \`story-chat.md\` (character / theme / thread / research / import / metadata-commit / open question). Prefer slash-style suggestions users can type, such as \`/leanquill-researcher\`.
 
-**Saving memory or metadata:** Use \`/leanquill-story-metadata-commit\` — plain-language options, not raw \`MetadataAction\` JSON for approval. Then \`.leanquill/pending-metadata-action.json\` + **LeanQuill: Apply Metadata Action**. Do not edit manuscript files.
+**Saving memory or metadata:** Use \`/leanquill-story-metadata-commit\` — plain-language options, not raw \`MetadataAction\` JSON for approval. For story memories, save directly after approval (no pending metadata step). Use metadata action apply only for non-memory structured updates. Do not edit manuscript files.
 
 Do not append a "Save Story Chat Summary" block at the end of normal author chat replies.
 `;
@@ -416,7 +416,7 @@ Name the smallest next step: \`/leanquill-story-state-scout\`, \`/leanquill-stor
 If the context lists memory record ids, read \`.leanquill/memory/\` for those.
 
 ## F. Metadata (author-friendly)
-For saves, \`/leanquill-story-metadata-commit\` per \`.cursor/skills/leanquill-story-metadata-commit/SKILL.md\` — not raw \`MetadataAction\` for approval. Pending file + **LeanQuill: Apply Metadata Action**.
+For saves, \`/leanquill-story-metadata-commit\` per \`.cursor/skills/leanquill-story-metadata-commit/SKILL.md\` — not raw \`MetadataAction\` for approval. For story memories, write approved files directly; reserve metadata-action apply for non-memory updates.
 
 ## G. Safety
 No manuscript writes. \`metadata-actions.md\` only to build a valid payload after agreement.
@@ -439,7 +439,7 @@ Read \`.leanquill/workflows/story-chat.md\` and \`.leanquill/workflows/story-sta
 
 **Synthesis:** 1-3 bullets of existing LeanQuill state vs the author prompt. **One question** with 2-4 options + **Other** (or native Ask UI). If Ask UI exists, wait for the user's response and never synthesize a fake answer. **Route** using the **Capability router** in \`story-chat.md\`. No author-facing "memory module", \`MetadataAction\`, or \`fieldPath\` unless the user asked.
 
-**Saves:** \`/leanquill-story-metadata-commit\` + pending JSON file + **LeanQuill: Apply Metadata Action**. Do not append a "Save Story Chat Summary" block in normal author chat output.
+**Saves:** \`/leanquill-story-metadata-commit\` + direct story-memory writes after approval. Use metadata-action apply only when the save target is non-memory and requires contract validation. Do not append a "Save Story Chat Summary" block in normal author chat output.
 `;
 
   const copilotLqStoryStateScoutFile = path.join(copilotDir, "leanquill-story-state-scout.agent.md");
@@ -497,11 +497,11 @@ Execute **A–D** (project, entity, theme & thread, memory/chats/research/issues
   const copilotLqStoryMetadataCommitFile = path.join(copilotDir, "leanquill-story-metadata-commit.agent.md");
   const copilotLqStoryMetadataCommitContent = `---
 name: leanquill-story-metadata-commit
-description: "Interview the author and commit LeanQuill story memory or metadata (pending file + Apply), without raw JSON approval"
+description: "Propose memory writes, get quick approval, then save story memories directly"
 tools: ['read', 'write', 'search', 'web']
 ---
 
-You help authors save **story memory** or other **metadata** for LeanQuill using **questions and choices**, not by showing \`MetadataAction\` JSON for them to read.
+You help authors save **story memory** (and related lightweight story notes) for LeanQuill using a concise approval loop, not by showing \`MetadataAction\` JSON for them to read.
 
 ## When to use
 - The author agreed something should be written to \`.leanquill/memory/\` or another allowed path, or you are closing a story chat with a storable idea.
@@ -509,22 +509,26 @@ You help authors save **story memory** or other **metadata** for LeanQuill using
 ## Never as the first move
 - Do **not** paste a full \`MetadataAction\` JSON object as the main way to ask "approve this?" The author is not expected to know \`actionId\`, \`fieldPath\`, or \`schemaVersion\`.
 
-## Interview (do this in chat)
-1. In plain language, restate what will be stored (1–2 sentences).
-2. If multiple sensible filenames or topics exist, offer **2–4 numbered options** plus **Other**; accept a short free-text for Other.
-3. After they pick or confirm, restate in bullets: **What** · **Where** (everyday path, e.g. "a new memory file under .leanquill/memory/").
+## Approval loop (do this in chat)
+1. Propose the writes as a short bullet list: **What** and **Where** (everyday path wording).
+2. Ask one approval question: **Is this okay?** with options **Yes / No / Other (adjustments)**.
+   - In Cursor/Codex-style hosts, use the **AskQuestion** UI/tool for this confirmation.
+   - Use plain text numbered confirmation only if AskQuestion is unavailable.
+3. If **Yes**, proceed to payload.
+4. If **Other**, revise the bullets, then ask the same approval question again.
+5. If **No** without details, stop and ask what they want to do next.
 
-## Apply path
-1. Build one valid JSON object per \`.leanquill/workflows/metadata-actions.md\` (read when you need the contract).
-2. **Preferred:** Write it to \`.leanquill/pending-metadata-action.json\` in the workspace (single object, minified or pretty). Tell the author: run **LeanQuill: Apply Metadata Action** in VS Code with **no text selected** — the extension reads that file, applies it, and deletes it on success.
-3. **Fallback:** If you cannot write the file, output **one** fenced \`json\` block and ask the author to run the same command with that block **selected** or to paste at the prompt.
+## Save path
+1. **Preferred (story memory):** write the approved memory content directly to allowed paths (for example \`.leanquill/memory/\` and \`.leanquill/chats/\`) and tell the author what was saved.
+2. **Only if needed (non-memory structured update):** build one valid JSON object per \`.leanquill/workflows/metadata-actions.md\`, then apply via **LeanQuill: Apply Metadata Action**.
+3. **Last resort fallback:** use \`.leanquill/pending-metadata-action.json\` only when direct apply is unavailable.
 `;
 
   const cursorLqStoryMetadataCommitDir = path.join(rootPath, ".cursor", "skills", "leanquill-story-metadata-commit");
   const cursorLqStoryMetadataCommitFile = path.join(cursorLqStoryMetadataCommitDir, "SKILL.md");
   const cursorLqStoryMetadataCommitContent = `---
 name: leanquill-story-metadata-commit
-description: "Interview the author and commit LeanQuill story memory or metadata (pending file + Apply), without raw JSON approval"
+description: "Propose memory writes, get quick approval, then save story memories directly"
 ---
 
 <cursor_skill_adapter>
@@ -534,25 +538,28 @@ description: "Interview the author and commit LeanQuill story memory or metadata
 ## B. Forbid
 - Do **not** use a raw \`MetadataAction\` JSON block as the **main** approval UI. The author is not required to read schema fields.
 
-## C. Do instead (interview)
-1. Summarize in plain language what will be stored. Offer **2–4 numbered options** (e.g. file slug / focus) and **Other**; accept free text for Other.
-2. Confirm with a short bullet list (**What** · **Where** in everyday terms).
-3. Read \`.leanquill/workflows/metadata-actions.md\` only to build a **valid** payload after they agree.
+## C. Do instead (approval loop)
+1. Propose a short bullet list of planned writes (**What** · **Where** in everyday terms).
+2. Ask one approval question: **Yes / No / Other (adjustments)**.
+   - Use **AskQuestion** when available; do not emulate as plain prose when the tool exists.
+3. If Yes, proceed; if Other, revise then re-confirm; if No (no details), stop and ask what they want instead.
+4. Read \`.leanquill/workflows/metadata-actions.md\` only to build a **valid** payload after they agree.
 
 ## D. Hand off
-- **Preferred:** Write one JSON object to \`.leanquill/pending-metadata-action.json\`, then: *"Run **LeanQuill: Apply Metadata Action** with nothing selected."*
-- **Fallback:** One fenced \`json\` block + same command with selection or paste.
+- **Preferred:** Write approved story memories directly to allowed LeanQuill memory/chat paths and confirm completion.
+- **Only if needed:** For non-memory structured updates, apply via **LeanQuill: Apply Metadata Action**.
+- **Fallback:** Use pending metadata file only when direct apply is unavailable.
 </cursor_skill_adapter>
 `;
 
   const claudeLqStoryMetadataCommitFile = path.join(claudeDir, "leanquill-story-metadata-commit.md");
   const claudeLqStoryMetadataCommitContent = `---
 name: leanquill-story-metadata-commit
-description: "Interview the author and commit LeanQuill story memory or metadata (pending file + Apply), without raw JSON approval"
+description: "Propose memory writes, get quick approval, then save story memories directly"
 tools: Read, Write, Edit, Bash, Grep, Glob, WebSearch, WebFetch
 ---
 
-You help authors save **story memory** or other **metadata** for LeanQuill using **questions and choices**, not by showing \`MetadataAction\` JSON for them to read.
+You help authors save **story memory** (and related lightweight story notes) for LeanQuill using a concise approval loop, not by showing \`MetadataAction\` JSON for them to read.
 
 ## When to use
 - The author agreed something should be written to \`.leanquill/memory/\` or another allowed path, or you are closing a story chat with a storable idea.
@@ -560,15 +567,19 @@ You help authors save **story memory** or other **metadata** for LeanQuill using
 ## Never as the first move
 - Do **not** paste a full \`MetadataAction\` JSON object as the main way to ask "approve this?" The author is not expected to know \`actionId\`, \`fieldPath\`, or \`schemaVersion\`.
 
-## Interview (do this in chat)
-1. In plain language, restate what will be stored (1–2 sentences).
-2. If multiple sensible filenames or topics exist, offer **2–4 numbered options** plus **Other**; accept a short free-text for Other.
-3. After they pick or confirm, restate in bullets: **What** · **Where** (everyday path, e.g. "a new memory file under .leanquill/memory/").
+## Approval loop (do this in chat)
+1. Propose the writes as a short bullet list: **What** and **Where** (everyday path wording).
+2. Ask one approval question: **Is this okay?** with options **Yes / No / Other (adjustments)**.
+   - In hosts with AskQuestion, use the tool and wait for response.
+   - Use plain text numbered confirmation only if AskQuestion is unavailable.
+3. If **Yes**, proceed to payload.
+4. If **Other**, revise the bullets, then ask the same approval question again.
+5. If **No** without details, stop and ask what they want to do next.
 
-## Apply path
-1. Build one valid JSON object per \`.leanquill/workflows/metadata-actions.md\` (read when you need the contract).
-2. **Preferred:** Write it to \`.leanquill/pending-metadata-action.json\` in the workspace (single object). Tell the author: run **LeanQuill: Apply Metadata Action** in VS Code with **no text selected** — the extension reads that file, applies it, and deletes it on success.
-3. **Fallback:** If you cannot write the file, output **one** fenced \`json\` block and ask the author to run the same command with that block **selected** or to paste at the prompt.
+## Save path
+1. **Preferred (story memory):** write the approved memory content directly to allowed paths (for example \`.leanquill/memory/\` and \`.leanquill/chats/\`) and tell the author what was saved.
+2. **Only if needed (non-memory structured update):** build one valid JSON object per \`.leanquill/workflows/metadata-actions.md\`, then apply via **LeanQuill: Apply Metadata Action**.
+3. **Last resort fallback:** use \`.leanquill/pending-metadata-action.json\` only when direct apply is unavailable.
 `;
 
   const entries: Array<{ file: string; dir: string; content: string; overwriteIfExists?: boolean }> = [

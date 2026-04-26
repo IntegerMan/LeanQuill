@@ -112,6 +112,7 @@ Plans: 7 / 7 executed (SUMMARYs present); roadmap phase completion waits on huma
 - Phase 12 added: add the ability to run research in standardized ways and collect research results in a dedicated research folder next to the manuscript.
 - Phase 14 added: Open Questions — author-created open-question notes linked to book, characters, threads, places, or manuscript selections with issues list, navigation, and status management. Stepping stone toward full Issue Capture (Phase 8).
 - Phase 17 added: AI Story Chat, Memory, and Metadata Actions — story-focused AI conversations with recommendations, durable notes/memory, and standardized cross-environment LeanQuill metadata write contracts.
+- Phase 18 added: Improve the user experience of the chat commands to be less cumbersome for a writer by studing frameworks like Get Shit Done, bMad, and Spec Kit.
 
 ## Session Continuity
 

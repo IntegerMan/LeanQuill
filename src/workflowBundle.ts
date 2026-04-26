@@ -6,7 +6,7 @@
  * frontmatter to opt out, or set `leanquill_workflow_bundle` higher than the extension’s
  * value to “win” over downgrades.
  */
-export const LEANQUILL_WORKFLOW_BUNDLE_VERSION = 5;
+export const LEANQUILL_WORKFLOW_BUNDLE_VERSION = 9;
 
 const FRONTMATTER = /^\s*---\r?\n([\s\S]*?)\r?\n---/;
 const WORKFLOW_BUNDLE = /^\s*leanquill_workflow_bundle:\s*(\d+)\s*$/m;
