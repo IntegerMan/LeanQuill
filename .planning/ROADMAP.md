@@ -39,7 +39,7 @@
 - **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
 - **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators. (completed 2026-04-11)
 - **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration. (completed 2026-04-25)
-- **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
+- **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1. (7/7 plans executed; human Extension Development Host verification pending)
 - **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
 - **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
 - **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing. (completed 2026-04-09)
@@ -262,6 +262,17 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 9
 **Requirements:** AIR-01, AIR-02, AIR-03, ISSUE-05
+**Plans:** 7/7 plans complete
+
+Plans:
+
+- 10-00-PLAN.md — Wave 0: `10-VALIDATION.md` coverage map plus Phase 10 test scaffolding targets.
+- 10-01-PLAN.md — Session issue + chat log audit artifact foundation (`aiReviewSessionStore`, `storyChatLogStore`).
+- 10-02-PLAN.md — Shared `aiReviewWorkflow` orchestration for chapter review and story intelligence (persona scope, stubs, LM/chat fallback).
+- 10-03-PLAN.md — Issue **Chat about this** in both Issues hosts; `leanquill.chatAboutIssue` context for chapter/selection associations (ISSUE-05, AIR-03).
+- 10-04-PLAN.md — AIR-01 chapter review wired to tree context menu, command palette, persona QuickPick, session finalization, chat log summary.
+- 10-05-PLAN.md — AIR-02 post-save story intelligence prompt, metadata actions, outcome-only action log contract.
+- 10-06-PLAN.md — Automated gate + Extension Development Host human verification (`10-VERIFICATION.md`).
 
 **Success criteria:**
 
@@ -271,7 +282,7 @@ Plans:
 4. AI issue conversations remain advisory-only and do not perform manuscript writes.
 5. AI workflow artifacts are persisted under LeanQuill project state so review history is reproducible.
 
-**Notes:** Final phase by design because it depends on foundation, issue model, chapter context fidelity, and enforced write-block contracts.
+**Notes:** Final phase by design because it depends on foundation, issue model, chapter context fidelity, and enforced write-block contracts. All implementation plans have SUMMARYs; milestone completion for this phase remains gated on human verification in `10-VERIFICATION.md` (see `10-06-PLAN.md`).
 
 ### Phase 11: Make the outline and card views more usable with the ability to insert, remove, and reorder cards. The outline should also support changing hierarchy structures like we can in the sidebar.
 
@@ -426,7 +437,7 @@ Plans:
 | 7. Global Knowledge Reference                             | 0/0            | Not started | -          |
 | 8. Issue Capture, Triage, and Editor Signals              | 5/5            | Completed   | 2026-04-11 |
 | 9. AI Safety Rails and Persona Baseline                   | 4/4            | Completed   | 2026-04-25 |
-| 10. AI Review and Advisory Workflows                      | 0/0            | Not started | -          |
+| 10. AI Review and Advisory Workflows                      | 7/7            | Verification (UAT pending) | -          |
 | 11. Outline and Card Usability Improvements               | 0/0            | Not started | -          |
 | 12. Standardized Research Workflow and Results Repository | 2/2            | Completed   | 2026-04-05 |
 | 14. Open Questions                                        | 6/6            | Completed   | 2026-04-09 |
