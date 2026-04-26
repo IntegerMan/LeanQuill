@@ -388,6 +388,16 @@ Plans:
 
 **Notes:** Promoted from backlog (999.2).
 
+### Phase 1000: Improve the user experience of the chat commands to be less cumbersome for a writer by studing frameworks like Get Shit Done, bMad, and Spec Kit.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 999
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 1000 to break down)
+
 ---
 
 ### Phase 16: Marketplace preview release with docs and repeatable publish pipeline
@@ -457,6 +467,16 @@ Plans:
 Plans:
 
 - TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.4: Explore LeanQuill memory files with a graphical user interface. (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (promote with /gsd-review-backlog when ready)
 
 ### Phase 999.3: Investigate LeanPub APIs for LeanQuill integration (BACKLOG)
 
