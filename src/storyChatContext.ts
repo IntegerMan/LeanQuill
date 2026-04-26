@@ -1,3 +1,6 @@
+import type { OpenQuestionRecord } from "./types";
+import type { ProjectConfig } from "./projectConfig";
+
 export type StoryChatLaunchSource =
   | "general"
   | "issue"
@@ -30,6 +33,13 @@ export interface StoryChatMemoryContext {
   path: string;
 }
 
+/** Read-only persona ids enabled for this project (advisory context for story chat). */
+export interface StoryChatActivePersonaLine {
+  id: string;
+  name: string;
+  type: string;
+}
+
 export interface StoryChatContextBundle {
   sessionId: string;
   createdAt: string;
@@ -38,6 +48,8 @@ export interface StoryChatContextBundle {
   includedPaths: string[];
   excludedPaths: string[];
   activeMemory: StoryChatMemoryContext[];
+  /** When present, lists enabled personas from `project.yaml` / `.leanquill/personas/` (read-only). */
+  activePersonas?: StoryChatActivePersonaLine[];
   manuscriptScope: StoryChatManuscriptScope;
   summary: string;
 }
@@ -96,6 +108,12 @@ export function buildStoryChatContextSummary(bundle: StoryChatContextBundle): st
       lines.push(`  - ${m.topic} (${m.path}) — ${m.associationLabel}, updated ${m.updatedAt}`);
     }
   }
+  if (bundle.activePersonas && bundle.activePersonas.length > 0) {
+    lines.push("Active personas (read-only advisory):");
+    for (const p of bundle.activePersonas) {
+      lines.push(`  - ${p.id} — ${p.name} (${p.type})`);
+    }
+  }
   lines.push(`Manuscript scope: ${bundle.manuscriptScope}`);
   if (bundle.launchedFrom === "selection" && bundle.target) {
     if (bundle.target.spanHint) {
@@ -105,10 +123,53 @@ export function buildStoryChatContextSummary(bundle: StoryChatContextBundle): st
       lines.push(`Selected excerpt: ${bundle.target.selectedTextExcerpt}`);
     }
   }
+  if (bundle.launchedFrom === "issue" && bundle.target?.spanHint) {
+    lines.push(`Selection span: ${bundle.target.spanHint}`);
+  }
   lines.push(
     "Safety: LeanQuill advises but never authors manuscript prose. Full manuscript context is never automatic.",
   );
   return lines.join("\n");
+}
+
+/**
+ * Repo-relative paths included when opening advisory chat for an issue (ISSUE-05 / AIR-03).
+ * First path is always the issue markdown; further paths depend on association.
+ */
+export function pathsForIssueChat(issue: OpenQuestionRecord, config: ProjectConfig): string[] {
+  const first = `.leanquill/issues/${issue.fileName}`.replace(/\\/g, "/");
+  const out: string[] = [first];
+  const pushUnique = (rel: string) => {
+    const n = rel.replace(/\\/g, "/").replace(/\/+$/, "");
+    if (!n || out.includes(n)) {
+      return;
+    }
+    out.push(n);
+  };
+  switch (issue.association.kind) {
+    case "chapter":
+      pushUnique(issue.association.chapterRef);
+      break;
+    case "selection":
+      pushUnique(issue.association.chapterRef);
+      break;
+    case "character":
+      pushUnique(`${config.folders.characters.replace(/\/+$/, "")}/${issue.association.fileName}`);
+      break;
+    case "place":
+      pushUnique(`${config.folders.settings.replace(/\/+$/, "")}/${issue.association.fileName}`);
+      break;
+    case "thread":
+      pushUnique(`${config.folders.threads.replace(/\/+$/, "")}/${issue.association.fileName}`);
+      break;
+    case "research":
+      pushUnique(`${config.folders.research.replace(/\/+$/, "")}/${issue.association.fileName}`);
+      break;
+    case "book":
+    default:
+      break;
+  }
+  return out;
 }
 
 export function buildStoryChatContextBundle(input: {
@@ -117,6 +178,7 @@ export function buildStoryChatContextBundle(input: {
   includedPaths?: string[];
   excludedPaths?: string[];
   activeMemory?: StoryChatMemoryContext[];
+  activePersonas?: StoryChatActivePersonaLine[];
   manuscriptScope?: StoryChatManuscriptScope;
   now?: Date;
 }): StoryChatContextBundle {
@@ -159,6 +221,7 @@ export function buildStoryChatContextBundle(input: {
     includedPaths,
     excludedPaths,
     activeMemory,
+    activePersonas: input.activePersonas,
     manuscriptScope,
     summary: "",
   };

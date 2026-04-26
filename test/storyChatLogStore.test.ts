@@ -5,6 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { SafeFileSystem } from "../src/safeFileSystem";
 import {
+  readStoryChatLogSummaryFromDisk,
   saveStoryChatLogSummary,
   saveStoryChatSessionSummary,
   serializeStoryChatLogSummary,
@@ -52,6 +53,57 @@ test("saveStoryChatLogSummary writes under .leanquill/chats", async () => {
   assert.equal(rel, ".leanquill/chats/sess-a.md");
   const disk = await fs.readFile(path.join(root, ".leanquill", "chats", "sess-a.md"), "utf8");
   assert.match(disk, /story-chat/);
+});
+
+test("serializeStoryChatLogSummary writes chapter-review audit fields", () => {
+  const s: StoryChatLogSummary = {
+    sessionId: "2026-04-25-120000-chapter-review",
+    startedAt: "2026-04-25T10:00:00.000Z",
+    endedAt: "2026-04-25T10:30:00.000Z",
+    launchedFrom: "chapter-review",
+    chapterRef: "manuscript/ch01.md",
+    chaptersInContext: ["manuscript/ch01.md"],
+    summary: "R",
+    memoryEntryIds: [],
+    metadataActionIds: [],
+    sessionType: "chapter-review",
+    personaIds: ["a", "b"],
+    issuesGenerated: 1,
+    issuesResolved: 0,
+    sessionIssueFile: ".leanquill/issues/sessions/x.md",
+    storyUpdatesMade: false,
+    storyUpdateNotes: "",
+  };
+  const yaml = serializeStoryChatLogSummary(s);
+  assert.match(yaml, /session_type: chapter-review/);
+  assert.match(yaml, /persona_ids:/);
+  assert.match(yaml, /issues_generated: 1/);
+  assert.match(yaml, /session_issue_file:/);
+});
+
+test("readStoryChatLogSummaryFromDisk parses legacy story-chat logs", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "lq-chat-legacy-"));
+  const safe = new SafeFileSystem(root);
+  const legacy = `---
+session_id: legacy-1
+session_type: story-chat
+launched_from: general
+started_at: "2026-01-01T00:00:00.000Z"
+ended_at: "2026-01-01T01:00:00.000Z"
+chapter_ref: ""
+chapters_in_context: "[]"
+agent_mode: story-chat
+summary: "old"
+memory_entry_ids: "[]"
+metadata_action_ids: "[]"
+story_updates_made: false
+story_update_notes: ""
+---
+`;
+  await safe.writeFile(path.join(root, ".leanquill", "chats", "legacy-1.md"), legacy);
+  const read = await readStoryChatLogSummaryFromDisk(root, ".leanquill/chats/legacy-1.md");
+  assert.equal(read?.sessionType, "story-chat");
+  assert.deepEqual(read?.memoryEntryIds, []);
 });
 
 test("saveStoryChatSessionSummary writes chat log and memory", async () => {

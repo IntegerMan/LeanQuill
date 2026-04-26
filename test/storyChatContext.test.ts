@@ -4,12 +4,115 @@ import {
   buildStoryChatContextBundle,
   buildStoryChatContextSummary,
   createStoryChatSessionId,
+  pathsForIssueChat,
   type StoryChatMemoryContext,
 } from "../src/storyChatContext";
+import type { OpenQuestionRecord } from "../src/types";
+import type { ProjectConfig } from "../src/projectConfig";
 
 test("createStoryChatSessionId uses local padded date/time", () => {
   const id = createStoryChatSessionId(new Date(2026, 3, 25, 9, 7, 5));
   assert.equal(id, "2026-04-25-090705-story-chat");
+});
+
+const baseCfg: ProjectConfig = {
+  schemaVersion: "1",
+  folders: {
+    research: "research/leanquill/",
+    characters: "notes/characters/",
+    threads: "notes/threads/",
+    settings: "notes/settings/",
+  },
+};
+
+function minimalIssue(partial: Partial<OpenQuestionRecord> & Pick<OpenQuestionRecord, "association">): OpenQuestionRecord {
+  return {
+    fileName: partial.fileName ?? "question/q1.md",
+    id: partial.id ?? "q1",
+    issueSchemaType: "question",
+    title: partial.title ?? "T",
+    body: "",
+    status: "open",
+    createdAt: "2026-01-01",
+    updatedAt: "2026-01-01",
+    association: partial.association,
+  };
+}
+
+test("pathsForIssueChat chapter issue", () => {
+  const issue = minimalIssue({
+    fileName: "question/q1.md",
+    association: { kind: "chapter", chapterRef: "manuscript/ch01.md" },
+  });
+  assert.deepEqual(pathsForIssueChat(issue, baseCfg), [".leanquill/issues/question/q1.md", "manuscript/ch01.md"]);
+});
+
+test("pathsForIssueChat selection preserves chapter path", () => {
+  const issue = minimalIssue({
+    association: {
+      kind: "selection",
+      chapterRef: "manuscript/ch01.md",
+      spanHint: "selected phrase",
+    },
+  });
+  const p = pathsForIssueChat(issue, baseCfg);
+  assert.deepEqual(p, [".leanquill/issues/question/q1.md", "manuscript/ch01.md"]);
+});
+
+test("pathsForIssueChat character place thread research", () => {
+  assert.deepEqual(
+    pathsForIssueChat(
+      minimalIssue({ association: { kind: "character", fileName: "hero.md" } }),
+      baseCfg,
+    ),
+    [".leanquill/issues/question/q1.md", "notes/characters/hero.md"],
+  );
+  assert.deepEqual(
+    pathsForIssueChat(minimalIssue({ association: { kind: "place", fileName: "dock.md" } }), baseCfg),
+    [".leanquill/issues/question/q1.md", "notes/settings/dock.md"],
+  );
+  assert.deepEqual(
+    pathsForIssueChat(minimalIssue({ association: { kind: "thread", fileName: "main.md" } }), baseCfg),
+    [".leanquill/issues/question/q1.md", "notes/threads/main.md"],
+  );
+  assert.deepEqual(
+    pathsForIssueChat(minimalIssue({ association: { kind: "research", fileName: "r.md" } }), baseCfg),
+    [".leanquill/issues/question/q1.md", "research/leanquill/r.md"],
+  );
+});
+
+test("pathsForIssueChat book adds only issue path", () => {
+  const issue = minimalIssue({ association: { kind: "book" } });
+  assert.deepEqual(pathsForIssueChat(issue, baseCfg), [".leanquill/issues/question/q1.md"]);
+});
+
+test("issue chat summary lists selection span when target carries spanHint", () => {
+  const bundle = buildStoryChatContextBundle({
+    launchedFrom: "issue",
+    manuscriptScope: "chapter",
+    includedPaths: [".leanquill/issues/question/q1.md", "manuscript/ch01.md"],
+    target: {
+      kind: "issue",
+      label: "Sel issue",
+      chapterRef: "manuscript/ch01.md",
+      spanHint: "selected phrase",
+    },
+  });
+  assert.match(bundle.summary, /Selection span: selected phrase/);
+});
+
+test("buildStoryChatContextSummary lists active personas when provided", () => {
+  const bundle = buildStoryChatContextBundle({
+    launchedFrom: "general",
+    activePersonas: [
+      { id: "casual-reader", name: "Jordan", type: "beta-reader" },
+      { id: "copy-editor", name: "Sam", type: "copy-editor" },
+    ],
+  });
+  const s = buildStoryChatContextSummary(bundle);
+  assert.match(s, /Active personas \(read-only advisory\):/);
+  assert.match(s, /casual-reader — Jordan \(beta-reader\)/);
+  assert.match(s, /copy-editor — Sam \(copy-editor\)/);
 });
 
 test("general chat defaults manuscriptScope none and strips manuscript paths", () => {
