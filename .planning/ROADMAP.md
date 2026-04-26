@@ -399,7 +399,7 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 9, Phase 10
 **Requirements:** TBD
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 
@@ -432,7 +432,7 @@ Plans:
 | 14. Open Questions                                        | 6/6            | Completed   | 2026-04-09 |
 | 15. Import Claude Desktop research                        | 4/4            | Completed   | 2026-04-25 |
 | 16. Marketplace preview and publish pipeline              | 0/0            | Not started | -          |
-| 17. AI Story Chat, Memory, and Metadata Actions           | 5/6            | In Progress | -          |
+| 17. AI Story Chat, Memory, and Metadata Actions           | 6/6            | Completed   | 2026-04-26 |
 
 
 ## Backlog
