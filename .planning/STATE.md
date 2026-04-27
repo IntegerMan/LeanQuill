@@ -2,21 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 16
-status: planning
-stopped_at: Phase 15 context gathered
-last_updated: "2026-04-12T03:02:00.632Z"
+current_phase: 10
+status: verification
+stopped_at: Phase 10 — automated gate green; Extension Development Host checklist pending (10-VERIFICATION.md)
+last_updated: "2026-04-25T23:59:00.000Z"
 progress:
-  total_phases: 18
-  completed_phases: 10
-  total_plans: 40
-  completed_plans: 39
+  total_phases: 19
+  completed_phases: 11
+  total_plans: 57
+  completed_plans: 55
 ---
 
 # Project State: LeanQuill
 
-**Current phase:** 16
-**Status:** Ready to plan
+**Current phase:** 10
+**Status:** Verification (human Extension Development Host)
 
 ## Project Reference
 
@@ -27,13 +27,14 @@ progress:
 
 ## Current Position
 
-Phase: 16 (Marketplace preview and publish pipeline) — PLANNING
-Plan: Not started
+Phase: 10 (AI Review and Advisory Workflows) — implementation complete; **manual UAT** per `10-06-PLAN.md` and `10-VERIFICATION.md`
+Plans: 7 / 7 executed (SUMMARYs present); roadmap phase completion waits on human verification **approved**
 
+- Phase 9 (AI Safety Rails and Persona Baseline) **complete** (2026-04-25); verification `09-VERIFICATION.md` status **passed**
 - Phase 8 (Issue Capture, Triage, and Editor Signals) **complete** (2026-04-11); verification `08-VERIFICATION.md` status **passed**
-- **Next:** `/gsd-discuss-phase 11` or `/gsd-plan-phase 11` — outline/card usability; Phase 7 (Global Knowledge) still open in roadmap order
-- Overall progress: **10/14** roadmap phases complete (1–6, 8, 12–14)
-- Progress bar: [=========---] ~71%
+- **Next:** `/gsd-discuss-phase 10` or `/gsd-plan-phase 10` for AI Review workflows, or continue Track 1 with `/gsd-discuss-phase 11` / `/gsd-plan-phase 11` for outline/card usability; Phase 7 (Global Knowledge) still open in roadmap order
+- Overall progress: **11/14** roadmap phases complete (1–6, 8–9, 12–14)
+- Progress bar: [==========--] ~79%
 
 ## Phase Status
 
@@ -47,8 +48,8 @@ Plan: Not started
 | 6 | Threads and Themes | Completed | 2026-04-09 |
 | 7 | Global Knowledge Reference | Not Started | - |
 | 8 | Issue Capture, Triage, and Editor Signals | Completed | 2026-04-11 |
-| 9 | AI Safety Rails and Persona Baseline | Not Started | - |
-| 10 | AI Review and Advisory Workflows | Not Started | - |
+| 9 | AI Safety Rails and Persona Baseline | Completed | 2026-04-25 |
+| 10 | AI Review and Advisory Workflows | Implementation done; UAT pending | - |
 | 11 | Outline and Card Usability Improvements | Not Started | - |
 | 12 | Standardized Research Workflow and Results Repository | Completed | 2026-04-07 |
 | 13 | LeanPub Workspace Initialization | Completed (UAT) | 2026-04-09 |
@@ -61,7 +62,7 @@ Plan: Not started
 | v1 requirements total | 24 |
 | Requirements mapped | 24 |
 | Coverage | 100% |
-| Completed phases | 10 |
+| Completed phases | 11 |
 | Blockers | 0 |
 | Phase 13 P01 | 12min | 2 tasks | 2 files |
 | Phase 05-place-and-setting-reference P01 | 20min | 3 tasks | 6 files |
@@ -111,11 +112,13 @@ Plan: Not started
 - Phase 12 added: add the ability to run research in standardized ways and collect research results in a dedicated research folder next to the manuscript.
 - Phase 14 added: Open Questions — author-created open-question notes linked to book, characters, threads, places, or manuscript selections with issues list, navigation, and status management. Stepping stone toward full Issue Capture (Phase 8).
 - Phase 17 added: AI Story Chat, Memory, and Metadata Actions — story-focused AI conversations with recommendations, durable notes/memory, and standardized cross-environment LeanQuill metadata write contracts.
+- Phase 18 added: Improve the user experience of the chat commands to be less cumbersome for a writer by studing frameworks like Get Shit Done, bMad, and Spec Kit.
+- Phase 19 added: Character Coach: dedicated skills and popular methodologies so users can choose structured ways to detail and refine characters.
 
 ## Session Continuity
 
 - Last updated: 2026-04-11
 - Next checkpoint: `/gsd-discuss-phase 11` or `/gsd-plan-phase 11` for outline/card usability; optional `/gsd-verify-work 8` for conversational UAT on issues UI
 
-Last session: 2026-04-12T02:32:34.428Z
-Stopped at: Phase 15 context gathered
+Last session: 2026-04-25T22:49:29.308Z
+Stopped at: Phase 10 UI-SPEC approved

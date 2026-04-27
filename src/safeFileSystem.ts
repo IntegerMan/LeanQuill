@@ -1,10 +1,25 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
+/** Optional behavior for metadata apply and other constrained callers (D-09). */
+export interface SafeFileSystemOptions {
+  /**
+   * When true, `canWrite` rejects `manuscript/Book.txt` even though author-facing
+   * instances allow it. Defense-in-depth for AI metadata apply path.
+   */
+  denyManuscriptBookTxt?: boolean;
+}
+
 export class SafeFileSystem {
   private readonly additionalAllowed: Array<{ prefix: string; extFilter?: string }> = [];
+  private readonly denyManuscriptBookTxt: boolean;
 
-  constructor(private readonly rootPath: string) {}
+  constructor(
+    private readonly rootPath: string,
+    options?: SafeFileSystemOptions,
+  ) {
+    this.denyManuscriptBookTxt = options?.denyManuscriptBookTxt ?? false;
+  }
 
   /**
    * Allow writes to a path prefix that is outside the default `.leanquill/` boundary.
@@ -30,9 +45,9 @@ export class SafeFileSystem {
       return true;
     }
 
-    // Book.txt is the only permitted write outside .leanquill/
+    // Book.txt is the only permitted write outside .leanquill/ (unless denied for AI apply path).
     if (rel === `manuscript${path.sep}Book.txt`) {
-      return true;
+      return !this.denyManuscriptBookTxt;
     }
 
     // Check dynamically allowed paths

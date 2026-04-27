@@ -257,9 +257,10 @@ function cmdRoadmapUpdatePlanProgress(cwd, phaseNum, raw) {
   let roadmapContent = fs.readFileSync(roadmapPath, 'utf-8');
   const phaseEscaped = escapeRegex(phaseNum);
 
-  // Progress table row: update Plans/Status/Date columns (handles 4 or 5 column tables)
+  // Progress table row: phase column is "N. Title" (digit + dot + space). Do not match the
+  // summary table row "| 17  | Goal |" which uses two spaces after the number and no dot.
   const tableRowPattern = new RegExp(
-    `^(\\|\\s*${phaseEscaped}\\.?\\s[^|]*(?:\\|[^\\n]*))$`,
+    `^(\\|\\s*${phaseEscaped}\\.\\s[^|]*(?:\\|[^\\n]*))$`,
     'im'
   );
   const dateField = isComplete ? ` ${today} ` : '  ';

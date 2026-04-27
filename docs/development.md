@@ -24,7 +24,9 @@ src/
 ├── extension.ts              # Entry point — activation, command registration
 ├── safeFileSystem.ts         # Write boundary enforcement
 ├── types.ts                  # Shared type definitions
-├── initialize.ts             # Init flow, scaffold, harness files
+├── initialize.ts             # Init flow, scaffold, harness entry points
+├── leanquillWorkflows.ts     # Canonical .leanquill/workflows bundle + updater
+├── workflowBundle.ts         # Workflow bundle version + frontmatter parsing helpers
 │
 ├── outlineWebviewPanel.ts    # Sidebar outline tree (webview)
 ├── outlineContextPane.ts     # Sidebar context detail pane (webview)
@@ -66,6 +68,23 @@ test/
 media/
 └── leanquill.svg             # Activity bar icon
 ```
+
+
+## LeanQuill workflow bundle versioning
+
+LeanQuill auto-refreshes stale workflow files under `.leanquill/workflows/` based on a bundle id.
+
+- Bump `LEANQUILL_WORKFLOW_BUNDLE_VERSION` in `src/workflowBundle.ts` whenever you change workflow bodies in `src/leanquillWorkflows.ts`.
+- Each shipped workflow includes `leanquill_workflow_bundle: <N>` in frontmatter.
+- `ensureLeanquillWorkflows()` writes missing files and replaces existing files only when on-disk bundle `<` shipped bundle.
+- Set `leanquill_workflow_pinned: true` in a workflow file frontmatter to opt out of auto-updates for local customizations.
+- If a local workflow has a higher `leanquill_workflow_bundle` than the extension, LeanQuill leaves it unchanged (downgrade guard).
+
+When touching this system, run `npm run build:test && npm test` and check `test/workflowBundle.test.ts`.
+
+### Story chat orchestrator pattern
+
+Canonical text for `story-chat.md` and `story-state-scout.md` lives in `src/leanquillWorkflows.ts`. **Story chat is an orchestrator:** it should delegate read-only discovery (sub-tasks / `leanquill-story-state-scout` when needed), synthesize briefly, ask **one** focused author question (2–4 options + **Other**), then route to the smallest skill or command (capability router in the workflow). The aggregate scout workflow defines **four** sub-scouts (project, entity, theme/thread, memory & context) with copy-paste prompts and Grep/list fallbacks. When you change this behavior, bump the workflow bundle and refresh harness copy in `src/initialize.ts` (`writeHarnessEntryPoints`).
 
 ## Running in development
 

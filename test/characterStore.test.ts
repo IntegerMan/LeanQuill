@@ -118,6 +118,36 @@ occupation: detective
   assert.equal(p.customFields["occupation"], "detective");
 });
 
+test("parseCharacterFile maps markdown character profile format without frontmatter", () => {
+  const content = `# Character Profile: Grace
+
+## Role
+
+Primary point-of-view young adult protagonist; Eli's aunt and creative mentor.
+
+## Snapshot
+
+Grace is near the end of her undergraduate game development studies.
+
+## Core motivations
+
+- Help Eli feel agency, joy, and authorship despite medical disruption
+
+## Arc direction
+
+Grace evolves from builder-controller to collaborator-steward.
+`;
+
+  const p = parseCharacterFile("grace.md", content);
+  assert.equal(p.name, "Grace");
+  assert.match(p.role, /Primary point-of-view/);
+  assert.match(p.description, /undergraduate game development studies/);
+  assert.match(p.customFields.coreMotivations, /Help Eli feel agency/);
+  assert.match(p.customFields.arcDirection, /collaborator-steward/);
+  assert.equal(p.body, "");
+  assert.equal(p.fileName, "grace.md");
+});
+
 test("serializeCharacterFile produces valid frontmatter", () => {
   const profile = makeProfile({ aliases: ["Jane"], referencedByNameIn: ["manuscript/ch1.md"] });
   const result = serializeCharacterFile(profile);

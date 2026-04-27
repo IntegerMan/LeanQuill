@@ -360,6 +360,15 @@ function renderThreadsTab(
 // Characters tab rendering
 // ---------------------------------------------------------------------------
 
+function formatCustomFieldLabel(key: string): string {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replaceAll(/[_-]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
 function renderCharacterDetail(profile: CharacterProfile): string {
   const standardFields = `
     <div class="char-field-row">
@@ -396,7 +405,7 @@ function renderCharacterDetail(profile: CharacterProfile): string {
 
   const customFieldRows = Object.entries(profile.customFields).map(([key, val]) =>
     `<div class="char-field-row char-field-custom">
-      <label class="char-field-label char-field-label--custom">${escapeHtml(key)}</label>
+      <label class="char-field-label char-field-label--custom">${escapeHtml(formatCustomFieldLabel(key))}</label>
       <input class="char-field-input" data-action="character:updateField"
         data-file="${escapeHtml(profile.fileName)}" data-field="custom:${escapeHtml(key)}"
         value="${escapeHtml(val)}" />
@@ -439,42 +448,17 @@ function renderCharactersTab(
   selectedFileName: string | undefined,
 ): string {
   const effectiveSelected = selectedFileName ?? profiles[0]?.fileName;
-
-  const roleOrder = ["protagonist", "antagonist", "supporting", "minor"];
-  const roleGroups = new Map<string, CharacterProfile[]>();
-  for (const p of profiles) {
-    const role = p.role.trim() || "uncategorized";
-    if (!roleGroups.has(role)) { roleGroups.set(role, []); }
-    roleGroups.get(role)!.push(p);
-  }
-
-  const sortedRoles = [...roleGroups.keys()].sort((a, b) => {
-    const ai = roleOrder.indexOf(a);
-    const bi = roleOrder.indexOf(b);
-    if (ai !== -1 && bi !== -1) { return ai - bi; }
-    if (ai !== -1) { return -1; }
-    if (bi !== -1) { return 1; }
-    if (a === "uncategorized") { return 1; }
-    if (b === "uncategorized") { return -1; }
-    return a.localeCompare(b);
-  });
-
-  let listItems = "";
-  for (const role of sortedRoles) {
-    const roleProfiles = roleGroups.get(role)!;
-    const groupItems = roleProfiles.map((p) =>
-      `<div class="char-list-item${p.fileName === effectiveSelected ? " char-list-item--selected" : ""}"
-           data-action="character:select"
-           data-open-question-row-context="character"
-           data-file="${escapeHtml(p.fileName)}">
-        ${escapeHtml(p.name || "(untitled)")}
-      </div>`
-    ).join("");
-    listItems += `<div class="char-role-group">
-      <div class="char-role-label">${escapeHtml(role)}</div>
-      ${groupItems}
-    </div>`;
-  }
+  const sortedProfiles = [...profiles].sort((a, b) =>
+    (a.name || a.fileName).localeCompare(b.name || b.fileName),
+  );
+  const listItems = sortedProfiles.map((p) =>
+    `<div class="char-list-item${p.fileName === effectiveSelected ? " char-list-item--selected" : ""}"
+         data-action="character:select"
+         data-open-question-row-context="character"
+         data-file="${escapeHtml(p.fileName)}">
+      ${escapeHtml(p.name || "(untitled)")}
+    </div>`
+  ).join("");
 
   const listPane = `<div class="char-list">
     <div class="char-list-header">
@@ -522,7 +506,7 @@ function renderPlaceDetail(profile: PlaceProfile): string {
 
   const customFieldRows = Object.entries(profile.customFields).map(([key, val]) =>
     `<div class="char-field-row char-field-custom">
-      <label class="char-field-label char-field-label--custom">${escapeHtml(key)}</label>
+      <label class="char-field-label char-field-label--custom">${escapeHtml(formatCustomFieldLabel(key))}</label>
       <input class="char-field-input" data-action="place:updateField"
         data-file="${escapeHtml(profile.fileName)}" data-field="custom:${escapeHtml(key)}"
         value="${escapeHtml(val)}" />
@@ -682,6 +666,9 @@ export function renderPlanningHtml(
       border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-editorGroup-border));
       background: var(--vscode-editorGroupHeader-tabsBackground);
       padding: 0 8px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
     }
     .tab {
       padding: 8px 16px; border: none; background: none; cursor: pointer;
@@ -695,8 +682,8 @@ export function renderPlanningHtml(
     }
 
     /* Tab panels */
-    .tab-panel { display: none; padding: 0; }
-    .tab-panel--active { display: block; }
+    .tab-panel { display: none; padding: 0; pointer-events: none; }
+    .tab-panel--active { display: block; pointer-events: auto; }
 
     /* --- Outliner (Scrivener-style) --- */
     .outliner { width: 100%; }
@@ -1380,8 +1367,17 @@ export function renderPlanningHtml(
   ${tabPanels}
   <script nonce="${nonce}">
     (function() {
-      const vscode = acquireVsCodeApi();
-      const state = vscode.getState() || { collapsedIds: [], activeTab: null, viewMode: null, collapsedGroups: [] };
+      // The Open Questions fragment embedded in tabPanels contains its own <script>
+      // that may have already called acquireVsCodeApi(). Cache the result in a global
+      // so neither script double-acquires and crashes.
+      if (!window.__lqVsApi) { window.__lqVsApi = acquireVsCodeApi(); }
+      const vscode = window.__lqVsApi;
+      const rawState = vscode.getState();
+      const state = (rawState && typeof rawState === 'object')
+        ? rawState
+        : { collapsedIds: [], activeTab: null, viewMode: null, collapsedGroups: [] };
+      if (!Array.isArray(state.collapsedIds)) state.collapsedIds = [];
+      if (!Array.isArray(state.collapsedGroups)) state.collapsedGroups = [];
       const debounceTimers = {};
 
       // Restore collapsed state
@@ -1399,6 +1395,8 @@ export function renderPlanningHtml(
       // Tab switching
       document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
+          // Dismiss any open OQ context menu from a previous tab so it can't block the UI.
+          document.querySelectorAll('.oq-ctx-menu').forEach(m => m.remove());
           document.querySelectorAll('.tab').forEach(t => t.classList.remove('tab--active'));
           document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('tab-panel--active'));
           tab.classList.add('tab--active');
@@ -1598,304 +1596,312 @@ export function renderPlanningHtml(
 
 
       // --- Character event delegation (scoped to Characters tab panel) ---
-      const charactersPanel = document.querySelector('.tab-panel[data-panel-id="characters"]');
-      const charContainer = charactersPanel && charactersPanel.querySelector('.char-container');
-      if (charContainer) {
-        const charDebounceTimers = {};
-        charContainer.addEventListener('click', (e) => {
-          const target = e.target;
-          if (!target) return;
-          const el = target.closest('[data-action]');
-          if (!el) return;
-          const action = el.getAttribute('data-action');
-          const fileName = el.getAttribute('data-file');
-          if (action === 'character:select' && fileName) {
-            vscode.postMessage({ type: 'character:select', fileName: fileName });
-          } else if (action === 'character:create') {
-            vscode.postMessage({ type: 'character:create' });
-          } else if (action === 'character:addCustomField' && fileName) {
-            const fieldName = prompt('Field name:');
-            if (fieldName && fieldName.trim()) {
-              vscode.postMessage({ type: 'character:addCustomField', fileName: fileName, fieldName: fieldName.trim() });
+      try {
+        const charactersPanel = document.querySelector('.tab-panel[data-panel-id="characters"]');
+        const charContainer = charactersPanel && charactersPanel.querySelector('.char-container');
+        if (charContainer) {
+          const charDebounceTimers = {};
+          charContainer.addEventListener('click', (e) => {
+            const target = e.target instanceof Element ? e.target : null;
+            if (!target) return;
+            const el = target.closest('[data-action]');
+            if (!el) return;
+            const action = el.getAttribute('data-action');
+            const fileName = el.getAttribute('data-file');
+            if (action === 'character:select' && fileName) {
+              vscode.postMessage({ type: 'character:select', fileName: fileName });
+            } else if (action === 'character:create') {
+              vscode.postMessage({ type: 'character:create' });
+            } else if (action === 'character:addCustomField' && fileName) {
+              const fieldName = prompt('Field name:');
+              if (fieldName && fieldName.trim()) {
+                vscode.postMessage({ type: 'character:addCustomField', fileName: fileName, fieldName: fieldName.trim() });
+              }
+            } else if (action === 'character:delete' && fileName) {
+              vscode.postMessage({ type: 'character:delete', fileName: fileName });
+            } else if (action === 'character:openInEditor' && fileName) {
+              vscode.postMessage({ type: 'character:openInEditor', fileName: fileName });
             }
-          } else if (action === 'character:delete' && fileName) {
-            vscode.postMessage({ type: 'character:delete', fileName: fileName });
-          } else if (action === 'character:openInEditor' && fileName) {
-            vscode.postMessage({ type: 'character:openInEditor', fileName: fileName });
-          }
-        });
-        charContainer.addEventListener('input', (e) => {
-          const target = e.target;
-          if (!target || target.getAttribute('data-action') !== 'character:updateField') return;
-          const fileName = target.getAttribute('data-file');
-          const field = target.getAttribute('data-field');
-          if (!fileName || !field) return;
-          const value = target.value;
-          const key = fileName + ':' + field;
-          if (charDebounceTimers[key]) clearTimeout(charDebounceTimers[key]);
-          charDebounceTimers[key] = setTimeout(() => {
-            vscode.postMessage({ type: 'character:updateField', fileName: fileName, field: field, value: value });
-          }, 300);
-        });
-        charContainer.addEventListener('contextmenu', (e) => {
-          const row = e.target && e.target.closest && e.target.closest('.char-list-item');
-          if (!row || !charContainer.contains(row)) return;
-          if (row.getAttribute('data-open-question-row-context') !== 'character') return;
-          const fileName = row.getAttribute('data-file');
-          if (!fileName) return;
-          e.preventDefault();
-          vscode.postMessage({ type: 'openQuestionRowContext', openQuestionRowContext: 'character', fileName: fileName });
-        });
-      }
+          });
+          charContainer.addEventListener('input', (e) => {
+            const target = e.target;
+            if (!target || target.getAttribute('data-action') !== 'character:updateField') return;
+            const fileName = target.getAttribute('data-file');
+            const field = target.getAttribute('data-field');
+            if (!fileName || !field) return;
+            const value = target.value;
+            const key = fileName + ':' + field;
+            if (charDebounceTimers[key]) clearTimeout(charDebounceTimers[key]);
+            charDebounceTimers[key] = setTimeout(() => {
+              vscode.postMessage({ type: 'character:updateField', fileName: fileName, field: field, value: value });
+            }, 300);
+          });
+          charContainer.addEventListener('contextmenu', (e) => {
+            const row = e.target && e.target.closest && e.target.closest('.char-list-item');
+            if (!row || !charContainer.contains(row)) return;
+            if (row.getAttribute('data-open-question-row-context') !== 'character') return;
+            const fileName = row.getAttribute('data-file');
+            if (!fileName) return;
+            e.preventDefault();
+            vscode.postMessage({ type: 'openQuestionRowContext', openQuestionRowContext: 'character', fileName: fileName });
+          });
+        }
+      } catch (e) { console.error('[LeanQuill] character tab init failed', e); }
 
       // --- Places tab (same layout classes as characters; scoped panel) ---
-      const placesPanel = document.querySelector('.tab-panel[data-panel-id="places"]');
-      const placeContainer = placesPanel && placesPanel.querySelector('.char-container');
-      if (placeContainer) {
-        const placeDebounceTimers = {};
-        placeContainer.addEventListener('click', (e) => {
-          const target = e.target;
-          if (!target) return;
-          const el = target.closest('[data-action]');
-          if (!el) return;
-          const action = el.getAttribute('data-action');
-          const fileName = el.getAttribute('data-file');
-          if (action === 'place:select' && fileName) {
-            vscode.postMessage({ type: 'place:select', fileName: fileName });
-          } else if (action === 'place:create') {
-            vscode.postMessage({ type: 'place:create' });
-          } else if (action === 'place:addCustomField' && fileName) {
-            const fieldName = prompt('Field name:');
-            if (fieldName && fieldName.trim()) {
-              vscode.postMessage({ type: 'place:addCustomField', fileName: fileName, fieldName: fieldName.trim() });
-            }
-          } else if (action === 'place:delete' && fileName) {
-            vscode.postMessage({ type: 'place:delete', fileName: fileName });
-          } else if (action === 'place:openInEditor' && fileName) {
-            vscode.postMessage({ type: 'place:openInEditor', fileName: fileName });
-          }
-        });
-        placeContainer.addEventListener('input', (e) => {
-          const target = e.target;
-          if (!target || target.getAttribute('data-action') !== 'place:updateField') return;
-          const fileName = target.getAttribute('data-file');
-          const field = target.getAttribute('data-field');
-          if (!fileName || !field) return;
-          const value = target.value;
-          const key = fileName + ':' + field;
-          if (placeDebounceTimers[key]) clearTimeout(placeDebounceTimers[key]);
-          placeDebounceTimers[key] = setTimeout(() => {
-            vscode.postMessage({ type: 'place:updateField', fileName: fileName, field: field, value: value });
-          }, 300);
-        });
-
-        const placeDragType = ${JSON.stringify(PLACE_WEBVIEW_DRAG_TYPE)};
-        const placeListBody = placeContainer.querySelector('.place-list-body');
-        let placeDragActive = false;
-        placeContainer.addEventListener('dragstart', (e) => {
-          const t = e.target;
-          if (!t || !t.classList || !t.classList.contains('place-list-item')) return;
-          const fn = t.getAttribute('data-file');
-          if (!fn) return;
-          placeDragActive = true;
-          e.dataTransfer.setData(placeDragType, fn);
-          e.dataTransfer.setData('text/plain', fn);
-          e.dataTransfer.effectAllowed = 'move';
-        });
-        placeContainer.addEventListener('dragend', () => {
-          placeDragActive = false;
-          placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
-          if (placeListBody) placeListBody.classList.remove('place-list-drag-active');
-        });
-        if (placeListBody) {
-          placeListBody.addEventListener('dragover', (e) => {
-            if (!placeDragActive) return;
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            const row = e.target && e.target.closest && e.target.closest('.place-list-item');
-            placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
-            placeListBody.classList.remove('place-list-drag-active');
-            if (row && placeListBody.contains(row)) {
-              row.classList.add('place-list-drop-target');
-            } else {
-              placeListBody.classList.add('place-list-drag-active');
-            }
-          });
-          placeListBody.addEventListener('dragleave', (e) => {
-            const row = e.target && e.target.closest && e.target.closest('.place-list-item');
-            if (row) row.classList.remove('place-list-drop-target');
-            if (e.target === placeListBody && !placeListBody.contains(e.relatedTarget)) {
-              placeListBody.classList.remove('place-list-drag-active');
-            }
-          });
-          placeListBody.addEventListener('drop', (e) => {
-            if (!placeDragActive) return;
-            e.preventDefault();
-            const dragged = e.dataTransfer.getData(placeDragType) || e.dataTransfer.getData('text/plain');
-            placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
-            placeListBody.classList.remove('place-list-drag-active');
-            placeDragActive = false;
-            if (!dragged) return;
-            const row = e.target && e.target.closest && e.target.closest('.place-list-item');
-            if (row && placeListBody.contains(row)) {
-              const newParent = row.getAttribute('data-file');
-              if (newParent && newParent !== dragged) {
-                vscode.postMessage({ type: 'place:reparent', draggedFileName: dragged, newParentFileName: newParent });
+      try {
+        const placesPanel = document.querySelector('.tab-panel[data-panel-id="places"]');
+        const placeContainer = placesPanel && placesPanel.querySelector('.char-container');
+        if (placeContainer) {
+          const placeDebounceTimers = {};
+          placeContainer.addEventListener('click', (e) => {
+            const target = e.target instanceof Element ? e.target : null;
+            if (!target) return;
+            const el = target.closest('[data-action]');
+            if (!el) return;
+            const action = el.getAttribute('data-action');
+            const fileName = el.getAttribute('data-file');
+            if (action === 'place:select' && fileName) {
+              vscode.postMessage({ type: 'place:select', fileName: fileName });
+            } else if (action === 'place:create') {
+              vscode.postMessage({ type: 'place:create' });
+            } else if (action === 'place:addCustomField' && fileName) {
+              const fieldName = prompt('Field name:');
+              if (fieldName && fieldName.trim()) {
+                vscode.postMessage({ type: 'place:addCustomField', fileName: fileName, fieldName: fieldName.trim() });
               }
-            } else {
-              vscode.postMessage({ type: 'place:reparent', draggedFileName: dragged, newParentFileName: '' });
+            } else if (action === 'place:delete' && fileName) {
+              vscode.postMessage({ type: 'place:delete', fileName: fileName });
+            } else if (action === 'place:openInEditor' && fileName) {
+              vscode.postMessage({ type: 'place:openInEditor', fileName: fileName });
+            }
+          });
+          placeContainer.addEventListener('input', (e) => {
+            const target = e.target;
+            if (!target || target.getAttribute('data-action') !== 'place:updateField') return;
+            const fileName = target.getAttribute('data-file');
+            const field = target.getAttribute('data-field');
+            if (!fileName || !field) return;
+            const value = target.value;
+            const key = fileName + ':' + field;
+            if (placeDebounceTimers[key]) clearTimeout(placeDebounceTimers[key]);
+            placeDebounceTimers[key] = setTimeout(() => {
+              vscode.postMessage({ type: 'place:updateField', fileName: fileName, field: field, value: value });
+            }, 300);
+          });
+
+          const placeDragType = ${JSON.stringify(PLACE_WEBVIEW_DRAG_TYPE)};
+          const placeListBody = placeContainer.querySelector('.place-list-body');
+          let placeDragActive = false;
+          placeContainer.addEventListener('dragstart', (e) => {
+            const t = e.target;
+            if (!t || !t.classList || !t.classList.contains('place-list-item')) return;
+            const fn = t.getAttribute('data-file');
+            if (!fn) return;
+            placeDragActive = true;
+            e.dataTransfer.setData(placeDragType, fn);
+            e.dataTransfer.setData('text/plain', fn);
+            e.dataTransfer.effectAllowed = 'move';
+          });
+          placeContainer.addEventListener('dragend', () => {
+            placeDragActive = false;
+            placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
+            if (placeListBody) placeListBody.classList.remove('place-list-drag-active');
+          });
+          if (placeListBody) {
+            placeListBody.addEventListener('dragover', (e) => {
+              if (!placeDragActive) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              const row = e.target && e.target.closest && e.target.closest('.place-list-item');
+              placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
+              placeListBody.classList.remove('place-list-drag-active');
+              if (row && placeListBody.contains(row)) {
+                row.classList.add('place-list-drop-target');
+              } else {
+                placeListBody.classList.add('place-list-drag-active');
+              }
+            });
+            placeListBody.addEventListener('dragleave', (e) => {
+              const row = e.target && e.target.closest && e.target.closest('.place-list-item');
+              if (row) row.classList.remove('place-list-drop-target');
+              if (e.target === placeListBody && !placeListBody.contains(e.relatedTarget)) {
+                placeListBody.classList.remove('place-list-drag-active');
+              }
+            });
+            placeListBody.addEventListener('drop', (e) => {
+              if (!placeDragActive) return;
+              e.preventDefault();
+              const dragged = e.dataTransfer.getData(placeDragType) || e.dataTransfer.getData('text/plain');
+              placeContainer.querySelectorAll('.place-list-drop-target').forEach((el) => el.classList.remove('place-list-drop-target'));
+              placeListBody.classList.remove('place-list-drag-active');
+              placeDragActive = false;
+              if (!dragged) return;
+              const row = e.target && e.target.closest && e.target.closest('.place-list-item');
+              if (row && placeListBody.contains(row)) {
+                const newParent = row.getAttribute('data-file');
+                if (newParent && newParent !== dragged) {
+                  vscode.postMessage({ type: 'place:reparent', draggedFileName: dragged, newParentFileName: newParent });
+                }
+              } else {
+                vscode.postMessage({ type: 'place:reparent', draggedFileName: dragged, newParentFileName: '' });
+              }
+            });
+          }
+          placeContainer.addEventListener('contextmenu', (e) => {
+            const row = e.target && e.target.closest && e.target.closest('.place-list-item');
+            if (!row || !placeContainer.contains(row)) return;
+            if (row.getAttribute('data-open-question-row-context') !== 'place') return;
+            const fileName = row.getAttribute('data-file');
+            if (!fileName) return;
+            e.preventDefault();
+            vscode.postMessage({ type: 'openQuestionRowContext', openQuestionRowContext: 'place', fileName: fileName });
+          });
+        }
+      } catch (e) { console.error('[LeanQuill] places tab init failed', e); }
+
+      // --- Themes tab ---
+      try {
+        const themeScroll = document.querySelector('.theme-tab-scroll');
+        if (themeScroll) {
+          const themeDebounceTimers = {};
+          themeScroll.addEventListener('input', (e) => {
+            const t = e.target;
+            if (!t) return;
+            const act = t.getAttribute('data-action');
+            if (act === 'theme:updateBookField') {
+              const field = t.getAttribute('data-field');
+              if (!field) return;
+              const key = 'book:' + field;
+              if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
+              themeDebounceTimers[key] = setTimeout(() => {
+                const msg = { type: 'theme:updateBook' };
+                msg[field] = t.value;
+                vscode.postMessage(msg);
+              }, 300);
+            } else if (act === 'theme:updateThemeField') {
+              const themeId = t.getAttribute('data-theme-id');
+              const field = t.getAttribute('data-field');
+              if (!themeId || !field) return;
+              const dk = themeId + ':' + field;
+              if (themeDebounceTimers[dk]) clearTimeout(themeDebounceTimers[dk]);
+              themeDebounceTimers[dk] = setTimeout(() => {
+                const msg = { type: 'theme:updateTheme', themeId: themeId };
+                msg[field] = t.value;
+                vscode.postMessage(msg);
+              }, 300);
+            } else if (act === 'theme:updateBookCustom') {
+              const ck = t.getAttribute('data-custom-key');
+              if (!ck) return;
+              const key = 'bcustom:' + ck;
+              if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
+              themeDebounceTimers[key] = setTimeout(() => {
+                vscode.postMessage({ type: 'theme:updateBookCustom', key: ck, value: t.value });
+              }, 300);
+            } else if (act === 'theme:updateBookTitle') {
+              const key = 'proj:title';
+              if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
+              themeDebounceTimers[key] = setTimeout(() => {
+                vscode.postMessage({ type: 'theme:updateBookTitle', value: t.value });
+              }, 300);
+            } else if (act === 'theme:updateGenres') {
+              const key = 'proj:genres';
+              if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
+              themeDebounceTimers[key] = setTimeout(() => {
+                vscode.postMessage({ type: 'theme:updateGenres', value: t.value });
+              }, 300);
+            }
+          });
+          themeScroll.addEventListener('change', (e) => {
+            const t = e.target;
+            if (!t || t.type !== 'checkbox') return;
+            const act = t.getAttribute('data-action');
+            const path = t.getAttribute('data-path');
+            if (act === 'theme:toggleThemeChapter') {
+              const themeId = t.getAttribute('data-theme-id');
+              if (themeId && path) {
+                vscode.postMessage({ type: 'theme:toggleThemeChapter', themeId: themeId, path: path });
+              }
+            }
+          });
+          themeScroll.addEventListener('click', (e) => {
+            const el = e.target && e.target.closest('[data-action]');
+            if (!el) return;
+            const act = el.getAttribute('data-action');
+            if (act === 'theme:addTheme') {
+              vscode.postMessage({ type: 'theme:addTheme' });
+            } else if (act === 'theme:addBookField') {
+              vscode.postMessage({ type: 'theme:promptAddBookField' });
+            } else if (act === 'theme:removeTheme') {
+              const themeId = el.getAttribute('data-theme-id');
+              if (themeId) {
+                vscode.postMessage({ type: 'theme:promptRemoveTheme', themeId: themeId });
+              }
             }
           });
         }
-        placeContainer.addEventListener('contextmenu', (e) => {
-          const row = e.target && e.target.closest && e.target.closest('.place-list-item');
-          if (!row || !placeContainer.contains(row)) return;
-          if (row.getAttribute('data-open-question-row-context') !== 'place') return;
-          const fileName = row.getAttribute('data-file');
-          if (!fileName) return;
-          e.preventDefault();
-          vscode.postMessage({ type: 'openQuestionRowContext', openQuestionRowContext: 'place', fileName: fileName });
-        });
-      }
-
-      // --- Themes tab ---
-      const themeScroll = document.querySelector('.theme-tab-scroll');
-      if (themeScroll) {
-        const themeDebounceTimers = {};
-        themeScroll.addEventListener('input', (e) => {
-          const t = e.target;
-          if (!t) return;
-          const act = t.getAttribute('data-action');
-          if (act === 'theme:updateBookField') {
-            const field = t.getAttribute('data-field');
-            if (!field) return;
-            const key = 'book:' + field;
-            if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
-            themeDebounceTimers[key] = setTimeout(() => {
-              const msg = { type: 'theme:updateBook' };
-              msg[field] = t.value;
-              vscode.postMessage(msg);
-            }, 300);
-          } else if (act === 'theme:updateThemeField') {
-            const themeId = t.getAttribute('data-theme-id');
-            const field = t.getAttribute('data-field');
-            if (!themeId || !field) return;
-            const dk = themeId + ':' + field;
-            if (themeDebounceTimers[dk]) clearTimeout(themeDebounceTimers[dk]);
-            themeDebounceTimers[dk] = setTimeout(() => {
-              const msg = { type: 'theme:updateTheme', themeId: themeId };
-              msg[field] = t.value;
-              vscode.postMessage(msg);
-            }, 300);
-          } else if (act === 'theme:updateBookCustom') {
-            const ck = t.getAttribute('data-custom-key');
-            if (!ck) return;
-            const key = 'bcustom:' + ck;
-            if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
-            themeDebounceTimers[key] = setTimeout(() => {
-              vscode.postMessage({ type: 'theme:updateBookCustom', key: ck, value: t.value });
-            }, 300);
-          } else if (act === 'theme:updateBookTitle') {
-            const key = 'proj:title';
-            if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
-            themeDebounceTimers[key] = setTimeout(() => {
-              vscode.postMessage({ type: 'theme:updateBookTitle', value: t.value });
-            }, 300);
-          } else if (act === 'theme:updateGenres') {
-            const key = 'proj:genres';
-            if (themeDebounceTimers[key]) clearTimeout(themeDebounceTimers[key]);
-            themeDebounceTimers[key] = setTimeout(() => {
-              vscode.postMessage({ type: 'theme:updateGenres', value: t.value });
-            }, 300);
-          }
-        });
-        themeScroll.addEventListener('change', (e) => {
-          const t = e.target;
-          if (!t || t.type !== 'checkbox') return;
-          const act = t.getAttribute('data-action');
-          const path = t.getAttribute('data-path');
-          if (act === 'theme:toggleThemeChapter') {
-            const themeId = t.getAttribute('data-theme-id');
-            if (themeId && path) {
-              vscode.postMessage({ type: 'theme:toggleThemeChapter', themeId: themeId, path: path });
-            }
-          }
-        });
-        themeScroll.addEventListener('click', (e) => {
-          const el = e.target && e.target.closest('[data-action]');
-          if (!el) return;
-          const act = el.getAttribute('data-action');
-          if (act === 'theme:addTheme') {
-            vscode.postMessage({ type: 'theme:addTheme' });
-          } else if (act === 'theme:addBookField') {
-            vscode.postMessage({ type: 'theme:promptAddBookField' });
-          } else if (act === 'theme:removeTheme') {
-            const themeId = el.getAttribute('data-theme-id');
-            if (themeId) {
-              vscode.postMessage({ type: 'theme:promptRemoveTheme', themeId: themeId });
-            }
-          }
-        });
-      }
+      } catch (e) { console.error('[LeanQuill] themes tab init failed', e); }
 
       // --- Threads tab ---
-      const threadContainer = document.querySelector('.thread-container');
-      if (threadContainer) {
-        const threadDebounceTimers = {};
-        threadContainer.addEventListener('click', (e) => {
-          const el = e.target && e.target.closest('[data-action]');
-          if (!el) return;
-          const act = el.getAttribute('data-action');
-          const fileName = el.getAttribute('data-file');
-          if (act === 'thread:select' && fileName) {
-            vscode.postMessage({ type: 'thread:select', fileName: fileName });
-          } else if (act === 'thread:create') {
-            vscode.postMessage({ type: 'thread:create' });
-          } else if (act === 'thread:addCustomField' && fileName) {
-            const fieldName = prompt('Field name:');
-            if (fieldName && fieldName.trim()) {
-              vscode.postMessage({ type: 'thread:addCustomField', fileName: fileName, fieldName: fieldName.trim() });
+      try {
+        const threadContainer = document.querySelector('.thread-container');
+        if (threadContainer) {
+          const threadDebounceTimers = {};
+          threadContainer.addEventListener('click', (e) => {
+            const el = e.target && e.target.closest('[data-action]');
+            if (!el) return;
+            const act = el.getAttribute('data-action');
+            const fileName = el.getAttribute('data-file');
+            if (act === 'thread:select' && fileName) {
+              vscode.postMessage({ type: 'thread:select', fileName: fileName });
+            } else if (act === 'thread:create') {
+              vscode.postMessage({ type: 'thread:create' });
+            } else if (act === 'thread:addCustomField' && fileName) {
+              const fieldName = prompt('Field name:');
+              if (fieldName && fieldName.trim()) {
+                vscode.postMessage({ type: 'thread:addCustomField', fileName: fileName, fieldName: fieldName.trim() });
+              }
+            } else if (act === 'thread:delete' && fileName) {
+              if (confirm('Delete this thread? This cannot be undone.')) {
+                vscode.postMessage({ type: 'thread:delete', fileName: fileName });
+              }
             }
-          } else if (act === 'thread:delete' && fileName) {
-            if (confirm('Delete this thread? This cannot be undone.')) {
-              vscode.postMessage({ type: 'thread:delete', fileName: fileName });
-            }
-          }
-        });
-        threadContainer.addEventListener('contextmenu', (e) => {
-          const row = e.target && e.target.closest && e.target.closest('.thread-list-item');
-          if (!row || !threadContainer.contains(row)) return;
-          if (row.getAttribute('data-open-question-row-context') !== 'thread') return;
-          const fileName = row.getAttribute('data-file');
-          if (!fileName) return;
-          e.preventDefault();
-          vscode.postMessage({ type: 'openQuestionRowContext', openQuestionRowContext: 'thread', fileName: fileName });
-        });
-        threadContainer.addEventListener('input', (e) => {
-          const t = e.target;
-          if (!t || t.getAttribute('data-action') !== 'thread:updateField') return;
-          const fileName = t.getAttribute('data-file');
-          const field = t.getAttribute('data-field');
-          if (!fileName || !field) return;
-          const key = fileName + ':' + field;
-          if (threadDebounceTimers[key]) clearTimeout(threadDebounceTimers[key]);
-          threadDebounceTimers[key] = setTimeout(() => {
-            vscode.postMessage({ type: 'thread:updateField', fileName: fileName, field: field, value: t.value });
-          }, 300);
-        });
-        threadContainer.addEventListener('change', (e) => {
-          const t = e.target;
-          if (!t || !t.classList || !t.classList.contains('thread-touch-cb')) return;
-          const file = t.getAttribute('data-file');
-          if (!file) return;
-          const listEl = threadContainer.querySelector('.thread-chapter-list[data-thread-touches-for="' + CSS.escape(file) + '"]');
-          if (!listEl) return;
-          const paths = Array.from(listEl.querySelectorAll('.thread-touch-cb:checked'))
-            .map((x) => x.getAttribute('data-path'))
-            .filter(Boolean);
-          vscode.postMessage({ type: 'thread:setTouchesChapters', fileName: file, paths: paths });
-        });
-      }
+          });
+          threadContainer.addEventListener('contextmenu', (e) => {
+            const row = e.target && e.target.closest && e.target.closest('.thread-list-item');
+            if (!row || !threadContainer.contains(row)) return;
+            if (row.getAttribute('data-open-question-row-context') !== 'thread') return;
+            const fileName = row.getAttribute('data-file');
+            if (!fileName) return;
+            e.preventDefault();
+            vscode.postMessage({ type: 'openQuestionRowContext', openQuestionRowContext: 'thread', fileName: fileName });
+          });
+          threadContainer.addEventListener('input', (e) => {
+            const t = e.target;
+            if (!t || t.getAttribute('data-action') !== 'thread:updateField') return;
+            const fileName = t.getAttribute('data-file');
+            const field = t.getAttribute('data-field');
+            if (!fileName || !field) return;
+            const key = fileName + ':' + field;
+            if (threadDebounceTimers[key]) clearTimeout(threadDebounceTimers[key]);
+            threadDebounceTimers[key] = setTimeout(() => {
+              vscode.postMessage({ type: 'thread:updateField', fileName: fileName, field: field, value: t.value });
+            }, 300);
+          });
+          threadContainer.addEventListener('change', (e) => {
+            const t = e.target;
+            if (!t || !t.classList || !t.classList.contains('thread-touch-cb')) return;
+            const file = t.getAttribute('data-file');
+            if (!file) return;
+            const listEl = threadContainer.querySelector('.thread-chapter-list[data-thread-touches-for="' + CSS.escape(file) + '"]');
+            if (!listEl) return;
+            const paths = Array.from(listEl.querySelectorAll('.thread-touch-cb:checked'))
+              .map((x) => x.getAttribute('data-path'))
+              .filter(Boolean);
+            vscode.postMessage({ type: 'thread:setTouchesChapters', fileName: file, paths: paths });
+          });
+        }
+      } catch (e) { console.error('[LeanQuill] threads tab init failed', e); }
 
       // Incoming messages from extension host
       window.addEventListener('message', event => {

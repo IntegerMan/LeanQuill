@@ -4,6 +4,56 @@ export interface InitInput {
   genre: string[];
 }
 
+// --- Active personas (Phase 9, PER-01 / D-04) ---
+
+/** One entry in `project.yaml` `active_personas`; id matches `.leanquill/personas/{id}.md`. */
+export interface ActivePersonaEntry {
+  id: string;
+  enabled: boolean;
+}
+
+// --- Persona profiles (Phase 9, persona-schema v1) — property names mirror YAML keys ---
+
+export type PersonaType = "beta-reader" | "expert-reviewer" | "copy-editor" | "continuity-checker";
+
+export interface PersonaExpertise {
+  domain_depth: number;
+  genre_familiarity: number;
+  technical_literacy: number;
+  domain_focus: string[];
+}
+
+export interface PersonaContextAccess {
+  scope: string;
+  include_planning_files: boolean;
+  include_character_notes: boolean;
+  include_setting_notes: boolean;
+  include_research_notes: boolean;
+  include_timeline: boolean;
+}
+
+export interface PersonaFeedback {
+  primary_focus: string[];
+  allowed_types: string[];
+  tone: string;
+  min_evidence_for_factual: boolean;
+  interest_heatmap: boolean;
+  reader_question_stream: boolean;
+}
+
+/** Parsed persona from `.leanquill/personas/{id}.md`. Unknown top-level scalar keys preserved for forward-compat (D-13). */
+export interface PersonaRecord {
+  id: string;
+  name: string;
+  type: PersonaType;
+  expertise: PersonaExpertise;
+  context_access: PersonaContextAccess;
+  feedback: PersonaFeedback;
+  description: string;
+  body: string;
+  rawFrontmatterUnknown?: Record<string, string>;
+}
+
 export interface ChapterOrderResult {
   chapterPaths: string[];
   warnings: string[];
@@ -127,6 +177,14 @@ export interface OpenQuestionRecord {
   association: OpenQuestionAssociation;
   /** Persisted when status is dismissed (issue-schema `dismissed_reason`). */
   dismissedReason?: string;
+  /** When set, `source` frontmatter points at e.g. `.leanquill/issues/sessions/…` (AI session promotion). */
+  issueSource?: string;
+  /** Overrides default `author` in frontmatter when promoting from AI session findings. */
+  agentProfile?: string;
+  /** Optional confidence label from AI provenance. */
+  confidence?: string;
+  /** Optional verify flag from AI provenance. */
+  verifyManually?: boolean;
   /** Computed for webview navigation UX; not persisted. */
   staleHint?: string;
 }

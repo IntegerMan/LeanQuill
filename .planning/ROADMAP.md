@@ -25,7 +25,7 @@
 | 14  | Open Questions                                        | Author can create open-question notes associated with the book, characters, threads, places, manuscript files, or text selections — with list, navigation, and status updates.                                                                            | ISSUE-01 (partial), ISSUE-02 (partial)          | 4 criteria       |
 | 15  | Import Claude Desktop research                        | Author can import Claude Desktop research into the planning workflow for later review and use                                                                                                                                                             | TBD                                             | TBD              |
 | 16  | Marketplace preview and publish pipeline              | Author can install a VS Code Marketplace **preview** with documentation, getting-started guidance, and supporting listing artifacts; CI/CD or documented automation makes preview and future releases repeatable                                          | TBD                                             | TBD              |
-| 17  | AI Story Chat, Memory, and Metadata Actions           | Author can chat with an AI agent about story questions and recommendations, preserve conversation-scoped notes over time, and allow standardized AI updates to LeanQuill metadata files across supported development environments                         | TBD                                             | TBD              |
+| 17  | AI Story Chat, Memory, and Metadata Actions           | Author can hold story-focused AI conversations with durable memory and apply metadata changes through standardized, auditable contracts                                                                                                                      | TBD                                             | 3 criteria       |
 
 
 ## Phases
@@ -38,8 +38,8 @@
 - **Phase 6: Threads and Themes** - Populate planning workspace with Themes + Threads tabs, `themes.yaml`, and thread markdown under `folders.threads`. (completed 2026-04-09)
 - **Phase 7: Global Knowledge Reference** - Deliver notes parsing and hyperlink-aware knowledge pane.
 - **Phase 8: Issue Capture, Triage, and Editor Signals** - Deliver full issue lifecycle plus gutter issue indicators. (completed 2026-04-11)
-- **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration.
-- **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1.
+- **Phase 9: AI Safety Rails and Persona Baseline** - Establish write-block enforcement and persona library configuration. (completed 2026-04-25)
+- **Phase 10: AI Review and Advisory Workflows** - Layer AI review/chat/intelligence flows on top of Track 1. (7/7 plans executed; human Extension Development Host verification pending)
 - **Phase 11: Outline and Card Usability Improvements** - Improve outline/card insertion, removal, reordering, and hierarchy editing.
 - **Phase 12: Standardized Research Workflow and Results Repository** - Add standardized research execution and dedicated research-results storage next to manuscript. (completed 2026-04-06)
 - **Phase 13: LeanPub Workspace Initialization** - Sidebar control to create `manuscript/`, `Book.txt`, and a placeholder chapter when missing. (completed 2026-04-09)
@@ -239,6 +239,14 @@ Plans:
 **UI hint:** no
 **Depends on:** Phase 1, Phase 8
 **Requirements:** PER-01
+**Plans:** 4 plans
+
+Plans:
+
+- 09-01-PLAN.md — `ActivePersonaEntry` + `parseActivePersonas` in `projectConfig` with tests (D-04, PER-01b).
+- 09-02-PLAN.md — Packaged persona markdown (`personaDefaults.ts`), init + `renderProjectYaml` seeding, `ensureLeanquillDefaultPersonas` activation backfill (D-01–D-03, D-05, PER-01a).
+- 09-03-PLAN.md — `personaStore` load/validate/resolve + `getEnabledPersonasForProject` and tests (D-06, D-07, D-12–D-14, PER-01c).
+- 09-04-PLAN.md — Metadata apply `SafeFileSystem` hardening (D-09), contract tests, activation warnings + story chat read-only persona context + `project.yaml` empty-list backfill + docs (D-08, D-11, D-15, success criterion 3).
 
 **Success criteria:**
 
@@ -254,6 +262,17 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 9
 **Requirements:** AIR-01, AIR-02, AIR-03, ISSUE-05
+**Plans:** 7/7 plans complete
+
+Plans:
+
+- 10-00-PLAN.md — Wave 0: `10-VALIDATION.md` coverage map plus Phase 10 test scaffolding targets.
+- 10-01-PLAN.md — Session issue + chat log audit artifact foundation (`aiReviewSessionStore`, `storyChatLogStore`).
+- 10-02-PLAN.md — Shared `aiReviewWorkflow` orchestration for chapter review and story intelligence (persona scope, stubs, LM/chat fallback).
+- 10-03-PLAN.md — Issue **Chat about this** in both Issues hosts; `leanquill.chatAboutIssue` context for chapter/selection associations (ISSUE-05, AIR-03).
+- 10-04-PLAN.md — AIR-01 chapter review wired to tree context menu, command palette, persona QuickPick, session finalization, chat log summary.
+- 10-05-PLAN.md — AIR-02 post-save story intelligence prompt, metadata actions, outcome-only action log contract.
+- 10-06-PLAN.md — Automated gate + Extension Development Host human verification (`10-VERIFICATION.md`).
 
 **Success criteria:**
 
@@ -263,7 +282,7 @@ Plans:
 4. AI issue conversations remain advisory-only and do not perform manuscript writes.
 5. AI workflow artifacts are persisted under LeanQuill project state so review history is reproducible.
 
-**Notes:** Final phase by design because it depends on foundation, issue model, chapter context fidelity, and enforced write-block contracts.
+**Notes:** Final phase by design because it depends on foundation, issue model, chapter context fidelity, and enforced write-block contracts. All implementation plans have SUMMARYs; milestone completion for this phase remains gated on human verification in `10-VERIFICATION.md` (see `10-06-PLAN.md`).
 
 ### Phase 11: Make the outline and card views more usable with the ability to insert, remove, and reorder cards. The outline should also support changing hierarchy structures like we can in the sidebar.
 
@@ -369,6 +388,26 @@ Plans:
 
 **Notes:** Promoted from backlog (999.2).
 
+### Phase 18: Improve the user experience of the chat commands to be less cumbersome for a writer by studing frameworks like Get Shit Done, bMad, and Spec Kit.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 18 to break down)
+
+### Phase 19: Character Coach: dedicated skills and popular methodologies so users can choose structured ways to detail and refine characters.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 19 to break down)
+
 ---
 
 ### Phase 16: Marketplace preview release with docs and repeatable publish pipeline
@@ -391,7 +430,7 @@ Plans:
 **UI hint:** yes
 **Depends on:** Phase 9, Phase 10
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 6/6 plans complete
 
 Plans:
 
@@ -416,15 +455,15 @@ Plans:
 | 5. Place and Setting Reference                            | 4/4            | Completed   | 2026-04-09 |
 | 6. Threads and Themes                                     | 3/3            | Completed   | 2026-04-09 |
 | 7. Global Knowledge Reference                             | 0/0            | Not started | -          |
-| 8. Issue Capture, Triage, and Editor Signals              | 0/0            | Not started | -          |
-| 9. AI Safety Rails and Persona Baseline                   | 0/0            | Not started | -          |
-| 10. AI Review and Advisory Workflows                      | 0/0            | Not started | -          |
+| 8. Issue Capture, Triage, and Editor Signals              | 5/5            | Completed   | 2026-04-11 |
+| 9. AI Safety Rails and Persona Baseline                   | 4/4            | Completed   | 2026-04-25 |
+| 10. AI Review and Advisory Workflows                      | 7/7            | Verification (UAT pending) | -          |
 | 11. Outline and Card Usability Improvements               | 0/0            | Not started | -          |
 | 12. Standardized Research Workflow and Results Repository | 2/2            | Completed   | 2026-04-05 |
 | 14. Open Questions                                        | 6/6            | Completed   | 2026-04-09 |
 | 15. Import Claude Desktop research                        | 4/4            | Completed   | 2026-04-25 |
 | 16. Marketplace preview and publish pipeline              | 0/0            | Not started | -          |
-| 17. AI Story Chat, Memory, and Metadata Actions           | 0/0            | Not started | -          |
+| 17. AI Story Chat, Memory, and Metadata Actions           | 6/6            | Completed   | 2026-04-26 |
 
 
 ## Backlog
@@ -438,6 +477,16 @@ Plans:
 Plans:
 
 - TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.4: Explore LeanQuill memory files with a graphical user interface. (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (promote with /gsd-review-backlog when ready)
 
 ### Phase 999.3: Investigate LeanPub APIs for LeanQuill integration (BACKLOG)
 
