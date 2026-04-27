@@ -373,7 +373,12 @@ function buildClientScript(nonce: string, host: "planning" | "panel"): string {
   return `
 <script nonce="${nonce}">
 (function () {
-  const vscode = acquireVsCodeApi();
+  // Reuse a single acquireVsCodeApi() instance across all scripts on this page.
+  // When the OQ fragment is embedded in the Planning panel another <script> on the
+  // same page also calls acquireVsCodeApi(), so we cache the result in a global to
+  // avoid the "already acquired" error that would crash both scripts.
+  if (!window.__lqVsApi) { window.__lqVsApi = acquireVsCodeApi(); }
+  const vscode = window.__lqVsApi;
   const host = ${hostJson};
   let ctxMenuEl = null;
 
@@ -441,6 +446,10 @@ function buildClientScript(nonce: string, host: "planning" | "panel"): string {
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeCtxMenu();
   });
+  // Clean up any stray menu node when the webview loses focus or becomes hidden
+  // (e.g. the user switches VS Code tabs or panels).
+  document.addEventListener('visibilitychange', function () { closeCtxMenu(); });
+  window.addEventListener('blur', function () { closeCtxMenu(); });
 
   var tbody = document.querySelector('.oq-table tbody');
   tbody?.addEventListener('contextmenu', function (e) {
